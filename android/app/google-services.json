@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "528831153116",
+    "project_id": "amayalert-7b818",
+    "storage_bucket": "amayalert-7b818.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:528831153116:android:5f20553977c9ee42214519",
+        "android_client_info": {
+          "package_name": "com.amaya.amayalert"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB26BHGy5bhgtNfpaA-mk7kZZ6SDtPY86E"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

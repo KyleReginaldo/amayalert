@@ -30,21 +30,53 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  provider: ^6.1.5+1
+  supabase_flutter: ^2.9.1
+  flutter_dotenv: ^6.0.0
+  get_it: ^8.2.0
+  auto_route: ^10.1.2
+  lucide_icons_flutter: ^3.0.9
+  dart_mappable: ^4.2.0
+  http: ^1.5.0
+  google_maps_flutter: ^2.12.3
+  geolocator: ^14.0.2
+  geocoding: ^4.0.0
+  permission_handler: ^12.0.1
+  flutter_polyline_points: ^3.0.1
+  intl: ^0.20.2
+  timeago: ^3.7.1
+  flutter_easyloading: ^3.0.5
+  lottie: ^3.3.1
+  firebase_core: ^4.1.0
+  onesignal_flutter: ^5.3.4
+  internet_connection_checker_plus: ^2.7.2
+  iconify_flutter: ^0.0.7
+  url_launcher: ^6.3.2
+  app_links: ^6.3.2
+  share_plus: ^11.1.0
+  cached_network_image: ^3.4.1
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
+  firebase_messaging: ^16.0.1
+  lucide_flutter: ^0.544.0
+  shared_preferences: ^2.5.3
+  image_picker: ^1.1.2
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  auto_route_generator: ^10.2.4
+  build_runner: ^2.7.0
+  dart_mappable_builder: ^4.3.1
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
   # activated in the `analysis_options.yaml` file located at the root of your
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
-  flutter_lints: ^5.0.0
+  flutter_lints: ^6.0.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -60,6 +92,9 @@ flutter:
   assets:
     - assets/images/
     - assets/icons/
+    - assets/json/
+    - assets/fonts/
+    - .env
   #   - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see
@@ -73,10 +108,10 @@ flutter:
   # "family" key with the font family name, and a "fonts" key with a
   # list giving the asset and other descriptors for the font. For
   # example:
-  # fonts:
-  #   - family: Schyler
-  #     fonts:
-  #       - asset: fonts/Schyler-Regular.ttf
+  fonts:
+    - family: Rubik
+      fonts:
+        - asset: assets/fonts/rubik/Rubik-Regular.ttf
   #       - asset: fonts/Schyler-Italic.ttf
   #         style: italic
   #   - family: Trajan Pro
