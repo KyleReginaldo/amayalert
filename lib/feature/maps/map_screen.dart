@@ -73,6 +73,7 @@ class _MapScreenState extends State<MapScreen> {
       body: _latlng != null
           ? GoogleMap(
               onMapCreated: _onMapCreated,
+              onCameraMove: _onCameraMove,
               initialCameraPosition: CameraPosition(
                 target: _latlng!,
                 zoom: _currentZoom,

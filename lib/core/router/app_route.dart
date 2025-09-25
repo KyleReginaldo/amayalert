@@ -56,5 +56,13 @@ class AppRouter extends RootStackRouter {
       page: CreatePostsRoute.page,
       transitionsBuilder: TransitionsBuilders.slideBottom,
     ),
+    CustomRoute(
+      page: ChatRoute.page,
+      transitionsBuilder: TransitionsBuilders.slideLeft,
+    ),
+    CustomRoute(
+      page: NewConversationRoute.page,
+      transitionsBuilder: TransitionsBuilders.slideLeft,
+    ),
   ];
 }

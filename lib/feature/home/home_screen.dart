@@ -1,9 +1,13 @@
 import 'package:amayalert/core/router/app_route.gr.dart';
-import 'package:amayalert/core/theme/theme.dart';
 import 'package:amayalert/core/widgets/divider/custom_divider.dart';
 import 'package:amayalert/core/widgets/input/custom_text_field.dart';
 import 'package:amayalert/core/widgets/input/search_field.dart';
 import 'package:amayalert/core/widgets/text/custom_text.dart';
+import 'package:amayalert/feature/alerts/alert_banner_widget.dart';
+import 'package:amayalert/feature/alerts/alert_repository.dart';
+import 'package:amayalert/feature/messages/test_users_widget.dart';
+import 'package:amayalert/feature/posts/post_repository.dart';
+import 'package:amayalert/feature/posts/posts_list_widget.dart';
 import 'package:amayalert/feature/weather/weather_container.dart';
 import 'package:amayalert/feature/weather/weather_repository.dart';
 import 'package:auto_route/auto_route.dart';
@@ -13,6 +17,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/theme/theme.dart';
 import '../../dependency.dart';
 
 @RoutePage()
@@ -24,8 +29,12 @@ class HomeScreen extends StatefulWidget implements AutoRouteWrapper {
 
   @override
   Widget wrappedRoute(BuildContext context) {
-    return ChangeNotifierProvider.value(
-      value: sl<WeatherRepository>(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider.value(value: sl<WeatherRepository>()),
+        ChangeNotifierProvider.value(value: sl<PostRepository>()),
+        ChangeNotifierProvider.value(value: sl<AlertRepository>()),
+      ],
       child: this,
     );
   }
@@ -88,10 +97,17 @@ class _HomeScreenState extends State<HomeScreen> {
             spacing: 8,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Alert banner for emergency alerts
+              ChangeNotifierProvider.value(
+                value: sl<AlertRepository>(),
+                child: const AlertBannerWidget(),
+              ),
+
               SearchTextField(
                 controller: _searchController,
                 hint: 'Search here...',
               ),
+              const AlertBannerWidget(),
               WeatherContainer(
                 isLoading: isLoading,
                 errorMessage: errorMessage,
@@ -138,13 +154,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 color: Colors.grey.shade300,
               ),
               CustomText(text: 'New Posts', color: AppColors.textPrimaryLight),
-              Center(
-                child: CustomText(
-                  text: 'No posts available.',
-                  color: AppColors.textSecondaryLight,
-                  fontSize: 14,
-                ),
-              ),
+              const SizedBox(height: 8),
+
+              // Test widget for development
+              const TestUsersWidget(),
+              const SizedBox(height: 16),
+
+              const PostsListWidget(),
             ],
           ),
         ),
