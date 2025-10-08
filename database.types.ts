@@ -183,6 +183,65 @@ export type Database = {
           },
         ]
       }
+      rescues: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          description: string | null
+          id: string
+          lat: number | null
+          lng: number | null
+          metadata: Json | null
+          priority: number
+          reported_at: string
+          scheduled_for: string | null
+          status: Database["public"]["Enums"]["rescue_status"]
+          title: string
+          updated_at: string
+          user: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          metadata?: Json | null
+          priority?: number
+          reported_at?: string
+          scheduled_for?: string | null
+          status?: Database["public"]["Enums"]["rescue_status"]
+          title: string
+          updated_at?: string
+          user?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          metadata?: Json | null
+          priority?: number
+          reported_at?: string
+          scheduled_for?: string | null
+          status?: Database["public"]["Enums"]["rescue_status"]
+          title?: string
+          updated_at?: string
+          user?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rescues_user_fkey1"
+            columns: ["user"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tickets: {
         Row: {
           content: string
@@ -263,6 +322,7 @@ export type Database = {
     }
     Enums: {
       evacuation_status: "open" | "closed" | "full" | "maintenance"
+      rescue_status: "pending" | "in_progress" | "completed" | "cancelled"
       user_role: "admin" | "user"
     }
     CompositeTypes: {
@@ -392,6 +452,7 @@ export const Constants = {
   public: {
     Enums: {
       evacuation_status: ["open", "closed", "full", "maintenance"],
+      rescue_status: ["pending", "in_progress", "completed", "cancelled"],
       user_role: ["admin", "user"],
     },
   },

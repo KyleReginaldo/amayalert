@@ -247,7 +247,7 @@ class NewConversationRoute extends _i14.PageRouteInfo<void> {
   static _i14.PageInfo page = _i14.PageInfo(
     name,
     builder: (data) {
-      return const _i9.NewConversationScreen();
+      return _i14.WrappedRoute(child: const _i9.NewConversationScreen());
     },
   );
 }

@@ -1,28 +1,39 @@
 import 'package:amayalert/core/router/app_route.gr.dart';
 import 'package:amayalert/core/widgets/text/custom_text.dart';
+import 'package:amayalert/dependency.dart';
+import 'package:amayalert/feature/messages/enhanced_message_repository.dart';
+import 'package:amayalert/feature/messages/message_model.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 @RoutePage()
-class NewConversationScreen extends StatefulWidget {
+class NewConversationScreen extends StatefulWidget implements AutoRouteWrapper {
   const NewConversationScreen({super.key});
 
   @override
   State<NewConversationScreen> createState() => _NewConversationScreenState();
+
+  @override
+  Widget wrappedRoute(BuildContext context) {
+    return ChangeNotifierProvider.value(
+      value: sl<EnhancedMessageRepository>(),
+      child: this,
+    );
+  }
 }
 
 class _NewConversationScreenState extends State<NewConversationScreen> {
   final TextEditingController _searchController = TextEditingController();
-  List<Map<String, dynamic>> _users = [];
-  List<Map<String, dynamic>> _filteredUsers = [];
-  bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    _loadUsers();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadUsers();
+    });
     _searchController.addListener(_filterUsers);
   }
 
@@ -34,59 +45,40 @@ class _NewConversationScreenState extends State<NewConversationScreen> {
   }
 
   Future<void> _loadUsers() async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      final currentUser = Supabase.instance.client.auth.currentUser;
-      if (currentUser == null) return;
-
-      // Get all users except current user
-      final response = await Supabase.instance.client
-          .from('users')
-          .select('id, full_name, email')
-          .neq('id', currentUser.id)
-          .limit(50);
-
-      setState(() {
-        _users = List<Map<String, dynamic>>.from(response);
-        _filteredUsers = _users;
-      });
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error loading users: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
+    final currentUser = Supabase.instance.client.auth.currentUser;
+    if (currentUser != null && mounted) {
+      await context.read<EnhancedMessageRepository>().loadAvailableUsers(
+        currentUserId: currentUser.id,
+      );
     }
   }
 
   void _filterUsers() {
     final query = _searchController.text.toLowerCase();
-    setState(() {
-      _filteredUsers = _users.where((user) {
-        final name = user['full_name']?.toString().toLowerCase() ?? '';
-        final email = user['email']?.toString().toLowerCase() ?? '';
-        return name.contains(query) || email.contains(query);
-      }).toList();
+
+    // Schedule the repository call to avoid setState during build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        final repository = context.read<EnhancedMessageRepository>();
+        final currentUser = Supabase.instance.client.auth.currentUser;
+
+        if (currentUser != null) {
+          repository.loadAvailableUsers(
+            currentUserId: currentUser.id,
+            searchQuery: query.isEmpty ? null : query,
+          );
+        }
+      }
     });
   }
 
-  void _startConversation(Map<String, dynamic> user) {
-    final userId = user['id'] as String;
-    final userName = user['full_name'] as String? ?? user['email'] as String;
-
+  void _startConversation(MessageUser user) {
     // Navigate to chat screen using AutoRoute
     context.router.push(
-      ChatRoute(otherUserId: userId, otherUserName: userName),
+      ChatRoute(
+        otherUserId: user.id,
+        otherUserName: user.fullName.isNotEmpty ? user.fullName : user.email,
+      ),
     );
   }
 
@@ -97,88 +89,130 @@ class _NewConversationScreenState extends State<NewConversationScreen> {
         title: const CustomText(text: 'New Conversation'),
         centerTitle: true,
       ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: 'Search users...',
-                prefixIcon: const Icon(LucideIcons.search),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                filled: true,
-                fillColor: Colors.grey.shade100,
-              ),
-            ),
-          ),
-          Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _filteredUsers.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          LucideIcons.users,
-                          size: 48,
-                          color: Colors.grey.shade400,
-                        ),
-                        const SizedBox(height: 16),
-                        CustomText(
-                          text: _searchController.text.isNotEmpty
-                              ? 'No users found'
-                              : 'No users available',
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                        const SizedBox(height: 8),
-                        CustomText(
-                          text: _searchController.text.isNotEmpty
-                              ? 'Try a different search term'
-                              : 'Check back later for users to message',
-                          fontSize: 14,
-                          color: Colors.grey.shade600,
-                        ),
-                      ],
+      body: Consumer<EnhancedMessageRepository>(
+        builder: (context, repository, child) {
+          final users = repository.availableUsers;
+          final isLoading = repository.isLoading;
+          final errorMessage = repository.errorMessage;
+
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    hintText: 'Search users...',
+                    prefixIcon: const Icon(LucideIcons.search),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                  )
-                : ListView.separated(
-                    itemCount: _filteredUsers.length,
-                    separatorBuilder: (context, index) =>
-                        const Divider(height: 1),
-                    itemBuilder: (context, index) {
-                      final user = _filteredUsers[index];
-                      return UserListItem(
-                        user: user,
-                        onTap: () => _startConversation(user),
-                      );
-                    },
+                    filled: true,
+                    fillColor: Colors.grey.shade100,
                   ),
-          ),
-        ],
+                ),
+              ),
+              Expanded(
+                child: isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : errorMessage != null
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.error_outline,
+                              size: 48,
+                              color: Colors.red.shade400,
+                            ),
+                            const SizedBox(height: 16),
+                            CustomText(
+                              text: 'Error loading users',
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            const SizedBox(height: 8),
+                            CustomText(
+                              text: errorMessage,
+                              fontSize: 14,
+                              color: Colors.grey.shade600,
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 16),
+                            ElevatedButton(
+                              onPressed: () {
+                                repository.clearError();
+                                _loadUsers();
+                              },
+                              child: const CustomText(text: 'Retry'),
+                            ),
+                          ],
+                        ),
+                      )
+                    : users.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              LucideIcons.users,
+                              size: 48,
+                              color: Colors.grey.shade400,
+                            ),
+                            const SizedBox(height: 16),
+                            CustomText(
+                              text: _searchController.text.isNotEmpty
+                                  ? 'No users found'
+                                  : 'No users available',
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            const SizedBox(height: 8),
+                            CustomText(
+                              text: _searchController.text.isNotEmpty
+                                  ? 'Try a different search term'
+                                  : 'Check back later for users to message',
+                              fontSize: 14,
+                              color: Colors.grey.shade600,
+                            ),
+                          ],
+                        ),
+                      )
+                    : ListView.separated(
+                        itemCount: users.length,
+                        separatorBuilder: (context, index) =>
+                            const Divider(height: 1),
+                        itemBuilder: (context, index) {
+                          final user = users[index];
+                          return UserListItem(
+                            user: user,
+                            onTap: () => _startConversation(user),
+                          );
+                        },
+                      ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
 }
 
 class UserListItem extends StatelessWidget {
-  final Map<String, dynamic> user;
+  final MessageUser user;
   final VoidCallback onTap;
 
   const UserListItem({super.key, required this.user, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    final name = user['full_name'] as String? ?? 'Unknown User';
-    final email = user['email'] as String? ?? '';
+    final name = user.fullName.isNotEmpty ? user.fullName : 'Unknown User';
+    final email = user.email;
 
     return ListTile(
       leading: CircleAvatar(
-        backgroundColor: Colors.blue.withOpacity(0.1),
+        backgroundColor: Colors.blue.withValues(alpha: 0.1),
         child: Icon(LucideIcons.user, color: Colors.blue, size: 20),
       ),
       title: CustomText(text: name, fontWeight: FontWeight.w600, fontSize: 16),

@@ -1,5 +1,6 @@
 import 'package:amayalert/feature/alerts/alert_provider.dart';
 import 'package:amayalert/feature/alerts/alert_repository.dart';
+import 'package:amayalert/feature/messages/enhanced_message_repository.dart';
 import 'package:amayalert/feature/messages/message_repository.dart';
 import 'package:amayalert/feature/posts/post_provider.dart';
 import 'package:amayalert/feature/posts/post_repository.dart';
@@ -25,6 +26,7 @@ Future init() async {
   sl.registerLazySingleton(() => AlertRepository(provider: sl()));
   sl.registerLazySingleton(() => MessageProvider());
   sl.registerLazySingleton(() => MessageRepository(provider: sl()));
+  sl.registerLazySingleton(() => EnhancedMessageRepository());
   final sharedPreferences = await SharedPreferences.getInstance();
   sl.registerLazySingleton(() => sharedPreferences);
 }

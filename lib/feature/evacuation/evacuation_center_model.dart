@@ -1,3 +1,7 @@
+import 'package:dart_mappable/dart_mappable.dart';
+
+part 'evacuation_center_model.mapper.dart';
+
 /// Evacuation Center model based on database schema
 class EvacuationCenter {
   final int id;
@@ -193,6 +197,7 @@ class EvacuationCenter {
   }
 }
 
+@MappableEnum(caseStyle: CaseStyle.snakeCase)
 enum EvacuationStatus {
   open,
   closed,
@@ -243,7 +248,7 @@ enum EvacuationStatus {
   }
 }
 
-/// Data class for creating new evacuation centers
+@MappableClass(caseStyle: CaseStyle.snakeCase)
 class CreateEvacuationCenterRequest {
   final String name;
   final String address;
@@ -288,7 +293,7 @@ class CreateEvacuationCenterRequest {
   }
 }
 
-/// Data class for updating evacuation centers
+@MappableClass(caseStyle: CaseStyle.snakeCase)
 class UpdateEvacuationCenterRequest {
   final String? name;
   final String? address;

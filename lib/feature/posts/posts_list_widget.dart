@@ -112,6 +112,7 @@ class _PostsListWidgetState extends State<PostsListWidget> {
           },
           child: ListView.builder(
             shrinkWrap: true,
+            padding: EdgeInsets.zero,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: postRepository.posts.length,
             itemBuilder: (context, index) {
@@ -132,139 +133,140 @@ class PostCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
+    return Container(
       margin: const EdgeInsets.symmetric(vertical: 8),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Post header
-            Row(
-              children: [
-                CircleAvatar(
-                  radius: 20,
-                  backgroundColor: AppColors.primary.withOpacity(0.1),
-                  child: Icon(
-                    LucideIcons.user,
-                    color: AppColors.primary,
-                    size: 20,
-                  ),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
+          ),
+        ],
+        border: Border.all(color: Colors.grey.withValues(alpha: 0.1), width: 1),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Post header
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 20,
+                backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                child: Icon(
+                  LucideIcons.user,
+                  color: AppColors.primary,
+                  size: 20,
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      CustomText(
-                        text:
-                            'User ${post.user.substring(0, 8)}...', // Shortened user ID
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
-                      ),
-                      CustomText(
-                        text: timeago.format(post.createdAt),
-                        fontSize: 12,
-                        color: AppColors.textSecondaryLight,
-                      ),
-                    ],
-                  ),
-                ),
-                // Visibility indicator
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: post.visibility == PostVisibility.public
-                        ? Colors.green.withOpacity(0.1)
-                        : Colors.orange.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        post.visibility == PostVisibility.public
-                            ? LucideIcons.globe
-                            : LucideIcons.lock,
-                        size: 12,
-                        color: post.visibility == PostVisibility.public
-                            ? Colors.green
-                            : Colors.orange,
-                      ),
-                      const SizedBox(width: 4),
-                      CustomText(
-                        text: post.visibility.value.toUpperCase(),
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                        color: post.visibility == PostVisibility.public
-                            ? Colors.green
-                            : Colors.orange,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-
-            // Post content
-            CustomText(text: post.content, fontSize: 14),
-
-            // Post image (if available)
-            if (post.mediaUrl != null) ...[
-              const SizedBox(height: 12),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: CachedNetworkImage(
-                  imageUrl: post.mediaUrl!,
-                  width: double.infinity,
-                  height: 200,
-                  fit: BoxFit.cover,
-                  placeholder: (context, url) => Container(
-                    height: 200,
-                    color: Colors.grey.shade200,
-                    child: const Center(child: CircularProgressIndicator()),
-                  ),
-                  errorWidget: (context, url, error) => Container(
-                    height: 200,
-                    color: Colors.grey.shade200,
-                    child: const Icon(
-                      Icons.image_not_supported,
-                      size: 48,
-                      color: Colors.grey,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    CustomText(
+                      text:
+                          'User ${post.user.substring(0, 8)}...', // Shortened user ID
+                      fontWeight: FontWeight.w600,
+                      fontSize: 14,
                     ),
-                  ),
+                    CustomText(
+                      text: timeago.format(post.createdAt),
+                      fontSize: 12,
+                      color: AppColors.textSecondaryLight,
+                    ),
+                  ],
+                ),
+              ),
+              // Visibility indicator
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: post.visibility == PostVisibility.public
+                      ? Colors.green.withValues(alpha: 0.1)
+                      : Colors.orange.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      post.visibility == PostVisibility.public
+                          ? LucideIcons.globe
+                          : LucideIcons.lock,
+                      size: 12,
+                      color: post.visibility == PostVisibility.public
+                          ? Colors.green
+                          : Colors.orange,
+                    ),
+                    const SizedBox(width: 4),
+                    CustomText(
+                      text: post.visibility.value.toUpperCase(),
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: post.visibility == PostVisibility.public
+                          ? Colors.green
+                          : Colors.orange,
+                    ),
+                  ],
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 12),
 
-            // Post footer
+          // Post content
+          CustomText(text: post.content, fontSize: 14),
+
+          // Post image (if available)
+          if (post.mediaUrl != null) ...[
             const SizedBox(height: 12),
-            Row(
-              children: [
-                if (post.updatedAt != null &&
-                    post.updatedAt != post.createdAt) ...[
-                  Icon(
-                    Icons.edit,
-                    size: 12,
-                    color: AppColors.textSecondaryLight,
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: CachedNetworkImage(
+                imageUrl: post.mediaUrl!,
+                width: double.infinity,
+                height: 200,
+                fit: BoxFit.cover,
+                placeholder: (context, url) => Container(
+                  height: 200,
+                  color: Colors.grey.shade200,
+                  child: const Center(child: CircularProgressIndicator()),
+                ),
+                errorWidget: (context, url, error) => Container(
+                  height: 200,
+                  color: Colors.grey.shade200,
+                  child: const Icon(
+                    Icons.image_not_supported,
+                    size: 48,
+                    color: Colors.grey,
                   ),
-                  const SizedBox(width: 4),
-                  CustomText(
-                    text: 'Edited ${timeago.format(post.updatedAt!)}',
-                    fontSize: 12,
-                    color: AppColors.textSecondaryLight,
-                  ),
-                ],
-              ],
+                ),
+              ),
             ),
           ],
-        ),
+
+          // Post footer
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              if (post.updatedAt != null &&
+                  post.updatedAt != post.createdAt) ...[
+                Icon(Icons.edit, size: 12, color: AppColors.textSecondaryLight),
+                const SizedBox(width: 4),
+                CustomText(
+                  text: 'Edited ${timeago.format(post.updatedAt!)}',
+                  fontSize: 12,
+                  color: AppColors.textSecondaryLight,
+                ),
+              ],
+            ],
+          ),
+        ],
       ),
     );
   }

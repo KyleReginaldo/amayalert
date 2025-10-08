@@ -60,7 +60,10 @@ class PostProvider {
           .eq('visibility', 'public')
           .order('created_at', ascending: false);
 
-      final posts = response.map((json) => Post.fromJson(json)).toList();
+      final posts = response.map((json) {
+        debugPrint('posts: $json');
+        return PostMapper.fromMap(json);
+      }).toList();
 
       return Result.success(posts);
     } on PostgrestException catch (e) {
@@ -78,7 +81,7 @@ class PostProvider {
           .eq('user', userId) // Fixed: was 'user_id', should be 'user'
           .order('created_at', ascending: false);
 
-      final posts = response.map((json) => Post.fromJson(json)).toList();
+      final posts = response.map((json) => PostMapper.fromMap(json)).toList();
 
       return Result.success(posts);
     } on PostgrestException catch (e) {
@@ -96,7 +99,7 @@ class PostProvider {
           .eq('id', postId)
           .single();
 
-      final post = Post.fromJson(response);
+      final post = PostMapper.fromMap(response);
       return Result.success(post);
     } on PostgrestException catch (e) {
       return Result.error(e.message);

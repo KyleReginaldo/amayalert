@@ -36,7 +36,7 @@ class AlertProvider {
           .isFilter('deleted_at', null)
           .order('created_at', ascending: false);
 
-      final alerts = response.map((json) => Alert.fromJson(json)).toList();
+      final alerts = response.map((json) => AlertMapper.fromMap(json)).toList();
       return Result.success(alerts);
     } on PostgrestException catch (e) {
       return Result.error(e.message);
@@ -54,7 +54,7 @@ class AlertProvider {
           .order('created_at', ascending: false)
           .limit(5); // Get only latest 5 active alerts
 
-      final alerts = response.map((json) => Alert.fromJson(json)).toList();
+      final alerts = response.map((json) => AlertMapper.fromMap(json)).toList();
       return Result.success(alerts);
     } on PostgrestException catch (e) {
       return Result.error(e.message);
@@ -71,7 +71,7 @@ class AlertProvider {
           .eq('id', alertId)
           .single();
 
-      final alert = Alert.fromJson(response);
+      final alert = AlertMapper.fromMap(response);
       return Result.success(alert);
     } on PostgrestException catch (e) {
       return Result.error(e.message);
@@ -85,7 +85,7 @@ class AlertProvider {
     required UpdateAlertRequest request,
   }) async {
     try {
-      final updateData = request.toJson();
+      final updateData = request.toMap();
 
       final response = await supabase
           .from('alert')
@@ -136,7 +136,7 @@ class AlertProvider {
           table: 'alert',
           callback: (payload) {
             try {
-              final alert = Alert.fromJson(payload.newRecord);
+              final alert = AlertMapper.fromMap(payload.newRecord);
               onNewAlert(alert);
             } catch (e) {
               debugPrint('Error parsing new alert: $e');
@@ -149,7 +149,7 @@ class AlertProvider {
           table: 'alert',
           callback: (payload) {
             try {
-              final alert = Alert.fromJson(payload.newRecord);
+              final alert = AlertMapper.fromMap(payload.newRecord);
               onAlertUpdated(alert);
             } catch (e) {
               debugPrint('Error parsing updated alert: $e');

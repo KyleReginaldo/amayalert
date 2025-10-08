@@ -1,7 +1,7 @@
 import 'package:amayalert/core/widgets/text/custom_text.dart';
 import 'package:amayalert/dependency.dart';
+import 'package:amayalert/feature/messages/enhanced_message_repository.dart';
 import 'package:amayalert/feature/messages/message_model.dart';
-import 'package:amayalert/feature/messages/message_repository.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -21,7 +21,7 @@ class MessageScreen extends StatefulWidget implements AutoRouteWrapper {
   @override
   Widget wrappedRoute(BuildContext context) {
     return ChangeNotifierProvider.value(
-      value: sl<MessageRepository>(),
+      value: sl<EnhancedMessageRepository>(),
       child: this,
     );
   }
@@ -38,8 +38,10 @@ class _MessageScreenState extends State<MessageScreen> {
     final currentUser = Supabase.instance.client.auth.currentUser;
     if (currentUser != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        context.read<MessageRepository>().loadConversations(currentUser.id);
-        context.read<MessageRepository>().subscribeToUserMessages(
+        context.read<EnhancedMessageRepository>().loadConversations(
+          currentUser.id,
+        );
+        context.read<EnhancedMessageRepository>().subscribeToUserMessages(
           currentUser.id,
         );
       });
@@ -49,7 +51,7 @@ class _MessageScreenState extends State<MessageScreen> {
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider.value(
-      value: sl<MessageRepository>(),
+      value: sl<EnhancedMessageRepository>(),
       child: Scaffold(
         appBar: AppBar(
           title: const CustomText(text: 'Messages'),
@@ -64,8 +66,9 @@ class _MessageScreenState extends State<MessageScreen> {
             ),
           ],
         ),
-        body: Consumer<MessageRepository>(
+        body: Consumer<EnhancedMessageRepository>(
           builder: (context, messageRepository, child) {
+            debugPrint('error: ${messageRepository.errorMessage}');
             if (messageRepository.isLoading) {
               return const Center(child: CircularProgressIndicator());
             }
@@ -178,7 +181,7 @@ class ConversationItem extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       leading: CircleAvatar(
-        backgroundColor: Colors.blue.withOpacity(0.1),
+        backgroundColor: Colors.blue.withValues(alpha: 0.1),
         child: Icon(LucideIcons.user, color: Colors.blue, size: 20),
       ),
       title: CustomText(

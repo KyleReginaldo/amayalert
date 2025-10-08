@@ -157,12 +157,12 @@ class AlertItem extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(6),
             decoration: BoxDecoration(
-              color: _getAlertLevelColor(alert.alertLevel).withOpacity(0.2),
+              color: _getAlertLevelColor(alert.level).withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(
-              _getAlertLevelIcon(alert.alertLevel),
-              color: _getAlertLevelColor(alert.alertLevel),
+              _getAlertLevelIcon(alert.level),
+              color: _getAlertLevelColor(alert.level),
               size: 16,
             ),
           ),
@@ -173,18 +173,18 @@ class AlertItem extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (alert.title != null && alert.title!.isNotEmpty) ...[
+                if (alert.title.isNotEmpty) ...[
                   CustomText(
-                    text: alert.title!,
+                    text: alert.title,
                     fontWeight: FontWeight.w600,
                     fontSize: 14,
                     color: Colors.red.shade800,
                   ),
                   const SizedBox(height: 4),
                 ],
-                if (alert.content != null && alert.content!.isNotEmpty) ...[
+                if (alert.description.isNotEmpty) ...[
                   CustomText(
-                    text: alert.content!,
+                    text: alert.description,
                     fontSize: 13,
                     color: Colors.red.shade700,
                     maxLines: 2,
@@ -194,25 +194,23 @@ class AlertItem extends StatelessWidget {
                 ],
                 Row(
                   children: [
-                    if (alert.alertLevel != null) ...[
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: _getAlertLevelColor(alert.alertLevel),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: CustomText(
-                          text: alert.alertLevel!.displayName.toUpperCase(),
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white,
-                        ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
                       ),
-                      const SizedBox(width: 8),
-                    ],
+                      decoration: BoxDecoration(
+                        color: _getAlertLevelColor(alert.level),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: CustomText(
+                        text: alert.level.displayName.toUpperCase(),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
                     CustomText(
                       text: timeago.format(alert.createdAt),
                       fontSize: 11,

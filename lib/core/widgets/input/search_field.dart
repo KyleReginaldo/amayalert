@@ -20,11 +20,36 @@ class SearchTextField extends StatelessWidget {
       onChanged: onChanged,
       decoration: InputDecoration(
         hintText: hint,
-        prefixIcon: const Icon(LucideIcons.search, size: 20),
+        hintStyle: TextStyle(
+          color: Colors.grey.shade500,
+          fontSize: 15,
+          fontWeight: FontWeight.w400,
+        ),
+        prefixIcon: Icon(
+          LucideIcons.search,
+          size: 20,
+          color: Colors.grey.shade400,
+        ),
         filled: true,
+        fillColor: Colors.grey.shade50,
         contentPadding: const EdgeInsets.symmetric(
-          vertical: 14,
-          horizontal: 12,
+          vertical: 16,
+          horizontal: 20,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide.none,
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(
+            color: Theme.of(context).primaryColor,
+            width: 2,
+          ),
         ),
       ),
     );

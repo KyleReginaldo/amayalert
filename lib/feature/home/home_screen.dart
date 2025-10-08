@@ -1,11 +1,8 @@
 import 'package:amayalert/core/router/app_route.gr.dart';
-import 'package:amayalert/core/widgets/divider/custom_divider.dart';
-import 'package:amayalert/core/widgets/input/custom_text_field.dart';
 import 'package:amayalert/core/widgets/input/search_field.dart';
 import 'package:amayalert/core/widgets/text/custom_text.dart';
 import 'package:amayalert/feature/alerts/alert_banner_widget.dart';
 import 'package:amayalert/feature/alerts/alert_repository.dart';
-import 'package:amayalert/feature/messages/test_users_widget.dart';
 import 'package:amayalert/feature/posts/post_repository.dart';
 import 'package:amayalert/feature/posts/posts_list_widget.dart';
 import 'package:amayalert/feature/weather/weather_container.dart';
@@ -42,7 +39,6 @@ class HomeScreen extends StatefulWidget implements AutoRouteWrapper {
 
 class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _searchController = TextEditingController();
-  final TextEditingController _postController = TextEditingController();
   LatLng? _latlng;
 
   void getCurrentLocation() async {
@@ -89,82 +85,262 @@ class _HomeScreenState extends State<HomeScreen> {
     final errorMessage = context.select(
       (WeatherRepository bloc) => bloc.errorMessage,
     );
-    return SafeArea(
-      child: Scaffold(
-        body: SingleChildScrollView(
-          padding: EdgeInsets.all(16),
-          child: Column(
-            spacing: 8,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Alert banner for emergency alerts
-              ChangeNotifierProvider.value(
-                value: sl<AlertRepository>(),
-                child: const AlertBannerWidget(),
-              ),
 
-              SearchTextField(
-                controller: _searchController,
-                hint: 'Search here...',
-              ),
-              const AlertBannerWidget(),
-              WeatherContainer(
-                isLoading: isLoading,
-                errorMessage: errorMessage,
-                weather: weather,
-              ),
-              CustomDivider(
-                endIndent: 0,
-                indent: 0,
-                thickness: 4,
-                color: Colors.grey.shade300,
-              ),
-              Row(
-                children: [
-                  Expanded(
-                    child: CustomTextField(
-                      controller: _postController,
-                      hint: 'What\'s on your mind?',
-                      onTap: () {
-                        context.router.push(const CreatePostsRoute());
-                      },
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () {
-                      context.router.push(const CreatePostsRoute());
-                    },
-                    icon: Icon(LucideIcons.camera),
-                    style: ButtonStyle().copyWith(
-                      shape: WidgetStatePropertyAll(
-                        RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
+    return Scaffold(
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              AppTheme.lightTheme.primaryColor,
+              AppColors.gray50.withValues(alpha: 0.3),
+              Colors.white,
+            ],
+            stops: const [0.0, 0.4, 1.0],
+          ),
+        ),
+        child: CustomScrollView(
+          slivers: [
+            // Custom App Bar
+            SliverAppBar(
+              elevation: 0,
+              backgroundColor: Colors.transparent,
+              expandedHeight: 120,
+              floating: true,
+              pinned: false,
+              flexibleSpace: FlexibleSpaceBar(
+                background: Container(
+                  padding: const EdgeInsets.fromLTRB(20, 60, 20, 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      CustomText(
+                        text: 'Good ${_getGreeting()}',
+                        fontSize: 28,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimaryLight,
                       ),
-                      backgroundColor: WidgetStatePropertyAll(Colors.black),
-                      foregroundColor: WidgetStatePropertyAll(Colors.white),
+                      const SizedBox(height: 4),
+                      CustomText(
+                        text: 'Stay informed, stay safe',
+                        fontSize: 16,
+                        color: AppColors.textSecondaryLight,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            // Content
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              sliver: SliverList(
+                delegate: SliverChildListDelegate([
+                  // Emergency Alert Section
+                  _buildAlertSection(),
+                  const SizedBox(height: 24),
+
+                  // Search Section
+                  _buildSearchSection(),
+                  const SizedBox(height: 24),
+
+                  // Weather Section
+                  _buildWeatherSection(weather, isLoading, errorMessage),
+                  const SizedBox(height: 32),
+
+                  // Quick Actions Section
+                  _buildQuickActionsSection(context),
+                  const SizedBox(height: 32),
+
+                  // Posts Section
+                  _buildPostsSection(),
+                  const SizedBox(height: 20),
+                ]),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _getGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'Morning';
+    if (hour < 17) return 'Afternoon';
+    return 'Evening';
+  }
+
+  Widget _buildAlertSection() {
+    return ChangeNotifierProvider.value(
+      value: sl<AlertRepository>(),
+      child: const AlertBannerWidget(),
+    );
+  }
+
+  Widget _buildSearchSection() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: SearchTextField(
+        controller: _searchController,
+        hint: 'Search emergency info, weather, posts...',
+      ),
+    );
+  }
+
+  Widget _buildWeatherSection(weather, bool isLoading, String? errorMessage) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: WeatherContainer(
+          isLoading: isLoading,
+          errorMessage: errorMessage,
+          weather: weather,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuickActionsSection(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        CustomText(
+          text: 'Share Your Thoughts',
+          fontSize: 20,
+          fontWeight: FontWeight.w600,
+          color: AppColors.textPrimaryLight,
+        ),
+        const SizedBox(height: 16),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 20,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          padding: const EdgeInsets.all(20),
+          child: Row(
+            children: [
+              // Avatar placeholder
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: AppColors.gray200,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  LucideIcons.user,
+                  color: AppColors.gray500,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Post input
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => context.router.push(const CreatePostsRoute()),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.gray100,
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                    child: CustomText(
+                      text: 'What\'s happening in your area?',
+                      color: AppColors.textSecondaryLight,
+                      fontSize: 15,
                     ),
                   ),
-                ],
+                ),
               ),
-              CustomDivider(
-                endIndent: 0,
-                indent: 0,
-                thickness: 4,
-                color: Colors.grey.shade300,
+              const SizedBox(width: 12),
+              // Camera button
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [AppColors.primary, AppColors.secondary],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha: 0.3),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () => context.router.push(const CreatePostsRoute()),
+                    borderRadius: BorderRadius.circular(22),
+                    child: const Icon(
+                      LucideIcons.camera,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                  ),
+                ),
               ),
-              CustomText(text: 'New Posts', color: AppColors.textPrimaryLight),
-              const SizedBox(height: 8),
-
-              // Test widget for development
-              const TestUsersWidget(),
-              const SizedBox(height: 16),
-
-              const PostsListWidget(),
             ],
           ),
         ),
-      ),
+      ],
+    );
+  }
+
+  Widget _buildPostsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        CustomText(
+          text: 'Community Updates',
+          fontSize: 20,
+          fontWeight: FontWeight.w600,
+          color: AppColors.textPrimaryLight,
+        ),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: const PostsListWidget(),
+        ),
+      ],
     );
   }
 }

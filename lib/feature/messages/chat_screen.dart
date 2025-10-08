@@ -1,7 +1,7 @@
 import 'package:amayalert/core/widgets/text/custom_text.dart';
 import 'package:amayalert/dependency.dart';
+import 'package:amayalert/feature/messages/enhanced_message_repository.dart';
 import 'package:amayalert/feature/messages/message_model.dart';
-import 'package:amayalert/feature/messages/message_repository.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -26,7 +26,7 @@ class ChatScreen extends StatefulWidget implements AutoRouteWrapper {
   @override
   Widget wrappedRoute(BuildContext context) {
     return ChangeNotifierProvider.value(
-      value: sl<MessageRepository>(),
+      value: sl<EnhancedMessageRepository>(),
       child: this,
     );
   }
@@ -62,11 +62,11 @@ class _ChatScreenState extends State<ChatScreen> {
     final currentUser = Supabase.instance.client.auth.currentUser;
     if (currentUser != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        context.read<MessageRepository>().loadConversation(
+        context.read<EnhancedMessageRepository>().loadConversation(
           userId1: currentUser.id,
           userId2: widget.otherUserId,
         );
-        context.read<MessageRepository>().subscribeToConversation(
+        context.read<EnhancedMessageRepository>().subscribeToConversation(
           userId1: currentUser.id,
           userId2: widget.otherUserId,
         );
@@ -91,7 +91,7 @@ class _ChatScreenState extends State<ChatScreen> {
     final currentUser = Supabase.instance.client.auth.currentUser;
     if (currentUser == null) return;
 
-    final messageRepository = context.read<MessageRepository>();
+    final messageRepository = context.read<EnhancedMessageRepository>();
 
     // Clear the input immediately for better UX
     _messageController.clear();
@@ -135,7 +135,7 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider.value(
-      value: sl<MessageRepository>(),
+      value: sl<EnhancedMessageRepository>(),
       child: Scaffold(
         appBar: AppBar(
           title: Column(
@@ -179,7 +179,7 @@ class _ChatScreenState extends State<ChatScreen> {
         body: Column(
           children: [
             Expanded(
-              child: Consumer<MessageRepository>(
+              child: Consumer<EnhancedMessageRepository>(
                 builder: (context, messageRepository, child) {
                   if (messageRepository.isLoading) {
                     return const Center(child: CircularProgressIndicator());
@@ -297,7 +297,7 @@ class MessageBubble extends StatelessWidget {
           if (!isMe) ...[
             CircleAvatar(
               radius: 16,
-              backgroundColor: Colors.blue.withOpacity(0.1),
+              backgroundColor: Colors.blue.withValues(alpha: 0.1),
               child: const Icon(LucideIcons.user, size: 16, color: Colors.blue),
             ),
             const SizedBox(width: 8),
@@ -353,7 +353,7 @@ class MessageBubble extends StatelessWidget {
             const SizedBox(width: 8),
             CircleAvatar(
               radius: 16,
-              backgroundColor: Colors.blue.withOpacity(0.1),
+              backgroundColor: Colors.blue.withValues(alpha: 0.1),
               child: const Icon(LucideIcons.user, size: 16, color: Colors.blue),
             ),
           ],
