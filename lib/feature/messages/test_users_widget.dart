@@ -38,11 +38,11 @@ class TestUsersWidget extends StatelessWidget {
         if (existing == null) {
           // Insert test user
           await supabase.from('users').insert(user);
-          print('Created test user: ${user['full_name']}');
+          debugPrint('Created test user: ${user['full_name']}');
         }
       }
     } catch (e) {
-      print('Error creating test users: $e');
+      debugPrint('Error creating test users: $e');
     }
   }
 

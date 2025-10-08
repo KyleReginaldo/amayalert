@@ -36,13 +36,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
     final int? genderValue = gender;
     final DateTime? birthDateValue = birthDate;
 
-    // Add your sign up logic here
-    print('Full Name: $fullName');
-    print('Email: $email');
-    print('Password: $password');
-    print('Phone: $phoneNumber');
-    print('Gender: $genderValue'); // 0 = male, 1 = female
-    print('Birth Date: $birthDateValue');
+    debugPrint('Full Name: $fullName');
+    debugPrint('Email: $email');
+    debugPrint('Password: $password');
+    debugPrint('Phone: $phoneNumber');
+    debugPrint('Gender: $genderValue');
+    debugPrint('Birth Date: $birthDateValue');
     EasyLoading.show(status: 'Signing up...');
 
     final result = await AuthProvider().signUp(
@@ -61,7 +60,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
     } else {
       EasyLoading.dismiss();
       EasyLoading.showSuccess(result.value);
-      context.router.maybePop(true);
+      if (mounted) {
+        context.router.maybePop(true);
+      }
     }
   }
 

@@ -1,3 +1,4 @@
+import 'package:amayalert/feature/profile/profile_model.dart';
 import 'package:dart_mappable/dart_mappable.dart';
 
 part 'post_model.mapper.dart';
@@ -6,7 +7,7 @@ part 'post_model.mapper.dart';
 @MappableClass(caseStyle: CaseStyle.snakeCase)
 class Post with PostMappable {
   final int id;
-  final String user;
+  final Profile user;
   final String content;
   final String? mediaUrl;
   final PostVisibility visibility;

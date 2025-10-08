@@ -1,5 +1,8 @@
+import 'package:amayalert/feature/activity/activity_repository.dart';
 import 'package:amayalert/feature/alerts/alert_provider.dart';
 import 'package:amayalert/feature/alerts/alert_repository.dart';
+import 'package:amayalert/feature/evacuation/evacuation_provider.dart';
+import 'package:amayalert/feature/evacuation/evacuation_repository.dart';
 import 'package:amayalert/feature/messages/enhanced_message_repository.dart';
 import 'package:amayalert/feature/messages/message_repository.dart';
 import 'package:amayalert/feature/posts/post_provider.dart';
@@ -27,6 +30,9 @@ Future init() async {
   sl.registerLazySingleton(() => MessageProvider());
   sl.registerLazySingleton(() => MessageRepository(provider: sl()));
   sl.registerLazySingleton(() => EnhancedMessageRepository());
+  sl.registerLazySingleton(() => EvacuationRepository(provider: sl()));
+  sl.registerLazySingleton(() => EvacuationProvider());
+  sl.registerLazySingleton(() => ActivityRepository());
   final sharedPreferences = await SharedPreferences.getInstance();
   sl.registerLazySingleton(() => sharedPreferences);
 }

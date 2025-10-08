@@ -56,7 +56,7 @@ class PostProvider {
     try {
       final response = await supabase
           .from('posts')
-          .select()
+          .select('*, user(*)')
           .eq('visibility', 'public')
           .order('created_at', ascending: false);
 
@@ -77,7 +77,7 @@ class PostProvider {
     try {
       final response = await supabase
           .from('posts')
-          .select()
+          .select('*, user(*)')
           .eq('user', userId) // Fixed: was 'user_id', should be 'user'
           .order('created_at', ascending: false);
 
@@ -95,7 +95,7 @@ class PostProvider {
     try {
       final response = await supabase
           .from('posts')
-          .select()
+          .select('*, user(*)')
           .eq('id', postId)
           .single();
 

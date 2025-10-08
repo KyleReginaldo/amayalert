@@ -77,7 +77,7 @@ class _ChatScreenState extends State<ChatScreen> {
   void _scrollToBottom() {
     if (_scrollController.hasClients) {
       _scrollController.animateTo(
-        _scrollController.position.maxScrollExtent,
+        0.0,
         duration: const Duration(milliseconds: 300),
         curve: Curves.easeOut,
       );
@@ -93,7 +93,6 @@ class _ChatScreenState extends State<ChatScreen> {
 
     final messageRepository = context.read<EnhancedMessageRepository>();
 
-    // Clear the input immediately for better UX
     _messageController.clear();
     setState(() {
       _isComposing = false;
@@ -110,12 +109,10 @@ class _ChatScreenState extends State<ChatScreen> {
     );
 
     if (result.isSuccess) {
-      // Scroll to bottom after sending
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _scrollToBottom();
       });
     } else {
-      // Show error and restore message content
       _messageController.text = content;
       setState(() {
         _isComposing = true;
@@ -147,132 +144,116 @@ class _ChatScreenState extends State<ChatScreen> {
                 fontWeight: FontWeight.w600,
               ),
               const CustomText(
-                text: 'Online', // TODO: Implement online status
+                text: 'Online',
                 fontSize: 12,
                 color: Colors.green,
               ),
             ],
           ),
-          actions: [
-            IconButton(
-              onPressed: () {
-                // TODO: Implement call functionality
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Call feature coming soon!')),
-                );
-              },
-              icon: const Icon(LucideIcons.phone),
-            ),
-            IconButton(
-              onPressed: () {
-                // TODO: Implement video call functionality
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Video call feature coming soon!'),
-                  ),
-                );
-              },
-              icon: const Icon(LucideIcons.video),
-            ),
-          ],
         ),
-        body: Column(
-          children: [
-            Expanded(
-              child: Consumer<EnhancedMessageRepository>(
-                builder: (context, messageRepository, child) {
-                  if (messageRepository.isLoading) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
+        body: SizedBox(
+          height: MediaQuery.sizeOf(context).height,
+          width: MediaQuery.sizeOf(context).width,
+          child: Column(
+            children: [
+              Expanded(
+                child: Consumer<EnhancedMessageRepository>(
+                  builder: (context, messageRepository, child) {
+                    if (messageRepository.isLoading) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
 
-                  if (messageRepository.errorMessage != null) {
-                    return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.error_outline,
-                            size: 48,
-                            color: Colors.red.shade400,
-                          ),
-                          const SizedBox(height: 16),
-                          CustomText(
-                            text: 'Error loading messages',
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                          const SizedBox(height: 8),
-                          CustomText(
-                            text: messageRepository.errorMessage!,
-                            fontSize: 14,
-                            color: Colors.grey.shade600,
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 16),
-                          ElevatedButton(
-                            onPressed: () {
-                              messageRepository.clearError();
-                              _loadMessages();
-                            },
-                            child: const CustomText(text: 'Retry'),
-                          ),
-                        ],
-                      ),
+                    if (messageRepository.errorMessage != null) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.error_outline,
+                              size: 48,
+                              color: Colors.red.shade400,
+                            ),
+                            const SizedBox(height: 16),
+                            CustomText(
+                              text: 'Error loading messages',
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            const SizedBox(height: 8),
+                            CustomText(
+                              text: messageRepository.errorMessage!,
+                              fontSize: 14,
+                              color: Colors.grey.shade600,
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 16),
+                            ElevatedButton(
+                              onPressed: () {
+                                messageRepository.clearError();
+                                _loadMessages();
+                              },
+                              child: const CustomText(text: 'Retry'),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+
+                    final messages =
+                        messageRepository.currentConversationMessages;
+
+                    if (messages.isEmpty) {
+                      return Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              LucideIcons.messageSquare,
+                              size: 48,
+                              color: Colors.grey.shade400,
+                            ),
+                            const SizedBox(height: 16),
+                            CustomText(
+                              text: 'No messages yet',
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            const SizedBox(height: 8),
+                            CustomText(
+                              text: 'Start the conversation!',
+                              fontSize: 14,
+                              color: Colors.grey.shade600,
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+
+                    return ListView.builder(
+                      controller: _scrollController,
+                      reverse: true,
+                      padding: const EdgeInsets.all(16),
+                      itemCount: messages.length,
+                      itemBuilder: (context, index) {
+                        final reversedIndex = messages.length - 1 - index;
+                        final message = messages[reversedIndex];
+                        final currentUser =
+                            Supabase.instance.client.auth.currentUser;
+                        final isMe = message.sender == currentUser?.id;
+
+                        return MessageBubble(message: message, isMe: isMe);
+                      },
                     );
-                  }
-
-                  final messages =
-                      messageRepository.currentConversationMessages;
-
-                  if (messages.isEmpty) {
-                    return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            LucideIcons.messageSquare,
-                            size: 48,
-                            color: Colors.grey.shade400,
-                          ),
-                          const SizedBox(height: 16),
-                          CustomText(
-                            text: 'No messages yet',
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                          const SizedBox(height: 8),
-                          CustomText(
-                            text: 'Start the conversation!',
-                            fontSize: 14,
-                            color: Colors.grey.shade600,
-                          ),
-                        ],
-                      ),
-                    );
-                  }
-
-                  return ListView.builder(
-                    controller: _scrollController,
-                    padding: const EdgeInsets.all(16),
-                    itemCount: messages.length,
-                    itemBuilder: (context, index) {
-                      final message = messages[index];
-                      final currentUser =
-                          Supabase.instance.client.auth.currentUser;
-                      final isMe = message.sender == currentUser?.id;
-
-                      return MessageBubble(message: message, isMe: isMe);
-                    },
-                  );
-                },
+                  },
+                ),
               ),
-            ),
-            MessageInput(
-              controller: _messageController,
-              isComposing: _isComposing,
-              onSend: _sendMessage,
-            ),
-          ],
+              MessageInput(
+                controller: _messageController,
+                isComposing: _isComposing,
+                onSend: _sendMessage,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -337,8 +318,7 @@ class MessageBubble extends StatelessWidget {
                       if (isMe) ...[
                         const SizedBox(width: 4),
                         Icon(
-                          LucideIcons
-                              .check, // Simplified since we don't have readAt
+                          LucideIcons.check,
                           size: 14,
                           color: Colors.white70,
                         ),
@@ -386,17 +366,6 @@ class MessageInput extends StatelessWidget {
       child: SafeArea(
         child: Row(
           children: [
-            IconButton(
-              onPressed: () {
-                // TODO: Implement attachment functionality
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Attachment feature coming soon!'),
-                  ),
-                );
-              },
-              icon: const Icon(LucideIcons.plus),
-            ),
             Expanded(
               child: Container(
                 decoration: BoxDecoration(

@@ -157,11 +157,33 @@ class PostCard extends StatelessWidget {
               CircleAvatar(
                 radius: 20,
                 backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                child: Icon(
-                  LucideIcons.user,
-                  color: AppColors.primary,
-                  size: 20,
-                ),
+                child: post.user.profilePicture != null
+                    ? ClipOval(
+                        child: CachedNetworkImage(
+                          imageUrl: post.user.profilePicture!,
+                          width: 36,
+                          height: 36,
+                          fit: BoxFit.cover,
+                          placeholder: (context, url) => Container(
+                            width: 36,
+                            height: 36,
+                            color: Colors.grey.shade200,
+                            child: const Center(
+                              child: CircularProgressIndicator(),
+                            ),
+                          ),
+                          errorWidget: (context, url, error) => Icon(
+                            LucideIcons.user,
+                            color: AppColors.primary,
+                            size: 20,
+                          ),
+                        ),
+                      )
+                    : Icon(
+                        LucideIcons.user,
+                        color: AppColors.primary,
+                        size: 20,
+                      ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -169,8 +191,7 @@ class PostCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     CustomText(
-                      text:
-                          'User ${post.user.substring(0, 8)}...', // Shortened user ID
+                      text: post.user.fullName, // Shortened user ID
                       fontWeight: FontWeight.w600,
                       fontSize: 14,
                     ),

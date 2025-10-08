@@ -2,7 +2,7 @@ import 'package:dart_mappable/dart_mappable.dart';
 
 part 'evacuation_center_model.mapper.dart';
 
-/// Evacuation Center model based on database schema
+@MappableClass(caseStyle: CaseStyle.snakeCase)
 class EvacuationCenter {
   final int id;
   final String name;
@@ -35,66 +35,6 @@ class EvacuationCenter {
     required this.createdAt,
     this.updatedAt,
   });
-
-  factory EvacuationCenter.fromJson(Map<String, dynamic> json) {
-    return EvacuationCenter(
-      id: json['id'] as int,
-      name: json['name'] as String,
-      address: json['address'] as String,
-      latitude: (json['latitude'] as num).toDouble(),
-      longitude: (json['longitude'] as num).toDouble(),
-      capacity: json['capacity'] as int?,
-      currentOccupancy: json['current_occupancy'] as int?,
-      status: json['status'] != null
-          ? EvacuationStatus.fromString(json['status'] as String)
-          : null,
-      contactName: json['contact_name'] as String?,
-      contactPhone: json['contact_phone'] as String?,
-      photos: json['photos'] != null
-          ? List<String>.from(json['photos'] as List)
-          : null,
-      createdBy: json['created_by'] as String?,
-      createdAt: DateTime.parse(json['created_at'] as String),
-      updatedAt: json['updated_at'] != null
-          ? DateTime.parse(json['updated_at'] as String)
-          : null,
-    );
-  }
-
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'name': name,
-      'address': address,
-      'latitude': latitude,
-      'longitude': longitude,
-      'capacity': capacity,
-      'current_occupancy': currentOccupancy,
-      'status': status?.value,
-      'contact_name': contactName,
-      'contact_phone': contactPhone,
-      'photos': photos,
-      'created_by': createdBy,
-      'created_at': createdAt.toIso8601String(),
-      'updated_at': updatedAt?.toIso8601String(),
-    };
-  }
-
-  Map<String, dynamic> toInsertJson() {
-    return {
-      'name': name,
-      'address': address,
-      'latitude': latitude,
-      'longitude': longitude,
-      'capacity': capacity,
-      'current_occupancy': currentOccupancy,
-      'status': status?.value,
-      'contact_name': contactName,
-      'contact_phone': contactPhone,
-      'photos': photos,
-      'created_by': createdBy,
-    };
-  }
 
   EvacuationCenter copyWith({
     int? id,
@@ -275,22 +215,6 @@ class CreateEvacuationCenterRequest {
     this.photos,
     this.createdBy,
   });
-
-  Map<String, dynamic> toJson() {
-    return {
-      'name': name,
-      'address': address,
-      'latitude': latitude,
-      'longitude': longitude,
-      'capacity': capacity,
-      'current_occupancy': currentOccupancy,
-      'status': status?.value,
-      'contact_name': contactName,
-      'contact_phone': contactPhone,
-      'photos': photos,
-      'created_by': createdBy,
-    };
-  }
 }
 
 @MappableClass(caseStyle: CaseStyle.snakeCase)
@@ -318,25 +242,6 @@ class UpdateEvacuationCenterRequest {
     this.contactPhone,
     this.photos,
   });
-
-  Map<String, dynamic> toJson() {
-    final Map<String, dynamic> json = {};
-
-    if (name != null) json['name'] = name;
-    if (address != null) json['address'] = address;
-    if (latitude != null) json['latitude'] = latitude;
-    if (longitude != null) json['longitude'] = longitude;
-    if (capacity != null) json['capacity'] = capacity;
-    if (currentOccupancy != null) json['current_occupancy'] = currentOccupancy;
-    if (status != null) json['status'] = status!.value;
-    if (contactName != null) json['contact_name'] = contactName;
-    if (contactPhone != null) json['contact_phone'] = contactPhone;
-    if (photos != null) json['photos'] = photos;
-
-    json['updated_at'] = DateTime.now().toIso8601String();
-
-    return json;
-  }
 
   bool get isEmpty =>
       name == null &&

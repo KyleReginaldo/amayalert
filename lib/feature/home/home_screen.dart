@@ -6,6 +6,7 @@ import 'package:amayalert/feature/alerts/alert_repository.dart';
 import 'package:amayalert/feature/posts/post_repository.dart';
 import 'package:amayalert/feature/posts/posts_list_widget.dart';
 import 'package:amayalert/feature/weather/weather_container.dart';
+import 'package:amayalert/feature/weather/weather_model.dart';
 import 'package:amayalert/feature/weather/weather_repository.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
@@ -13,7 +14,9 @@ import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/constant/constant.dart';
 import '../../core/theme/theme.dart';
 import '../../dependency.dart';
 
@@ -40,6 +43,7 @@ class HomeScreen extends StatefulWidget implements AutoRouteWrapper {
 class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _searchController = TextEditingController();
   LatLng? _latlng;
+  RealtimeChannel postChannel = supabase.channel('public:posts');
 
   void getCurrentLocation() async {
     LocationPermission permission = await Geolocator.checkPermission();
@@ -73,6 +77,19 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     getCurrentLocation();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      postChannel = supabase
+          .channel('public:posts')
+          .onPostgresChanges(
+            event: PostgresChangeEvent.all,
+            schema: 'public',
+            table: 'posts',
+            callback: (payload) {
+              context.read<PostRepository>().loadPosts();
+            },
+          )
+          .subscribe();
+    });
     super.initState();
   }
 
@@ -93,7 +110,7 @@ class _HomeScreenState extends State<HomeScreen> {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              AppTheme.lightTheme.primaryColor,
+              _getGradientTopColor(),
               AppColors.gray50.withValues(alpha: 0.3),
               Colors.white,
             ],
@@ -119,13 +136,13 @@ class _HomeScreenState extends State<HomeScreen> {
                         text: 'Good ${_getGreeting()}',
                         fontSize: 28,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimaryLight,
+                        color: AppColors.textPrimaryDark,
                       ),
                       const SizedBox(height: 4),
                       CustomText(
                         text: 'Stay informed, stay safe',
                         fontSize: 16,
-                        color: AppColors.textSecondaryLight,
+                        color: AppColors.textPrimaryDark,
                       ),
                     ],
                   ),
@@ -173,6 +190,20 @@ class _HomeScreenState extends State<HomeScreen> {
     return 'Evening';
   }
 
+  Color _getGradientTopColor() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) {
+      // Morning - soft blue/purple gradient
+      return const Color(0xFF64B5F6);
+    } else if (hour < 17) {
+      // Afternoon - warm golden/orange gradient
+      return const Color(0xFFFFB74D);
+    } else {
+      // Evening - deep purple/pink gradient
+      return const Color(0xFF7986CB);
+    }
+  }
+
   Widget _buildAlertSection() {
     return ChangeNotifierProvider.value(
       value: sl<AlertRepository>(),
@@ -200,7 +231,11 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildWeatherSection(weather, bool isLoading, String? errorMessage) {
+  Widget _buildWeatherSection(
+    Weather? weather,
+    bool isLoading,
+    String? errorMessage,
+  ) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,

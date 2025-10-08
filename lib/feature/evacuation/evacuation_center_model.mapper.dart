@@ -61,6 +61,329 @@ extension EvacuationStatusMapperExtension on EvacuationStatus {
   }
 }
 
+class EvacuationCenterMapper extends ClassMapperBase<EvacuationCenter> {
+  EvacuationCenterMapper._();
+
+  static EvacuationCenterMapper? _instance;
+  static EvacuationCenterMapper ensureInitialized() {
+    if (_instance == null) {
+      MapperContainer.globals.use(_instance = EvacuationCenterMapper._());
+      EvacuationStatusMapper.ensureInitialized();
+    }
+    return _instance!;
+  }
+
+  @override
+  final String id = 'EvacuationCenter';
+
+  static int _$id(EvacuationCenter v) => v.id;
+  static const Field<EvacuationCenter, int> _f$id = Field('id', _$id);
+  static String _$name(EvacuationCenter v) => v.name;
+  static const Field<EvacuationCenter, String> _f$name = Field('name', _$name);
+  static String _$address(EvacuationCenter v) => v.address;
+  static const Field<EvacuationCenter, String> _f$address = Field(
+    'address',
+    _$address,
+  );
+  static double _$latitude(EvacuationCenter v) => v.latitude;
+  static const Field<EvacuationCenter, double> _f$latitude = Field(
+    'latitude',
+    _$latitude,
+  );
+  static double _$longitude(EvacuationCenter v) => v.longitude;
+  static const Field<EvacuationCenter, double> _f$longitude = Field(
+    'longitude',
+    _$longitude,
+  );
+  static int? _$capacity(EvacuationCenter v) => v.capacity;
+  static const Field<EvacuationCenter, int> _f$capacity = Field(
+    'capacity',
+    _$capacity,
+    opt: true,
+  );
+  static int? _$currentOccupancy(EvacuationCenter v) => v.currentOccupancy;
+  static const Field<EvacuationCenter, int> _f$currentOccupancy = Field(
+    'currentOccupancy',
+    _$currentOccupancy,
+    key: r'current_occupancy',
+    opt: true,
+  );
+  static EvacuationStatus? _$status(EvacuationCenter v) => v.status;
+  static const Field<EvacuationCenter, EvacuationStatus> _f$status = Field(
+    'status',
+    _$status,
+    opt: true,
+  );
+  static String? _$contactName(EvacuationCenter v) => v.contactName;
+  static const Field<EvacuationCenter, String> _f$contactName = Field(
+    'contactName',
+    _$contactName,
+    key: r'contact_name',
+    opt: true,
+  );
+  static String? _$contactPhone(EvacuationCenter v) => v.contactPhone;
+  static const Field<EvacuationCenter, String> _f$contactPhone = Field(
+    'contactPhone',
+    _$contactPhone,
+    key: r'contact_phone',
+    opt: true,
+  );
+  static List<String>? _$photos(EvacuationCenter v) => v.photos;
+  static const Field<EvacuationCenter, List<String>> _f$photos = Field(
+    'photos',
+    _$photos,
+    opt: true,
+  );
+  static String? _$createdBy(EvacuationCenter v) => v.createdBy;
+  static const Field<EvacuationCenter, String> _f$createdBy = Field(
+    'createdBy',
+    _$createdBy,
+    key: r'created_by',
+    opt: true,
+  );
+  static DateTime _$createdAt(EvacuationCenter v) => v.createdAt;
+  static const Field<EvacuationCenter, DateTime> _f$createdAt = Field(
+    'createdAt',
+    _$createdAt,
+    key: r'created_at',
+  );
+  static DateTime? _$updatedAt(EvacuationCenter v) => v.updatedAt;
+  static const Field<EvacuationCenter, DateTime> _f$updatedAt = Field(
+    'updatedAt',
+    _$updatedAt,
+    key: r'updated_at',
+    opt: true,
+  );
+  static double _$occupancyPercentage(EvacuationCenter v) =>
+      v.occupancyPercentage;
+  static const Field<EvacuationCenter, double> _f$occupancyPercentage = Field(
+    'occupancyPercentage',
+    _$occupancyPercentage,
+    key: r'occupancy_percentage',
+    mode: FieldMode.member,
+  );
+  static bool _$isFull(EvacuationCenter v) => v.isFull;
+  static const Field<EvacuationCenter, bool> _f$isFull = Field(
+    'isFull',
+    _$isFull,
+    key: r'is_full',
+    mode: FieldMode.member,
+  );
+  static bool _$isAvailable(EvacuationCenter v) => v.isAvailable;
+  static const Field<EvacuationCenter, bool> _f$isAvailable = Field(
+    'isAvailable',
+    _$isAvailable,
+    key: r'is_available',
+    mode: FieldMode.member,
+  );
+  static int _$hashCode(EvacuationCenter v) => v.hashCode;
+  static const Field<EvacuationCenter, int> _f$hashCode = Field(
+    'hashCode',
+    _$hashCode,
+    key: r'hash_code',
+    mode: FieldMode.member,
+  );
+
+  @override
+  final MappableFields<EvacuationCenter> fields = const {
+    #id: _f$id,
+    #name: _f$name,
+    #address: _f$address,
+    #latitude: _f$latitude,
+    #longitude: _f$longitude,
+    #capacity: _f$capacity,
+    #currentOccupancy: _f$currentOccupancy,
+    #status: _f$status,
+    #contactName: _f$contactName,
+    #contactPhone: _f$contactPhone,
+    #photos: _f$photos,
+    #createdBy: _f$createdBy,
+    #createdAt: _f$createdAt,
+    #updatedAt: _f$updatedAt,
+    #occupancyPercentage: _f$occupancyPercentage,
+    #isFull: _f$isFull,
+    #isAvailable: _f$isAvailable,
+    #hashCode: _f$hashCode,
+  };
+
+  static EvacuationCenter _instantiate(DecodingData data) {
+    return EvacuationCenter(
+      id: data.dec(_f$id),
+      name: data.dec(_f$name),
+      address: data.dec(_f$address),
+      latitude: data.dec(_f$latitude),
+      longitude: data.dec(_f$longitude),
+      capacity: data.dec(_f$capacity),
+      currentOccupancy: data.dec(_f$currentOccupancy),
+      status: data.dec(_f$status),
+      contactName: data.dec(_f$contactName),
+      contactPhone: data.dec(_f$contactPhone),
+      photos: data.dec(_f$photos),
+      createdBy: data.dec(_f$createdBy),
+      createdAt: data.dec(_f$createdAt),
+      updatedAt: data.dec(_f$updatedAt),
+    );
+  }
+
+  @override
+  final Function instantiate = _instantiate;
+
+  static EvacuationCenter fromMap(Map<String, dynamic> map) {
+    return ensureInitialized().decodeMap<EvacuationCenter>(map);
+  }
+
+  static EvacuationCenter fromJson(String json) {
+    return ensureInitialized().decodeJson<EvacuationCenter>(json);
+  }
+}
+
+mixin EvacuationCenterMappable {
+  String toJson() {
+    return EvacuationCenterMapper.ensureInitialized()
+        .encodeJson<EvacuationCenter>(this as EvacuationCenter);
+  }
+
+  Map<String, dynamic> toMap() {
+    return EvacuationCenterMapper.ensureInitialized()
+        .encodeMap<EvacuationCenter>(this as EvacuationCenter);
+  }
+
+  EvacuationCenterCopyWith<EvacuationCenter, EvacuationCenter, EvacuationCenter>
+  get copyWith =>
+      _EvacuationCenterCopyWithImpl<EvacuationCenter, EvacuationCenter>(
+        this as EvacuationCenter,
+        $identity,
+        $identity,
+      );
+  @override
+  String toString() {
+    return EvacuationCenterMapper.ensureInitialized().stringifyValue(
+      this as EvacuationCenter,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return EvacuationCenterMapper.ensureInitialized().equalsValue(
+      this as EvacuationCenter,
+      other,
+    );
+  }
+
+  @override
+  int get hashCode {
+    return EvacuationCenterMapper.ensureInitialized().hashValue(
+      this as EvacuationCenter,
+    );
+  }
+}
+
+extension EvacuationCenterValueCopy<$R, $Out>
+    on ObjectCopyWith<$R, EvacuationCenter, $Out> {
+  EvacuationCenterCopyWith<$R, EvacuationCenter, $Out>
+  get $asEvacuationCenter =>
+      $base.as((v, t, t2) => _EvacuationCenterCopyWithImpl<$R, $Out>(v, t, t2));
+}
+
+abstract class EvacuationCenterCopyWith<$R, $In extends EvacuationCenter, $Out>
+    implements ClassCopyWith<$R, $In, $Out> {
+  ListCopyWith<$R, String, ObjectCopyWith<$R, String, String>>? get photos;
+  $R call({
+    int? id,
+    String? name,
+    String? address,
+    double? latitude,
+    double? longitude,
+    int? capacity,
+    int? currentOccupancy,
+    EvacuationStatus? status,
+    String? contactName,
+    String? contactPhone,
+    List<String>? photos,
+    String? createdBy,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  });
+  EvacuationCenterCopyWith<$R2, $In, $Out2> $chain<$R2, $Out2>(
+    Then<$Out2, $R2> t,
+  );
+}
+
+class _EvacuationCenterCopyWithImpl<$R, $Out>
+    extends ClassCopyWithBase<$R, EvacuationCenter, $Out>
+    implements EvacuationCenterCopyWith<$R, EvacuationCenter, $Out> {
+  _EvacuationCenterCopyWithImpl(super.value, super.then, super.then2);
+
+  @override
+  late final ClassMapperBase<EvacuationCenter> $mapper =
+      EvacuationCenterMapper.ensureInitialized();
+  @override
+  ListCopyWith<$R, String, ObjectCopyWith<$R, String, String>>? get photos =>
+      $value.photos != null
+      ? ListCopyWith(
+          $value.photos!,
+          (v, t) => ObjectCopyWith(v, $identity, t),
+          (v) => call(photos: v),
+        )
+      : null;
+  @override
+  $R call({
+    int? id,
+    String? name,
+    String? address,
+    double? latitude,
+    double? longitude,
+    Object? capacity = $none,
+    Object? currentOccupancy = $none,
+    Object? status = $none,
+    Object? contactName = $none,
+    Object? contactPhone = $none,
+    Object? photos = $none,
+    Object? createdBy = $none,
+    DateTime? createdAt,
+    Object? updatedAt = $none,
+  }) => $apply(
+    FieldCopyWithData({
+      if (id != null) #id: id,
+      if (name != null) #name: name,
+      if (address != null) #address: address,
+      if (latitude != null) #latitude: latitude,
+      if (longitude != null) #longitude: longitude,
+      if (capacity != $none) #capacity: capacity,
+      if (currentOccupancy != $none) #currentOccupancy: currentOccupancy,
+      if (status != $none) #status: status,
+      if (contactName != $none) #contactName: contactName,
+      if (contactPhone != $none) #contactPhone: contactPhone,
+      if (photos != $none) #photos: photos,
+      if (createdBy != $none) #createdBy: createdBy,
+      if (createdAt != null) #createdAt: createdAt,
+      if (updatedAt != $none) #updatedAt: updatedAt,
+    }),
+  );
+  @override
+  EvacuationCenter $make(CopyWithData data) => EvacuationCenter(
+    id: data.get(#id, or: $value.id),
+    name: data.get(#name, or: $value.name),
+    address: data.get(#address, or: $value.address),
+    latitude: data.get(#latitude, or: $value.latitude),
+    longitude: data.get(#longitude, or: $value.longitude),
+    capacity: data.get(#capacity, or: $value.capacity),
+    currentOccupancy: data.get(#currentOccupancy, or: $value.currentOccupancy),
+    status: data.get(#status, or: $value.status),
+    contactName: data.get(#contactName, or: $value.contactName),
+    contactPhone: data.get(#contactPhone, or: $value.contactPhone),
+    photos: data.get(#photos, or: $value.photos),
+    createdBy: data.get(#createdBy, or: $value.createdBy),
+    createdAt: data.get(#createdAt, or: $value.createdAt),
+    updatedAt: data.get(#updatedAt, or: $value.updatedAt),
+  );
+
+  @override
+  EvacuationCenterCopyWith<$R2, EvacuationCenter, $Out2> $chain<$R2, $Out2>(
+    Then<$Out2, $R2> t,
+  ) => _EvacuationCenterCopyWithImpl<$R2, $Out2>($value, $cast, t);
+}
+
 class CreateEvacuationCenterRequestMapper
     extends ClassMapperBase<CreateEvacuationCenterRequest> {
   CreateEvacuationCenterRequestMapper._();

@@ -36,7 +36,9 @@ class _SignInScreenState extends State<SignInScreen> {
       EasyLoading.dismiss();
       EasyLoading.showSuccess(result.value);
 
-      context.router.maybePop(true);
+      if (mounted) {
+        context.router.maybePop(true);
+      }
     }
   }
 

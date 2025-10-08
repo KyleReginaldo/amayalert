@@ -64,6 +64,7 @@ class PostMapper extends ClassMapperBase<Post> {
   static PostMapper ensureInitialized() {
     if (_instance == null) {
       MapperContainer.globals.use(_instance = PostMapper._());
+      ProfileMapper.ensureInitialized();
       PostVisibilityMapper.ensureInitialized();
     }
     return _instance!;
@@ -74,8 +75,8 @@ class PostMapper extends ClassMapperBase<Post> {
 
   static int _$id(Post v) => v.id;
   static const Field<Post, int> _f$id = Field('id', _$id);
-  static String _$user(Post v) => v.user;
-  static const Field<Post, String> _f$user = Field('user', _$user);
+  static Profile _$user(Post v) => v.user;
+  static const Field<Post, Profile> _f$user = Field('user', _$user);
   static String _$content(Post v) => v.content;
   static const Field<Post, String> _f$content = Field('content', _$content);
   static String? _$mediaUrl(Post v) => v.mediaUrl;
@@ -189,9 +190,10 @@ extension PostValueCopy<$R, $Out> on ObjectCopyWith<$R, Post, $Out> {
 
 abstract class PostCopyWith<$R, $In extends Post, $Out>
     implements ClassCopyWith<$R, $In, $Out> {
+  ProfileCopyWith<$R, Profile, Profile> get user;
   $R call({
     int? id,
-    String? user,
+    Profile? user,
     String? content,
     String? mediaUrl,
     PostVisibility? visibility,
@@ -208,9 +210,12 @@ class _PostCopyWithImpl<$R, $Out> extends ClassCopyWithBase<$R, Post, $Out>
   @override
   late final ClassMapperBase<Post> $mapper = PostMapper.ensureInitialized();
   @override
+  ProfileCopyWith<$R, Profile, Profile> get user =>
+      $value.user.copyWith.$chain((v) => call(user: v));
+  @override
   $R call({
     int? id,
-    String? user,
+    Profile? user,
     String? content,
     Object? mediaUrl = $none,
     PostVisibility? visibility,

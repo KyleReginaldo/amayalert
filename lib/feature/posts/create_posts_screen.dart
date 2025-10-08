@@ -89,9 +89,11 @@ class _CreatePostsScreenState extends State<CreatePostsScreen> {
         });
       }
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Error picking image: $e')));
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error picking image: $e')));
+      }
     }
   }
 
@@ -139,7 +141,9 @@ class _CreatePostsScreenState extends State<CreatePostsScreen> {
 
       if (result.isSuccess) {
         EasyLoading.showSuccess('Post created successfully!');
-        context.router.pop(); // Go back to previous screen
+        if (mounted) {
+          context.router.pop(); // Go back to previous screen
+        }
       } else {
         EasyLoading.showError(result.error);
       }

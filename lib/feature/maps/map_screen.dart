@@ -1,19 +1,34 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:amayalert/core/widgets/text/custom_text.dart';
-import 'package:auto_route/annotations.dart';
+import 'package:amayalert/feature/evacuation/evacuation_center_model.dart';
+import 'package:amayalert/feature/evacuation/evacuation_repository.dart';
+import 'package:amayalert/feature/maps/directions_service.dart';
+import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:provider/provider.dart';
+
+import '../../dependency.dart';
 
 @RoutePage()
-class MapScreen extends StatefulWidget {
+class MapScreen extends StatefulWidget implements AutoRouteWrapper {
   const MapScreen({super.key});
 
   @override
   State<MapScreen> createState() => _MapScreenState();
+
+  @override
+  Widget wrappedRoute(BuildContext context) {
+    return ChangeNotifierProvider.value(
+      value: sl<EvacuationRepository>(),
+      child: this,
+    );
+  }
 }
 
 class _MapScreenState extends State<MapScreen> {
@@ -21,8 +36,13 @@ class _MapScreenState extends State<MapScreen> {
   double _currentZoom = 17.0;
   MapType _currentMapType = MapType.normal;
   final Set<Marker> _markers = {};
+  final Set<Polyline> _polylines = {};
   bool _isLoading = true;
   String? _errorMessage;
+  bool _isEvacuationListExpanded = false;
+  bool _isEvacuationListVisible = true;
+  bool _isLoadingRoute = false;
+  String? _routeInfo;
 
   final Completer<GoogleMapController> _controllerCompleter = Completer();
   final TextEditingController _searchController = TextEditingController();
@@ -123,12 +143,63 @@ class _MapScreenState extends State<MapScreen> {
   void initState() {
     super.initState();
     getCurrentLocation();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<EvacuationRepository>().getEvacuationCenters();
+      // Add listener to update markers when centers are loaded
+      context.read<EvacuationRepository>().addListener(
+        _updateEvacuationCenterMarkers,
+      );
+    });
+  }
+
+  void _updateEvacuationCenterMarkers() {
+    final evacuationCenters = context.read<EvacuationRepository>().centers;
+    setState(() {
+      // Remove existing evacuation center markers
+      _markers.removeWhere(
+        (marker) => marker.markerId.value.startsWith('evacuation_'),
+      );
+
+      // Add markers for all evacuation centers
+      for (final center in evacuationCenters) {
+        _markers.add(
+          Marker(
+            markerId: MarkerId('evacuation_${center.id}'),
+            position: LatLng(center.latitude, center.longitude),
+            infoWindow: InfoWindow(title: center.name, snippet: center.address),
+            icon: BitmapDescriptor.defaultMarkerWithHue(
+              BitmapDescriptor.hueBlue,
+            ),
+          ),
+        );
+      }
+    });
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    // Remove listener to prevent memory leaks
+    if (mounted) {
+      context.read<EvacuationRepository>().removeListener(
+        _updateEvacuationCenterMarkers,
+      );
+    }
     super.dispose();
+  }
+
+  Color _getGradientTopColor() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) {
+      // Morning - soft blue/purple gradient
+      return const Color(0xFF64B5F6);
+    } else if (hour < 17) {
+      // Afternoon - warm golden/orange gradient
+      return const Color(0xFFFFB74D);
+    } else {
+      // Evening - deep purple/pink gradient
+      return const Color(0xFF7986CB);
+    }
   }
 
   @override
@@ -138,10 +209,11 @@ class _MapScreenState extends State<MapScreen> {
       appBar: AppBar(
         title: const CustomText(
           text: 'Amayalert Map',
-          fontSize: 18,
-          fontWeight: FontWeight.w500,
+          fontSize: 20,
+          fontWeight: FontWeight.w600,
+          color: Colors.white,
         ),
-        backgroundColor: Colors.white,
+        backgroundColor: _getGradientTopColor(),
         elevation: 0,
         surfaceTintColor: Colors.white,
         systemOverlayStyle: SystemUiOverlayStyle.dark,
@@ -164,6 +236,7 @@ class _MapScreenState extends State<MapScreen> {
                   ),
                   mapType: _currentMapType,
                   markers: _markers,
+                  polylines: _polylines,
                   myLocationEnabled: true,
                   myLocationButtonEnabled: false, // We'll use custom button
                   zoomControlsEnabled: false, // Custom zoom controls
@@ -368,6 +441,34 @@ class _MapScreenState extends State<MapScreen> {
                     ),
                   ),
                 ),
+                // Clear Route Button (only show when there are polylines)
+                if (_polylines.isNotEmpty)
+                  Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.1),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: _clearRoute,
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          child: Icon(
+                            LucideIcons.x,
+                            color: Colors.red,
+                            size: 20,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -375,6 +476,575 @@ class _MapScreenState extends State<MapScreen> {
           // Zoom Controls
 
           // Current Location Button
+
+          // Evacuation Centers List
+          if (_isEvacuationListVisible)
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: _buildEvacuationCentersList(),
+            ),
+
+          // Toggle Button for Evacuation Centers List
+          if (!_isEvacuationListVisible)
+            Positioned(bottom: 20, right: 16, child: _buildShowListButton()),
+
+          // Route Information Display
+          if (_routeInfo != null || _isLoadingRoute)
+            Positioned(top: 80, left: 16, child: _buildRouteInfoCard()),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEvacuationCentersList() {
+    final evacuationCenters = context.watch<EvacuationRepository>().centers;
+    final isLoadingCenters = context.watch<EvacuationRepository>().isLoading;
+
+    if (isLoadingCenters && evacuationCenters.isEmpty) {
+      return Container(
+        margin: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.1),
+              blurRadius: 8,
+              offset: const Offset(0, -2),
+            ),
+          ],
+        ),
+        child: const Row(
+          children: [
+            SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+            SizedBox(width: 12),
+            CustomText(
+              text: 'Loading evacuation centers...',
+              fontSize: 14,
+              color: Colors.grey,
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (evacuationCenters.isEmpty) {
+      return Container(
+        margin: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.1),
+              blurRadius: 8,
+              offset: const Offset(0, -2),
+            ),
+          ],
+        ),
+        child: const Row(
+          children: [
+            Icon(LucideIcons.mapPin, color: Colors.grey, size: 16),
+            SizedBox(width: 12),
+            CustomText(
+              text: 'No evacuation centers found',
+              fontSize: 14,
+              color: Colors.grey,
+            ),
+          ],
+        ),
+      );
+    }
+
+    final centersToShow = _isEvacuationListExpanded
+        ? evacuationCenters
+        : evacuationCenters.take(2).toList();
+
+    return Container(
+      margin: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 8,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Container(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Icon(LucideIcons.building, color: Colors.blue, size: 20),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: CustomText(
+                    text: 'Evacuation Centers',
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                CustomText(
+                  text: '${evacuationCenters.length} available',
+                  fontSize: 12,
+                  color: Colors.grey,
+                ),
+                const SizedBox(width: 8),
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () {
+                      setState(() {
+                        _isEvacuationListVisible = false;
+                      });
+                    },
+                    borderRadius: BorderRadius.circular(16),
+                    child: Padding(
+                      padding: const EdgeInsets.all(4),
+                      child: Icon(
+                        LucideIcons.x,
+                        color: Colors.grey.shade600,
+                        size: 18,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const Divider(height: 1),
+
+          // Centers List
+          ...centersToShow.map((center) => _buildCenterTile(center)),
+
+          // Expand/Collapse Button
+          if (evacuationCenters.length > 2)
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () {
+                  setState(() {
+                    _isEvacuationListExpanded = !_isEvacuationListExpanded;
+                  });
+                },
+                borderRadius: const BorderRadius.only(
+                  bottomLeft: Radius.circular(12),
+                  bottomRight: Radius.circular(12),
+                ),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: const BoxDecoration(
+                    border: Border(
+                      top: BorderSide(color: Colors.grey, width: 0.2),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      CustomText(
+                        text: _isEvacuationListExpanded
+                            ? 'Show Less'
+                            : 'Show ${evacuationCenters.length - 2} More',
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.blue,
+                      ),
+                      const SizedBox(width: 4),
+                      Icon(
+                        _isEvacuationListExpanded
+                            ? LucideIcons.chevronUp
+                            : LucideIcons.chevronDown,
+                        color: Colors.blue,
+                        size: 16,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCenterTile(EvacuationCenter center) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => _focusOnCenter(center),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Status Indicator
+              Container(
+                width: 8,
+                height: 8,
+                margin: const EdgeInsets.only(top: 4),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: _getStatusColor(center.status),
+                ),
+              ),
+              const SizedBox(width: 12),
+
+              // Center Details
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    CustomText(
+                      text: center.name,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    const SizedBox(height: 2),
+                    CustomText(
+                      text: center.address,
+                      fontSize: 12,
+                      color: Colors.grey.shade600,
+                      maxLines: 2,
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(
+                          LucideIcons.users,
+                          size: 12,
+                          color: Colors.grey.shade600,
+                        ),
+                        const SizedBox(width: 4),
+                        CustomText(
+                          text:
+                              center.capacity != null &&
+                                  center.currentOccupancy != null
+                              ? '${center.currentOccupancy}/${center.capacity}'
+                              : 'Capacity unknown',
+                          fontSize: 12,
+                          color: Colors.grey.shade600,
+                        ),
+                        const SizedBox(width: 12),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _getStatusColor(
+                              center.status,
+                            ).withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: CustomText(
+                            text: center.status?.displayName ?? 'Unknown',
+                            fontSize: 10,
+                            fontWeight: FontWeight.w500,
+                            color: _getStatusColor(center.status),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              // Distance/Direction Icon
+              Icon(
+                LucideIcons.navigation,
+                color: Colors.grey.shade400,
+                size: 16,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Color _getStatusColor(EvacuationStatus? status) {
+    switch (status) {
+      case EvacuationStatus.open:
+        return Colors.green;
+      case EvacuationStatus.full:
+        return Colors.orange;
+      case EvacuationStatus.closed:
+        return Colors.red;
+      case EvacuationStatus.maintenance:
+        return Colors.grey;
+      case null:
+        return Colors.grey;
+    }
+  }
+
+  void _focusOnCenter(EvacuationCenter center) async {
+    final GoogleMapController controller = await _controllerCompleter.future;
+
+    setState(() {
+      // Clear previous evacuation center markers and polylines
+      _markers.removeWhere(
+        (marker) => marker.markerId.value.startsWith('evacuation_'),
+      );
+      _polylines.clear();
+
+      // Hide the evacuation list to focus on the map and route
+      _isEvacuationListVisible = false;
+
+      // Add marker for the selected evacuation center
+      _markers.add(
+        Marker(
+          markerId: MarkerId('evacuation_${center.id}'),
+          position: LatLng(center.latitude, center.longitude),
+          infoWindow: InfoWindow(title: center.name, snippet: center.address),
+          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
+        ),
+      );
+    });
+
+    // Get directions from current location to evacuation center
+    if (_latlng != null) {
+      setState(() {
+        _isLoadingRoute = true;
+        _routeInfo = null;
+      });
+
+      try {
+        final destination = LatLng(center.latitude, center.longitude);
+
+        // Get both route points and route info
+        final routePointsFuture = DirectionsService.getDirections(
+          _latlng!,
+          destination,
+        );
+        final routeInfoFuture = DirectionsService.getRouteInfo(
+          _latlng!,
+          destination,
+        );
+
+        final results = await Future.wait([routePointsFuture, routeInfoFuture]);
+        final List<LatLng>? routePoints = results[0] as List<LatLng>?;
+        final String? routeInfo = results[1] as String?;
+
+        debugPrint(
+          '🗺️ Map Screen: Received ${routePoints?.length ?? 0} route points',
+        );
+        debugPrint('🗺️ Map Screen: Route info: $routeInfo');
+
+        setState(() {
+          _isLoadingRoute = false;
+          _routeInfo = routeInfo;
+        });
+
+        if (routePoints != null && routePoints.isNotEmpty) {
+          debugPrint(
+            '✅ Map Screen: Using API route with ${routePoints.length} points',
+          );
+          setState(() {
+            // Add accurate polyline based on roads
+            _polylines.add(
+              Polyline(
+                polylineId: const PolylineId('route_to_evacuation'),
+                points: routePoints,
+                color: Colors.blue,
+                width: 5,
+                startCap: Cap.roundCap,
+                endCap: Cap.roundCap,
+                jointType: JointType.round,
+              ),
+            );
+          });
+
+          // Calculate bounds for the entire route
+          final bounds = _calculateBounds(routePoints);
+          controller.animateCamera(CameraUpdate.newLatLngBounds(bounds, 100.0));
+        } else {
+          // Fallback to straight line if directions fail
+          debugPrint('❌ Map Screen: API failed, using straight line fallback');
+          setState(() {
+            _polylines.add(
+              Polyline(
+                polylineId: const PolylineId('route_to_evacuation'),
+                points: [_latlng!, LatLng(center.latitude, center.longitude)],
+                color: Colors.red,
+                width: 4,
+                patterns: [PatternItem.dash(20), PatternItem.gap(10)],
+                startCap: Cap.roundCap,
+                endCap: Cap.roundCap,
+              ),
+            );
+          });
+
+          final bounds = _calculateBounds([
+            _latlng!,
+            LatLng(center.latitude, center.longitude),
+          ]);
+
+          controller.animateCamera(CameraUpdate.newLatLngBounds(bounds, 100.0));
+        }
+      } catch (e) {
+        debugPrint('Error getting directions: $e');
+        setState(() {
+          _isLoadingRoute = false;
+          _routeInfo = null;
+        });
+
+        // Fallback to straight line
+        setState(() {
+          _polylines.add(
+            Polyline(
+              polylineId: const PolylineId('route_to_evacuation'),
+              points: [_latlng!, LatLng(center.latitude, center.longitude)],
+              color: Colors.red,
+              width: 4,
+              patterns: [PatternItem.dash(20), PatternItem.gap(10)],
+              startCap: Cap.roundCap,
+              endCap: Cap.roundCap,
+            ),
+          );
+        });
+      }
+    } else {
+      // If no current location, just focus on the center
+      controller.animateCamera(
+        CameraUpdate.newCameraPosition(
+          CameraPosition(
+            target: LatLng(center.latitude, center.longitude),
+            zoom: 16.0,
+          ),
+        ),
+      );
+    }
+  }
+
+  LatLngBounds _calculateBounds(List<LatLng> points) {
+    double minLat = points.first.latitude;
+    double maxLat = points.first.latitude;
+    double minLng = points.first.longitude;
+    double maxLng = points.first.longitude;
+
+    for (LatLng point in points) {
+      minLat = math.min(minLat, point.latitude);
+      maxLat = math.max(maxLat, point.latitude);
+      minLng = math.min(minLng, point.longitude);
+      maxLng = math.max(maxLng, point.longitude);
+    }
+
+    return LatLngBounds(
+      southwest: LatLng(minLat, minLng),
+      northeast: LatLng(maxLat, maxLng),
+    );
+  }
+
+  void _clearRoute() {
+    setState(() {
+      _polylines.clear();
+      _routeInfo = null;
+      _isLoadingRoute = false;
+      // Remove evacuation center markers but keep current location marker
+      _markers.removeWhere(
+        (marker) => marker.markerId.value.startsWith('evacuation_'),
+      );
+    });
+  }
+
+  Widget _buildShowListButton() {
+    final evacuationCenters = context.watch<EvacuationRepository>().centers;
+
+    if (evacuationCenters.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.blue,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.2),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            setState(() {
+              _isEvacuationListVisible = true;
+            });
+          },
+          borderRadius: BorderRadius.circular(24),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(LucideIcons.building, color: Colors.white, size: 18),
+                const SizedBox(width: 8),
+                CustomText(
+                  text: '${evacuationCenters.length}',
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRouteInfoCard() {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (_isLoadingRoute)
+            const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          else
+            Icon(LucideIcons.navigation, color: Colors.blue, size: 16),
+          const SizedBox(width: 8),
+          CustomText(
+            text: _isLoadingRoute
+                ? 'Calculating route...'
+                : _routeInfo ?? 'Route info unavailable',
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: _isLoadingRoute ? Colors.grey : Colors.black87,
+          ),
         ],
       ),
     );

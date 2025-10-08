@@ -53,6 +53,10 @@ class AppRouter extends RootStackRouter {
       transitionsBuilder: TransitionsBuilders.slideLeft,
     ),
     CustomRoute(
+      page: SettingsRoute.page,
+      transitionsBuilder: TransitionsBuilders.slideLeft,
+    ),
+    CustomRoute(
       page: CreatePostsRoute.page,
       transitionsBuilder: TransitionsBuilders.slideBottom,
     ),
