@@ -155,12 +155,6 @@ class _RescueDetailScreenState extends State<RescueDetailScreen> {
             const SizedBox(height: 24),
           ],
 
-          // Images
-          if (rescue.imageUrls.isNotEmpty) ...[
-            _buildImagesSection(rescue),
-            const SizedBox(height: 24),
-          ],
-
           // Contact Information
           _buildContactSection(rescue),
           const SizedBox(height: 24),
@@ -413,69 +407,6 @@ class _RescueDetailScreenState extends State<RescueDetailScreen> {
                 'Lat: ${rescue.lat!.toStringAsFixed(6)}\nLng: ${rescue.lng!.toStringAsFixed(6)}',
             fontSize: 14,
             color: AppColors.gray600,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildImagesSection(Rescue rescue) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(LucideIcons.image, color: AppColors.primary, size: 20),
-              const SizedBox(width: 8),
-              const CustomText(
-                text: 'Photos',
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-              childAspectRatio: 1,
-            ),
-            itemCount: rescue.imageUrls.length,
-            itemBuilder: (context, index) {
-              return ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: Image.network(
-                  rescue.imageUrls[index],
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      color: AppColors.gray200,
-                      child: const Icon(
-                        LucideIcons.imageOff,
-                        color: Colors.grey,
-                      ),
-                    );
-                  },
-                ),
-              );
-            },
           ),
         ],
       ),

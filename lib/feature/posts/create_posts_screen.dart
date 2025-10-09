@@ -181,7 +181,7 @@ class _CreatePostsScreenState extends State<CreatePostsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final profile = context.watch<ProfileRepository>().profile;
+    // final profile = context.watch<ProfileRepository>().profile;
     return SafeArea(
       top: false,
       child: Scaffold(

@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:amayalert/core/theme/theme.dart';
 import 'package:amayalert/core/widgets/input/custom_text_field.dart';
 import 'package:amayalert/core/widgets/text/custom_text.dart';
@@ -9,7 +7,6 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -29,10 +26,8 @@ class _CreateRescueScreenState extends State<CreateRescueScreen> {
   final _additionalInfoController = TextEditingController();
   final _victimCountController = TextEditingController();
 
-  final _imagePicker = ImagePicker();
   final _rescueProvider = RescueProvider();
 
-  List<XFile> _selectedImages = [];
   EmergencyType _selectedEmergencyType = EmergencyType.other;
   RescuePriority _selectedPriority = RescuePriority.medium;
   Position? _currentLocation;
@@ -78,65 +73,6 @@ class _CreateRescueScreenState extends State<CreateRescueScreen> {
     }
   }
 
-  Future<void> _pickImages() async {
-    try {
-      final List<XFile> images = await _imagePicker.pickMultiImage(
-        maxWidth: 1080,
-        maxHeight: 1080,
-        imageQuality: 85,
-      );
-
-      if (images.isNotEmpty) {
-        setState(() {
-          _selectedImages.addAll(images);
-          // Limit to 5 images
-          if (_selectedImages.length > 5) {
-            _selectedImages = _selectedImages.take(5).toList();
-          }
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error picking images: $e')));
-      }
-    }
-  }
-
-  Future<void> _takePicture() async {
-    try {
-      final XFile? image = await _imagePicker.pickImage(
-        source: ImageSource.camera,
-        maxWidth: 1080,
-        maxHeight: 1080,
-        imageQuality: 85,
-      );
-
-      if (image != null) {
-        setState(() {
-          _selectedImages.add(image);
-          // Limit to 5 images
-          if (_selectedImages.length > 5) {
-            _selectedImages = _selectedImages.take(5).toList();
-          }
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error taking picture: $e')));
-      }
-    }
-  }
-
-  void _removeImage(int index) {
-    setState(() {
-      _selectedImages.removeAt(index);
-    });
-  }
-
   Future<void> _submitRescueRequest() async {
     if (_titleController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -175,7 +111,6 @@ class _CreateRescueScreenState extends State<CreateRescueScreen> {
         additionalInfo: _additionalInfoController.text.trim().isEmpty
             ? null
             : _additionalInfoController.text.trim(),
-        images: _selectedImages,
       );
 
       final result = await _rescueProvider.createRescue(
@@ -313,13 +248,6 @@ class _CreateRescueScreenState extends State<CreateRescueScreen> {
             _buildSectionHeader('Location', LucideIcons.mapPin),
             const SizedBox(height: 12),
             _buildLocationCard(),
-
-            const SizedBox(height: 24),
-
-            // Images
-            _buildSectionHeader('Photos', LucideIcons.camera),
-            const SizedBox(height: 12),
-            _buildImageSection(),
 
             const SizedBox(height: 32),
 
@@ -514,99 +442,6 @@ class _CreateRescueScreenState extends State<CreateRescueScreen> {
             ),
         ],
       ),
-    );
-  }
-
-  Widget _buildImageSection() {
-    return Column(
-      children: [
-        // Image grid
-        if (_selectedImages.isNotEmpty) ...[
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
-              crossAxisSpacing: 8,
-              mainAxisSpacing: 8,
-              childAspectRatio: 1,
-            ),
-            itemCount: _selectedImages.length,
-            itemBuilder: (context, index) {
-              return Stack(
-                children: [
-                  Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                      image: DecorationImage(
-                        image: FileImage(File(_selectedImages[index].path)),
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    top: 4,
-                    right: 4,
-                    child: GestureDetector(
-                      onTap: () => _removeImage(index),
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: const BoxDecoration(
-                          color: Colors.red,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          LucideIcons.x,
-                          size: 12,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              );
-            },
-          ),
-          const SizedBox(height: 16),
-        ],
-
-        // Action buttons
-        Row(
-          children: [
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: _selectedImages.length < 5 ? _takePicture : null,
-                icon: const Icon(LucideIcons.camera),
-                label: const Text('Take Photo'),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: OutlinedButton.icon(
-                onPressed: _selectedImages.length < 5 ? _pickImages : null,
-                icon: const Icon(LucideIcons.image),
-                label: const Text('Gallery'),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                ),
-              ),
-            ),
-          ],
-        ),
-
-        if (_selectedImages.length >= 5)
-          Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: CustomText(
-              text: 'Maximum 5 photos allowed',
-              fontSize: 12,
-              color: AppColors.gray600,
-            ),
-          ),
-      ],
     );
   }
 

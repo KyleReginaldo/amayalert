@@ -1,5 +1,4 @@
 import 'package:dart_mappable/dart_mappable.dart';
-import 'package:image_picker/image_picker.dart';
 
 part 'rescue_model.mapper.dart';
 
@@ -86,12 +85,6 @@ class Rescue with RescueMappable {
     }
   }
 
-  List<String> get imageUrls {
-    if (metadata == null) return [];
-    final images = metadata!['images'] as List<dynamic>?;
-    return images?.cast<String>() ?? [];
-  }
-
   String? get emergencyType {
     return metadata?['emergency_type'] as String?;
   }
@@ -134,7 +127,6 @@ class CreateRescueDTO {
   final int? victimCount;
   final String? contactPhone;
   final String? additionalInfo;
-  final List<XFile> images;
   final DateTime? scheduledFor;
 
   CreateRescueDTO({
@@ -147,7 +139,6 @@ class CreateRescueDTO {
     this.victimCount,
     this.contactPhone,
     this.additionalInfo,
-    this.images = const [],
     this.scheduledFor,
   });
 
@@ -156,6 +147,5 @@ class CreateRescueDTO {
     if (victimCount != null) 'victim_count': victimCount,
     if (contactPhone != null) 'contact_phone': contactPhone,
     if (additionalInfo != null) 'additional_info': additionalInfo,
-    // Images will be added after upload in the provider
   };
 }

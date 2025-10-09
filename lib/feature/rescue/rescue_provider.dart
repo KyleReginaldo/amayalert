@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:amayalert/core/result/result.dart';
 import 'package:amayalert/feature/rescue/rescue_model.dart';
 import 'package:flutter/foundation.dart';
@@ -13,36 +11,8 @@ class RescueProvider {
     required CreateRescueDTO dto,
   }) async {
     try {
-      List<String> imageUrls = [];
-
-      // Upload images if provided
-      if (dto.images.isNotEmpty) {
-        debugPrint('Uploading ${dto.images.length} images for rescue...');
-        for (int i = 0; i < dto.images.length; i++) {
-          final image = dto.images[i];
-          final fileName =
-              'rescues/${DateTime.now().microsecondsSinceEpoch}_$i.jpg';
-
-          debugPrint('Uploading image: $fileName');
-          await supabase.storage
-              .from('files')
-              .upload(fileName, File(image.path));
-
-          final imageUrl = supabase.storage
-              .from('files')
-              .getPublicUrl(fileName);
-          imageUrls.add(imageUrl);
-          debugPrint('Image uploaded successfully: $imageUrl');
-        }
-        debugPrint('All images uploaded. Total URLs: ${imageUrls.length}');
-      }
-
-      // Prepare metadata with image URLs
+      // Prepare metadata
       final metadata = Map<String, dynamic>.from(dto.metadata);
-      if (imageUrls.isNotEmpty) {
-        metadata['images'] = imageUrls;
-        debugPrint('Added ${imageUrls.length} image URLs to metadata');
-      }
       debugPrint('Final metadata: $metadata');
 
       // Create rescue request

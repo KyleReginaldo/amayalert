@@ -271,13 +271,6 @@ class RescueMapper extends ClassMapperBase<Rescue> {
     key: r'status_label',
     mode: FieldMode.member,
   );
-  static List<String> _$imageUrls(Rescue v) => v.imageUrls;
-  static const Field<Rescue, List<String>> _f$imageUrls = Field(
-    'imageUrls',
-    _$imageUrls,
-    key: r'image_urls',
-    mode: FieldMode.member,
-  );
   static String? _$emergencyType(Rescue v) => v.emergencyType;
   static const Field<Rescue, String> _f$emergencyType = Field(
     'emergencyType',
@@ -311,7 +304,6 @@ class RescueMapper extends ClassMapperBase<Rescue> {
     #updatedAt: _f$updatedAt,
     #priorityLabel: _f$priorityLabel,
     #statusLabel: _f$statusLabel,
-    #imageUrls: _f$imageUrls,
     #emergencyType: _f$emergencyType,
     #victimCount: _f$victimCount,
   };

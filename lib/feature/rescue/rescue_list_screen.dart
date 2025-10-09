@@ -329,57 +329,6 @@ class _RescueListScreenState extends State<RescueListScreen> {
                     ],
 
                     // Images
-                    if (rescue.imageUrls.isNotEmpty) ...[
-                      const SizedBox(height: 12),
-                      SizedBox(
-                        height: 60,
-                        child: ListView.builder(
-                          scrollDirection: Axis.horizontal,
-                          itemCount: rescue.imageUrls.length,
-                          itemBuilder: (context, index) {
-                            return Container(
-                              margin: const EdgeInsets.only(right: 8),
-                              width: 60,
-                              height: 60,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(8),
-                                color: AppColors.gray200,
-                              ),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(8),
-                                child: Image.network(
-                                  rescue.imageUrls[index],
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return Container(
-                                      color: AppColors.gray200,
-                                      child: Icon(
-                                        LucideIcons.imageOff,
-                                        color: AppColors.gray500,
-                                        size: 20,
-                                      ),
-                                    );
-                                  },
-                                  loadingBuilder:
-                                      (context, child, loadingProgress) {
-                                        if (loadingProgress == null)
-                                          return child;
-                                        return Container(
-                                          color: AppColors.gray200,
-                                          child: Icon(
-                                            LucideIcons.image,
-                                            color: AppColors.gray400,
-                                            size: 20,
-                                          ),
-                                        );
-                                      },
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                    ],
                   ],
                 ),
               ),
