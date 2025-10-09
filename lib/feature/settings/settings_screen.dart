@@ -4,6 +4,7 @@ import 'package:amayalert/core/widgets/text/custom_text.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:onesignal_flutter/onesignal_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 @RoutePage()
@@ -50,6 +51,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       );
 
       // Sign out from Supabase
+      await OneSignal.logout();
       await Supabase.instance.client.auth.signOut();
 
       // Navigate to sign in screen and clear all routes
@@ -196,21 +198,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 icon: LucideIcons.shield,
                 title: 'Privacy Policy',
                 onTap: () {
-                  // TODO: Navigate to privacy policy
+                  context.router.push(
+                    WebViewRoute(
+                      url: 'https://www.amayalert.site/privacy-policy',
+                      title: 'Privacy Policy',
+                    ),
+                  );
                 },
               ),
               _buildSimpleTile(
                 icon: LucideIcons.fileText,
                 title: 'Terms of Service',
                 onTap: () {
-                  // TODO: Navigate to terms of service
+                  context.router.push(
+                    WebViewRoute(
+                      url: 'https://www.amayalert.site/terms-of-service',
+                      title: 'Terms of Service',
+                    ),
+                  );
                 },
               ),
               _buildSimpleTile(
                 icon: LucideIcons.messageCircle,
                 title: 'Help & Support',
                 onTap: () {
-                  // TODO: Navigate to help
+                  context.router.push(
+                    WebViewRoute(
+                      url: 'https://www.amayalert.site/contact-us',
+                      title: 'Help & Support',
+                    ),
+                  );
                 },
               ),
               _buildSimpleTile(

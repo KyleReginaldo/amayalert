@@ -96,6 +96,7 @@ class Message with MessageMappable {
   final String? attachmentUrl;
   final DateTime createdAt;
   final DateTime? updatedAt;
+  final DateTime? seenAt;
 
   const Message({
     required this.id,
@@ -105,6 +106,7 @@ class Message with MessageMappable {
     this.attachmentUrl,
     required this.createdAt,
     this.updatedAt,
+    this.seenAt,
   });
 
   /// Check if current user is the sender
@@ -193,6 +195,16 @@ class Message with MessageMappable {
     return '$displayHour:$minute $period';
   }
 
+  /// Check if message is seen by the receiver
+  bool get isSeen {
+    return seenAt != null;
+  }
+
+  /// Check if message is unread for the given user
+  bool isUnreadFor(String userId) {
+    return receiver == userId && !isSeen;
+  }
+
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
@@ -203,7 +215,8 @@ class Message with MessageMappable {
         other.content == content &&
         other.attachmentUrl == attachmentUrl &&
         other.createdAt == createdAt &&
-        other.updatedAt == updatedAt;
+        other.updatedAt == updatedAt &&
+        other.seenAt == seenAt;
   }
 
   @override
@@ -216,6 +229,7 @@ class Message with MessageMappable {
       attachmentUrl,
       createdAt,
       updatedAt,
+      seenAt,
     );
   }
 
@@ -223,7 +237,7 @@ class Message with MessageMappable {
   String toString() {
     return 'Message(id: $id, sender: $sender, receiver: $receiver, '
         'content: $content, attachmentUrl: $attachmentUrl, '
-        'createdAt: $createdAt, updatedAt: $updatedAt)';
+        'createdAt: $createdAt, updatedAt: $updatedAt, seenAt: $seenAt)';
   }
 }
 
@@ -307,10 +321,13 @@ class ChatConversation with ChatConversationMappable {
 
     final lastMessage = sortedMessages.isNotEmpty ? sortedMessages.first : null;
 
-    // Count unread messages (messages sent by participant to current user)
+    // Count unread messages (messages sent by participant to current user that haven't been seen)
     final unreadCount = messages
         .where(
-          (msg) => msg.sender == participantId && msg.receiver == currentUserId,
+          (msg) =>
+              msg.sender == participantId &&
+              msg.receiver == currentUserId &&
+              msg.seenAt == null,
         )
         .length;
 

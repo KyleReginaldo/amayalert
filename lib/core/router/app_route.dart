@@ -61,11 +61,27 @@ class AppRouter extends RootStackRouter {
       transitionsBuilder: TransitionsBuilders.slideBottom,
     ),
     CustomRoute(
+      page: CreateRescueRoute.page,
+      transitionsBuilder: TransitionsBuilders.slideBottom,
+    ),
+    CustomRoute(
+      page: RescueListRoute.page,
+      transitionsBuilder: TransitionsBuilders.slideLeft,
+    ),
+    CustomRoute(
+      page: RescueDetailRoute.page,
+      transitionsBuilder: TransitionsBuilders.slideLeft,
+    ),
+    CustomRoute(
       page: ChatRoute.page,
       transitionsBuilder: TransitionsBuilders.slideLeft,
     ),
     CustomRoute(
       page: NewConversationRoute.page,
+      transitionsBuilder: TransitionsBuilders.slideLeft,
+    ),
+    CustomRoute(
+      page: WebViewRoute.page,
       transitionsBuilder: TransitionsBuilders.slideLeft,
     ),
   ];

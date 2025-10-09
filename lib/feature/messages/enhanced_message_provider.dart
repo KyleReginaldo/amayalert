@@ -426,4 +426,68 @@ class EnhancedMessageProvider {
         )
       ..subscribe();
   }
+
+  /// Mark messages as seen
+  Future<Result<void>> markMessagesAsSeen({
+    required String userId,
+    required String otherUserId,
+  }) async {
+    try {
+      await supabase
+          .from('messages')
+          .update({'seen_at': DateTime.now().toIso8601String()})
+          .eq('receiver', userId)
+          .eq('sender', otherUserId)
+          .isFilter('seen_at', null);
+
+      return Result.success(null);
+    } catch (e) {
+      // Log the error but don't fail the operation if seen_at column doesn't exist
+      debugPrint('Warning: Could not mark messages as seen: $e');
+      debugPrint(
+        'This is likely because the seen_at column doesn\'t exist in the messages table',
+      );
+      debugPrint(
+        'Add the column with: ALTER TABLE messages ADD COLUMN seen_at TIMESTAMP WITH TIME ZONE;',
+      );
+
+      // Return success to not break the app flow
+      return Result.success(null);
+    }
+  }
+
+  /// Mark specific message as seen
+  Future<Result<void>> markMessageAsSeen({
+    required int messageId,
+    required String userId,
+  }) async {
+    try {
+      // Verify the user is the receiver
+      final message = await supabase
+          .from('messages')
+          .select('receiver')
+          .eq('id', messageId)
+          .single();
+
+      if (message['receiver'] != userId) {
+        return Result.error('You can only mark your own messages as seen');
+      }
+
+      await supabase
+          .from('messages')
+          .update({'seen_at': DateTime.now().toIso8601String()})
+          .eq('id', messageId);
+
+      return Result.success(null);
+    } catch (e) {
+      // Log the error but don't fail the operation if seen_at column doesn't exist
+      debugPrint('Warning: Could not mark message as seen: $e');
+      debugPrint(
+        'This is likely because the seen_at column doesn\'t exist in the messages table',
+      );
+
+      // Return success to not break the app flow
+      return Result.success(null);
+    }
+  }
 }

@@ -4,12 +4,14 @@ import 'dart:math' as math;
 import 'package:amayalert/core/widgets/text/custom_text.dart';
 import 'package:amayalert/feature/evacuation/evacuation_center_model.dart';
 import 'package:amayalert/feature/evacuation/evacuation_repository.dart';
+import 'package:amayalert/feature/maps/custom_google_places_field.dart';
 import 'package:amayalert/feature/maps/directions_service.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:google_places_autocomplete_text_field/model/prediction.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
@@ -31,7 +33,7 @@ class MapScreen extends StatefulWidget implements AutoRouteWrapper {
   }
 }
 
-class _MapScreenState extends State<MapScreen> {
+class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
   LatLng? _latlng;
   double _currentZoom = 17.0;
   MapType _currentMapType = MapType.normal;
@@ -43,6 +45,11 @@ class _MapScreenState extends State<MapScreen> {
   bool _isEvacuationListVisible = true;
   bool _isLoadingRoute = false;
   String? _routeInfo;
+
+  late AnimationController _listAnimationController;
+  late AnimationController _expandAnimationController;
+  late Animation<double> _listSlideAnimation;
+  late Animation<double> _expandAnimation;
 
   final Completer<GoogleMapController> _controllerCompleter = Completer();
   final TextEditingController _searchController = TextEditingController();
@@ -139,9 +146,154 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
+  void _navigateToPlace(Prediction prediction) async {
+    debugPrint('Navigating to place: ${prediction.description}');
+
+    if (prediction.lat != null && prediction.lng != null) {
+      final GoogleMapController controller = await _controllerCompleter.future;
+      final searchLocation = LatLng(
+        double.parse(prediction.lat!),
+        double.parse(prediction.lng!),
+      );
+
+      // Clear existing search markers
+      setState(() {
+        _markers.removeWhere(
+          (marker) => marker.markerId.value.startsWith('search_'),
+        );
+        _polylines.clear();
+        _routeInfo = null;
+
+        // Add marker for the searched location
+        _markers.add(
+          Marker(
+            markerId: const MarkerId('search_location'),
+            position: searchLocation,
+            infoWindow: InfoWindow(
+              title:
+                  prediction.structuredFormatting?.mainText ?? 'Search Result',
+              snippet:
+                  prediction.structuredFormatting?.secondaryText ??
+                  prediction.description,
+            ),
+            icon: BitmapDescriptor.defaultMarkerWithHue(
+              BitmapDescriptor.hueRed,
+            ),
+          ),
+        );
+      });
+
+      // Animate camera to the searched location
+      controller.animateCamera(
+        CameraUpdate.newCameraPosition(
+          CameraPosition(target: searchLocation, zoom: 16.0),
+        ),
+      );
+
+      // Get directions from current location to searched location if available
+      if (_latlng != null) {
+        setState(() {
+          _isLoadingRoute = true;
+        });
+
+        try {
+          final routePointsFuture = DirectionsService.getDirections(
+            _latlng!,
+            searchLocation,
+          );
+          final routeInfoFuture = DirectionsService.getRouteInfo(
+            _latlng!,
+            searchLocation,
+          );
+
+          final results = await Future.wait([
+            routePointsFuture,
+            routeInfoFuture,
+          ]);
+          final List<LatLng>? routePoints = results[0] as List<LatLng>?;
+          final String? routeInfo = results[1] as String?;
+
+          setState(() {
+            _isLoadingRoute = false;
+            _routeInfo = routeInfo;
+          });
+
+          if (routePoints != null && routePoints.isNotEmpty) {
+            setState(() {
+              _polylines.add(
+                Polyline(
+                  polylineId: const PolylineId('route_to_search'),
+                  points: routePoints,
+                  color: Colors.blue,
+                  width: 5,
+                  startCap: Cap.roundCap,
+                  endCap: Cap.roundCap,
+                  jointType: JointType.round,
+                ),
+              );
+            });
+
+            // Adjust camera to show the entire route
+            final bounds = _calculateBounds(routePoints);
+            controller.animateCamera(
+              CameraUpdate.newLatLngBounds(bounds, 100.0),
+            );
+          }
+        } catch (e) {
+          debugPrint('Error getting directions to search location: $e');
+          setState(() {
+            _isLoadingRoute = false;
+            _routeInfo = null;
+          });
+        }
+      }
+    } else {
+      debugPrint('No coordinates available for this place');
+      // Show a message to user that location coordinates are not available
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: CustomText(
+            text: 'Unable to get coordinates for this location',
+            color: Colors.white,
+          ),
+          backgroundColor: Colors.orange,
+        ),
+      );
+    }
+  }
+
   @override
   void initState() {
     super.initState();
+
+    // Initialize animation controllers
+    _listAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    _expandAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 250),
+      vsync: this,
+    );
+
+    // Initialize animations
+    _listSlideAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _listAnimationController,
+        curve: Curves.easeInOut,
+      ),
+    );
+
+    _expandAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _expandAnimationController,
+        curve: Curves.easeInOut,
+      ),
+    );
+
+    // Start with list visible
+    _listAnimationController.value = 0.0;
+
     getCurrentLocation();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<EvacuationRepository>().getEvacuationCenters();
@@ -179,6 +331,8 @@ class _MapScreenState extends State<MapScreen> {
   @override
   void dispose() {
     _searchController.dispose();
+    _listAnimationController.dispose();
+    _expandAnimationController.dispose();
     // Remove listener to prevent memory leaks
     if (mounted) {
       context.read<EvacuationRepository>().removeListener(
@@ -300,31 +454,28 @@ class _MapScreenState extends State<MapScreen> {
             top: 16,
             left: 16,
             right: 16,
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: TextField(
-                controller: _searchController,
-                decoration: const InputDecoration(
-                  hintText: 'Search location...',
-                  hintStyle: TextStyle(color: Colors.grey),
-                  prefixIcon: Icon(LucideIcons.search, color: Colors.grey),
-                  border: InputBorder.none,
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 14,
-                  ),
-                ),
-              ),
+            child: CustomGooglePlacesTextField(
+              controller: _searchController,
+              hintText: 'Search location...',
+              onPlaceDetailsWithCoordinatesReceived: (prediction) {
+                // This gets called when place is selected and coordinates are available
+                debugPrint(
+                  'Place selected with coordinates: ${prediction.description}',
+                );
+                _navigateToPlace(prediction);
+              },
+              onSuggestionClicked: (prediction) {
+                // This gets called when user clicks on a suggestion in the dropdown
+                debugPrint(
+                  'User clicked on suggestion: ${prediction.description}',
+                );
+                // Just close the search and populate the text field
+                if (prediction.description != null) {
+                  _searchController.text = prediction.description!;
+                }
+                // Navigate to the place
+                _navigateToPlace(prediction);
+              },
             ),
           ),
 
@@ -499,6 +650,22 @@ class _MapScreenState extends State<MapScreen> {
   }
 
   Widget _buildEvacuationCentersList() {
+    return AnimatedBuilder(
+      animation: _listAnimationController,
+      builder: (context, child) {
+        return Transform.translate(
+          offset: Offset(0, _listSlideAnimation.value * 300),
+          child: Opacity(
+            opacity: 1.0 - _listAnimationController.value,
+            child: child,
+          ),
+        );
+      },
+      child: _buildEvacuationCentersContent(),
+    );
+  }
+
+  Widget _buildEvacuationCentersContent() {
     final evacuationCenters = context.watch<EvacuationRepository>().centers;
     final isLoadingCenters = context.watch<EvacuationRepository>().isLoading;
 
@@ -564,10 +731,6 @@ class _MapScreenState extends State<MapScreen> {
       );
     }
 
-    final centersToShow = _isEvacuationListExpanded
-        ? evacuationCenters
-        : evacuationCenters.take(2).toList();
-
     return Container(
       margin: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -608,11 +771,7 @@ class _MapScreenState extends State<MapScreen> {
                 Material(
                   color: Colors.transparent,
                   child: InkWell(
-                    onTap: () {
-                      setState(() {
-                        _isEvacuationListVisible = false;
-                      });
-                    },
+                    onTap: _hideEvacuationList,
                     borderRadius: BorderRadius.circular(16),
                     child: Padding(
                       padding: const EdgeInsets.all(4),
@@ -630,24 +789,50 @@ class _MapScreenState extends State<MapScreen> {
 
           const Divider(height: 1),
 
-          // Centers List
-          ...centersToShow.map((center) => _buildCenterTile(center)),
+          // Centers List with Animation
+          AnimatedBuilder(
+            animation: _expandAnimation,
+            builder: (context, child) {
+              final itemsToShow = _isEvacuationListExpanded
+                  ? evacuationCenters.length
+                  : math.min(2, evacuationCenters.length);
 
-          // Expand/Collapse Button
+              final visibleItems = (itemsToShow * _expandAnimation.value)
+                  .ceil();
+              final actualItemsToShow = _isEvacuationListExpanded
+                  ? math.max(visibleItems, 2)
+                  : math.min(visibleItems + 2, evacuationCenters.length);
+
+              return Column(
+                children: evacuationCenters
+                    .take(actualItemsToShow)
+                    .map(
+                      (center) => AnimatedContainer(
+                        duration: Duration(
+                          milliseconds:
+                              150 + (evacuationCenters.indexOf(center) * 50),
+                        ),
+                        curve: Curves.easeOutCubic,
+                        child: _buildCenterTile(center),
+                      ),
+                    )
+                    .toList(),
+              );
+            },
+          ),
+
+          // Expand/Collapse Button with Animation
           if (evacuationCenters.length > 2)
             Material(
               color: Colors.transparent,
               child: InkWell(
-                onTap: () {
-                  setState(() {
-                    _isEvacuationListExpanded = !_isEvacuationListExpanded;
-                  });
-                },
+                onTap: _toggleExpandList,
                 borderRadius: const BorderRadius.only(
                   bottomLeft: Radius.circular(12),
                   bottomRight: Radius.circular(12),
                 ),
-                child: Container(
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
                   width: double.infinity,
                   padding: const EdgeInsets.all(12),
                   decoration: const BoxDecoration(
@@ -658,21 +843,27 @@ class _MapScreenState extends State<MapScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      CustomText(
-                        text: _isEvacuationListExpanded
-                            ? 'Show Less'
-                            : 'Show ${evacuationCenters.length - 2} More',
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.blue,
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 200),
+                        child: CustomText(
+                          key: ValueKey(_isEvacuationListExpanded),
+                          text: _isEvacuationListExpanded
+                              ? 'Show Less'
+                              : 'Show ${evacuationCenters.length - 2} More',
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.blue,
+                        ),
                       ),
                       const SizedBox(width: 4),
-                      Icon(
-                        _isEvacuationListExpanded
-                            ? LucideIcons.chevronUp
-                            : LucideIcons.chevronDown,
-                        color: Colors.blue,
-                        size: 16,
+                      AnimatedRotation(
+                        turns: _isEvacuationListExpanded ? 0.5 : 0,
+                        duration: const Duration(milliseconds: 200),
+                        child: const Icon(
+                          LucideIcons.chevronDown,
+                          color: Colors.blue,
+                          size: 16,
+                        ),
                       ),
                     ],
                   ),
@@ -797,15 +988,15 @@ class _MapScreenState extends State<MapScreen> {
   void _focusOnCenter(EvacuationCenter center) async {
     final GoogleMapController controller = await _controllerCompleter.future;
 
+    // Hide the evacuation list with animation
+    _hideEvacuationList();
+
     setState(() {
       // Clear previous evacuation center markers and polylines
       _markers.removeWhere(
         (marker) => marker.markerId.value.startsWith('evacuation_'),
       );
       _polylines.clear();
-
-      // Hide the evacuation list to focus on the map and route
-      _isEvacuationListVisible = false;
 
       // Add marker for the selected evacuation center
       _markers.add(
@@ -964,6 +1155,39 @@ class _MapScreenState extends State<MapScreen> {
     });
   }
 
+  void _hideEvacuationList() {
+    _listAnimationController.forward().then((_) {
+      setState(() {
+        _isEvacuationListVisible = false;
+      });
+      _listAnimationController.reset();
+    });
+  }
+
+  void _showEvacuationList() {
+    setState(() {
+      _isEvacuationListVisible = true;
+    });
+    _listAnimationController.forward().then((_) {
+      _listAnimationController.reset();
+    });
+  }
+
+  void _toggleExpandList() {
+    if (_isEvacuationListExpanded) {
+      _expandAnimationController.reverse().then((_) {
+        setState(() {
+          _isEvacuationListExpanded = false;
+        });
+      });
+    } else {
+      setState(() {
+        _isEvacuationListExpanded = true;
+      });
+      _expandAnimationController.forward();
+    }
+  }
+
   Widget _buildShowListButton() {
     final evacuationCenters = context.watch<EvacuationRepository>().centers;
 
@@ -984,11 +1208,7 @@ class _MapScreenState extends State<MapScreen> {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () {
-            setState(() {
-              _isEvacuationListVisible = true;
-            });
-          },
+          onTap: _showEvacuationList,
           borderRadius: BorderRadius.circular(24),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),

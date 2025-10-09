@@ -1,4 +1,6 @@
 import 'package:amayalert/core/result/result.dart';
+import 'package:amayalert/core/services/badge_service.dart';
+import 'package:amayalert/core/services/push_notification_service.dart';
 import 'package:amayalert/feature/messages/enhanced_message_provider.dart';
 import 'package:amayalert/feature/messages/message_model.dart';
 import 'package:flutter/material.dart';
@@ -61,11 +63,64 @@ class EnhancedMessageRepository extends ChangeNotifier {
       }
       // Refresh conversations to update last message
       await loadConversations(senderId);
+
+      // Send push notification to the receiver
+      await _sendPushNotification(
+        senderId: senderId,
+        receiverId: request.receiver,
+        messageContent: request.content,
+        messageId: result.value.id.toString(),
+      );
     } else {
-      _setError(result.error);
+      _setResultError(result, 'Failed to send message');
     }
 
     return result;
+  }
+
+  /// Send push notification when a message is sent
+  Future<void> _sendPushNotification({
+    required String senderId,
+    required String receiverId,
+    required String messageContent,
+    required String messageId,
+  }) async {
+    try {
+      // Get sender's name from Supabase
+      final senderResponse = await Supabase.instance.client
+          .from('users')
+          .select('full_name')
+          .eq('id', senderId)
+          .single();
+
+      final senderName = senderResponse['full_name'] ?? 'Someone';
+
+      // Send push notification
+      final success = await PushNotificationService.sendMessageNotification(
+        receiverUserId: receiverId,
+        senderName: senderName,
+        messageContent: messageContent,
+        additionalData: {
+          'sender_id': senderId,
+          'message_id': messageId,
+          'conversation_id': '${senderId}_$receiverId',
+          'timestamp': DateTime.now().toIso8601String(),
+        },
+      );
+
+      if (success) {
+        debugPrint(
+          '✅ Push notification sent successfully for message: $messageId',
+        );
+      } else {
+        debugPrint(
+          '❌ Failed to send push notification for message: $messageId',
+        );
+      }
+    } catch (e) {
+      debugPrint('❌ Error sending push notification: $e');
+      // Don't throw error as push notification failure shouldn't break message sending
+    }
   }
 
   /// Load conversations with enhanced user info
@@ -77,11 +132,23 @@ class EnhancedMessageRepository extends ChangeNotifier {
     if (result.isSuccess) {
       _conversations = result.value;
       _clearError();
+
+      // Update badge count
+      _updateBadgeCount();
     } else {
-      _setError(result.error);
+      _setResultError(result, 'Failed to load conversations');
     }
 
     _setLoading(false);
+  }
+
+  /// Update the badge service with total unread count
+  void _updateBadgeCount() {
+    final totalUnread = _conversations.fold<int>(
+      0,
+      (sum, conversation) => sum + conversation.unreadCount,
+    );
+    BadgeService().updateUnreadMessageCount(totalUnread);
   }
 
   /// Load conversation messages with pagination
@@ -115,12 +182,16 @@ class EnhancedMessageRepository extends ChangeNotifier {
         _currentConversationMessages.addAll(newMessages.reversed);
       } else {
         _currentConversationMessages = newMessages.reversed.toList();
+
+        // Mark messages as seen when initially loading conversation (not when loading more)
+        // Note: This will be silent if seen_at column doesn't exist
+        markMessagesAsSeen(userId: userId1, otherUserId: userId2);
       }
 
       _hasMoreMessages = newMessages.length == 50;
       _clearError();
     } else {
-      _setError(result.error);
+      _setResultError(result, 'Failed to load conversation');
     }
 
     if (loadMore) {
@@ -149,7 +220,7 @@ class EnhancedMessageRepository extends ChangeNotifier {
       _searchResults = result.value;
       _clearError();
     } else {
-      _setError(result.error);
+      _setResultError(result, 'Failed to search messages');
     }
 
     _setLoading(false);
@@ -171,7 +242,7 @@ class EnhancedMessageRepository extends ChangeNotifier {
       _availableUsers = result.value;
       _clearError();
     } else {
-      _setError(result.error);
+      _setResultError(result, 'Failed to load users');
     }
 
     _setLoading(false);
@@ -199,7 +270,7 @@ class EnhancedMessageRepository extends ChangeNotifier {
         notifyListeners();
       }
     } else {
-      _setError(result.error);
+      _setResultError(result, 'Failed to update message');
     }
 
     return result;
@@ -220,7 +291,7 @@ class EnhancedMessageRepository extends ChangeNotifier {
       _currentConversationMessages.removeWhere((msg) => msg.id == messageId);
       notifyListeners();
     } else {
-      _setError(result.error);
+      _setResultError(result, 'Failed to delete message');
     }
 
     return result;
@@ -270,6 +341,16 @@ class EnhancedMessageRepository extends ChangeNotifier {
         (message.sender == _currentConversationPartnerId ||
             message.receiver == _currentConversationPartnerId)) {
       _currentConversationMessages.add(message);
+
+      // Auto-mark as seen if user is viewing the conversation and message is for them
+      final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+      if (currentUserId != null &&
+          message.receiver == currentUserId &&
+          message.sender == _currentConversationPartnerId) {
+        // Mark this specific message as seen
+        markMessageAsSeen(messageId: message.id, userId: currentUserId);
+      }
+
       notifyListeners();
     }
   }
@@ -361,6 +442,11 @@ class EnhancedMessageRepository extends ChangeNotifier {
     notifyListeners();
   }
 
+  void _setResultError(Result result, String defaultMessage) {
+    final errorMessage = result.isError ? result.error : defaultMessage;
+    _setError(errorMessage);
+  }
+
   void _clearError() {
     _errorMessage = null;
   }
@@ -368,6 +454,76 @@ class EnhancedMessageRepository extends ChangeNotifier {
   void clearError() {
     _clearError();
     notifyListeners();
+  }
+
+  /// Mark all messages from a specific user as seen
+  Future<void> markMessagesAsSeen({
+    required String userId,
+    required String otherUserId,
+  }) async {
+    debugPrint(
+      '📖 Attempting to mark messages as seen: $userId <- $otherUserId',
+    );
+
+    final result = await _provider.markMessagesAsSeen(
+      userId: userId,
+      otherUserId: otherUserId,
+    );
+
+    if (result.isSuccess) {
+      debugPrint('✅ Messages marked as seen successfully');
+      // Refresh conversations to update unread counts and badge
+      await loadConversations(userId);
+      // Refresh current conversation to show seen status
+      if (_currentConversationPartnerId == otherUserId) {
+        loadConversation(userId1: userId, userId2: otherUserId);
+      }
+    } else {
+      debugPrint(
+        '❌ Failed to mark messages as seen, but continuing gracefully',
+      );
+      // Don't set error since this is now handled gracefully in the provider
+      // Still refresh conversations to update badge count
+      await loadConversations(userId);
+    }
+  }
+
+  /// Mark specific message as seen
+  Future<void> markMessageAsSeen({
+    required int messageId,
+    required String userId,
+  }) async {
+    final result = await _provider.markMessageAsSeen(
+      messageId: messageId,
+      userId: userId,
+    );
+
+    if (result.isSuccess) {
+      // Update local message if it exists
+      final messageIndex = _currentConversationMessages.indexWhere(
+        (message) => message.id == messageId,
+      );
+      if (messageIndex != -1) {
+        final updatedMessage = Message(
+          id: _currentConversationMessages[messageIndex].id,
+          sender: _currentConversationMessages[messageIndex].sender,
+          receiver: _currentConversationMessages[messageIndex].receiver,
+          content: _currentConversationMessages[messageIndex].content,
+          attachmentUrl:
+              _currentConversationMessages[messageIndex].attachmentUrl,
+          createdAt: _currentConversationMessages[messageIndex].createdAt,
+          updatedAt: _currentConversationMessages[messageIndex].updatedAt,
+          seenAt: DateTime.now(),
+        );
+        _currentConversationMessages[messageIndex] = updatedMessage;
+        notifyListeners();
+      }
+
+      // Refresh conversations to update badge count
+      await loadConversations(userId);
+    } else {
+      _setResultError(result, 'Failed to mark message as seen');
+    }
   }
 
   @override

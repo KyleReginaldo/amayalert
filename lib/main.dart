@@ -8,6 +8,7 @@ import 'package:onesignal_flutter/onesignal_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'core/router/app_route.dart';
+import 'core/services/notification_handler.dart';
 import 'core/theme/theme.dart';
 
 void main() async {
@@ -25,11 +26,15 @@ void main() async {
     debug: true, // Enable debug mode for development
   );
   OneSignal.Debug.setLogLevel(OSLogLevel.verbose);
-  OneSignal.initialize(dotenv.get('ONESIGNAL_APP_ID'));
+  OneSignal.initialize('0ca16ba7-1326-4710-9e13-e6118e4de2e7');
   debugPrint(
     'OneSignal SDK initialized: ${await OneSignal.User.getExternalId()}',
   );
   OneSignal.Notifications.requestPermission(true);
+
+  // Initialize notification handler
+  NotificationHandler.initialize();
+
   runApp(MyApp());
 }
 

@@ -218,6 +218,13 @@ class MessageMapper extends ClassMapperBase<Message> {
     key: r'updated_at',
     opt: true,
   );
+  static DateTime? _$seenAt(Message v) => v.seenAt;
+  static const Field<Message, DateTime> _f$seenAt = Field(
+    'seenAt',
+    _$seenAt,
+    key: r'seen_at',
+    opt: true,
+  );
   static bool _$hasAttachment(Message v) => v.hasAttachment;
   static const Field<Message, bool> _f$hasAttachment = Field(
     'hasAttachment',
@@ -245,6 +252,13 @@ class MessageMapper extends ClassMapperBase<Message> {
     key: r'attachment_type',
     mode: FieldMode.member,
   );
+  static bool _$isSeen(Message v) => v.isSeen;
+  static const Field<Message, bool> _f$isSeen = Field(
+    'isSeen',
+    _$isSeen,
+    key: r'is_seen',
+    mode: FieldMode.member,
+  );
   static int _$hashCode(Message v) => v.hashCode;
   static const Field<Message, int> _f$hashCode = Field(
     'hashCode',
@@ -262,10 +276,12 @@ class MessageMapper extends ClassMapperBase<Message> {
     #attachmentUrl: _f$attachmentUrl,
     #createdAt: _f$createdAt,
     #updatedAt: _f$updatedAt,
+    #seenAt: _f$seenAt,
     #hasAttachment: _f$hasAttachment,
     #status: _f$status,
     #isEdited: _f$isEdited,
     #attachmentType: _f$attachmentType,
+    #isSeen: _f$isSeen,
     #hashCode: _f$hashCode,
   };
 
@@ -278,6 +294,7 @@ class MessageMapper extends ClassMapperBase<Message> {
       attachmentUrl: data.dec(_f$attachmentUrl),
       createdAt: data.dec(_f$createdAt),
       updatedAt: data.dec(_f$updatedAt),
+      seenAt: data.dec(_f$seenAt),
     );
   }
 
@@ -346,6 +363,7 @@ abstract class MessageCopyWith<$R, $In extends Message, $Out>
     String? attachmentUrl,
     DateTime? createdAt,
     DateTime? updatedAt,
+    DateTime? seenAt,
   });
   MessageCopyWith<$R2, $In, $Out2> $chain<$R2, $Out2>(Then<$Out2, $R2> t);
 }
@@ -367,6 +385,7 @@ class _MessageCopyWithImpl<$R, $Out>
     Object? attachmentUrl = $none,
     DateTime? createdAt,
     Object? updatedAt = $none,
+    Object? seenAt = $none,
   }) => $apply(
     FieldCopyWithData({
       if (id != null) #id: id,
@@ -376,6 +395,7 @@ class _MessageCopyWithImpl<$R, $Out>
       if (attachmentUrl != $none) #attachmentUrl: attachmentUrl,
       if (createdAt != null) #createdAt: createdAt,
       if (updatedAt != $none) #updatedAt: updatedAt,
+      if (seenAt != $none) #seenAt: seenAt,
     }),
   );
   @override
@@ -387,6 +407,7 @@ class _MessageCopyWithImpl<$R, $Out>
     attachmentUrl: data.get(#attachmentUrl, or: $value.attachmentUrl),
     createdAt: data.get(#createdAt, or: $value.createdAt),
     updatedAt: data.get(#updatedAt, or: $value.updatedAt),
+    seenAt: data.get(#seenAt, or: $value.seenAt),
   );
 
   @override

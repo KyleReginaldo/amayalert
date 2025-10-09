@@ -1,23 +1,36 @@
 import 'dart:io';
 
+import 'package:amayalert/core/constant/constant.dart';
 import 'package:amayalert/core/dto/post.dto.dart';
 import 'package:amayalert/core/theme/theme.dart';
 import 'package:amayalert/core/widgets/text/custom_text.dart';
 import 'package:amayalert/feature/posts/post_model.dart';
 import 'package:amayalert/feature/posts/post_repository.dart';
+import 'package:amayalert/feature/profile/profile_repository.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../dependency.dart';
+
 @RoutePage()
-class CreatePostsScreen extends StatefulWidget {
+class CreatePostsScreen extends StatefulWidget implements AutoRouteWrapper {
   const CreatePostsScreen({super.key});
 
   @override
   State<CreatePostsScreen> createState() => _CreatePostsScreenState();
+
+  @override
+  Widget wrappedRoute(BuildContext context) {
+    return ChangeNotifierProvider.value(
+      value: sl<ProfileRepository>(),
+      child: this,
+    );
+  }
 }
 
 class _CreatePostsScreenState extends State<CreatePostsScreen> {
@@ -26,7 +39,7 @@ class _CreatePostsScreenState extends State<CreatePostsScreen> {
   final PostRepository _postRepository = PostRepository();
 
   XFile? _selectedImage;
-  PostVisibility _selectedVisibility = PostVisibility.public;
+  final PostVisibility _selectedVisibility = PostVisibility.public;
   bool _isLoading = false;
 
   @override
@@ -38,12 +51,13 @@ class _CreatePostsScreenState extends State<CreatePostsScreen> {
   Future<void> _showImageSourceDialog() async {
     showModalBottomSheet(
       context: context,
+      shape: RoundedRectangleBorder(),
       builder: (BuildContext context) {
         return SafeArea(
           child: Wrap(
             children: [
               ListTile(
-                leading: const Icon(Icons.camera_alt),
+                leading: const Icon(LucideIcons.camera),
                 title: const Text('Camera'),
                 onTap: () {
                   Navigator.pop(context);
@@ -51,7 +65,7 @@ class _CreatePostsScreenState extends State<CreatePostsScreen> {
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.photo_library),
+                leading: const Icon(LucideIcons.image),
                 title: const Text('Gallery'),
                 onTap: () {
                   Navigator.pop(context);
@@ -158,14 +172,26 @@ class _CreatePostsScreenState extends State<CreatePostsScreen> {
   }
 
   @override
+  void initState() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<ProfileRepository>().getUserProfile(userID ?? "");
+    });
+    super.initState();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final profile = context.watch<ProfileRepository>().profile;
     return SafeArea(
       top: false,
       child: Scaffold(
         backgroundColor: Colors.white,
         appBar: AppBar(
-          title: const CustomText(text: 'Create Post'),
-          centerTitle: true,
+          title: const CustomText(
+            text: 'Create Post',
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+          ),
           actions: [
             TextButton(
               onPressed: _isLoading ? null : _createPost,
@@ -228,73 +254,18 @@ class _CreatePostsScreenState extends State<CreatePostsScreen> {
                   ),
                 ),
               ],
-
               const SizedBox(height: 16),
-
-              // Visibility selector
-              Row(
-                children: [
-                  const Icon(Icons.visibility, size: 20),
-                  const SizedBox(width: 8),
-                  const CustomText(text: 'Visibility:'),
-                  const SizedBox(width: 16),
-                  DropdownButton<PostVisibility>(
-                    value: _selectedVisibility,
-                    onChanged: (PostVisibility? newValue) {
-                      if (newValue != null) {
-                        setState(() {
-                          _selectedVisibility = newValue;
-                        });
-                      }
-                    },
-                    items: PostVisibility.values.map((
-                      PostVisibility visibility,
-                    ) {
-                      return DropdownMenuItem<PostVisibility>(
-                        value: visibility,
-                        child: Row(
-                          children: [
-                            Icon(
-                              visibility == PostVisibility.public
-                                  ? Icons.public
-                                  : Icons.lock,
-                              size: 16,
-                            ),
-                            const SizedBox(width: 8),
-                            CustomText(text: visibility.value.toUpperCase()),
-                          ],
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 16),
-
               // Action buttons
-              Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: _isLoading ? null : _showImageSourceDialog,
-                      icon: const Icon(LucideIcons.camera),
-                      label: CustomText(
-                        text: _selectedImage != null
-                            ? 'Change Image'
-                            : 'Add Image',
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.grey.shade100,
-                        foregroundColor: Colors.black,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+              ListTile(
+                onTap: () {
+                  _isLoading ? null : _showImageSourceDialog();
+                },
+                leading: Image.asset('assets/icons/photo.png', width: 24),
+                title: CustomText(
+                  text: _selectedImage != null
+                      ? 'Change photo'
+                      : 'Upload photo',
+                ),
               ),
             ],
           ),

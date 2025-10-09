@@ -1,9 +1,12 @@
 import 'package:amayalert/core/result/result.dart';
 import 'package:amayalert/feature/messages/message_model.dart';
 import 'package:amayalert/feature/messages/message_provider.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../../core/services/badge_service.dart';
 
 class MessageRepository extends ChangeNotifier {
   final MessageProvider _messageProvider;
@@ -64,11 +67,23 @@ class MessageRepository extends ChangeNotifier {
     if (result.isSuccess) {
       _conversations = result.value;
       _errorMessage = null;
+
+      // Update badge count
+      _updateBadgeCount();
     } else {
       _errorMessage = result.error;
     }
 
     _setLoading(false);
+  }
+
+  /// Update the badge service with total unread count
+  void _updateBadgeCount() {
+    final totalUnread = _conversations.fold<int>(
+      0,
+      (sum, conversation) => sum + conversation.unreadCount,
+    );
+    BadgeService().updateUnreadMessageCount(totalUnread);
   }
 
   Future<void> loadConversation({

@@ -32,7 +32,7 @@ class ChatScreen extends StatefulWidget implements AutoRouteWrapper {
   }
 }
 
-class _ChatScreenState extends State<ChatScreen> {
+class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   bool _isComposing = false;
@@ -42,6 +42,7 @@ class _ChatScreenState extends State<ChatScreen> {
     super.initState();
     _loadMessages();
     _messageController.addListener(_onTextChanged);
+    WidgetsBinding.instance.addObserver(this);
   }
 
   @override
@@ -49,7 +50,27 @@ class _ChatScreenState extends State<ChatScreen> {
     _messageController.removeListener(_onTextChanged);
     _messageController.dispose();
     _scrollController.dispose();
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    // Mark messages as seen when app becomes active/visible
+    if (state == AppLifecycleState.resumed) {
+      _markMessagesAsSeen();
+    }
+  }
+
+  void _markMessagesAsSeen() {
+    final currentUser = Supabase.instance.client.auth.currentUser;
+    if (currentUser != null && mounted) {
+      context.read<EnhancedMessageRepository>().markMessagesAsSeen(
+        userId: currentUser.id,
+        otherUserId: widget.otherUserId,
+      );
+    }
   }
 
   void _onTextChanged() {
@@ -62,11 +83,22 @@ class _ChatScreenState extends State<ChatScreen> {
     final currentUser = Supabase.instance.client.auth.currentUser;
     if (currentUser != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        context.read<EnhancedMessageRepository>().loadConversation(
+        final repository = context.read<EnhancedMessageRepository>();
+
+        // Load conversation messages
+        repository.loadConversation(
           userId1: currentUser.id,
           userId2: widget.otherUserId,
         );
-        context.read<EnhancedMessageRepository>().subscribeToConversation(
+
+        // Mark messages as seen from this user
+        repository.markMessagesAsSeen(
+          userId: currentUser.id,
+          otherUserId: widget.otherUserId,
+        );
+
+        // Subscribe to real-time updates
+        repository.subscribeToConversation(
           userId1: currentUser.id,
           userId2: widget.otherUserId,
         );
@@ -318,9 +350,13 @@ class MessageBubble extends StatelessWidget {
                       if (isMe) ...[
                         const SizedBox(width: 4),
                         Icon(
-                          LucideIcons.check,
+                          message.isSeen
+                              ? LucideIcons.checkCheck
+                              : LucideIcons.check,
                           size: 14,
-                          color: Colors.white70,
+                          color: message.isSeen
+                              ? Colors.blue.shade200
+                              : Colors.white70,
                         ),
                       ],
                     ],

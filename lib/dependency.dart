@@ -9,6 +9,7 @@ import 'package:amayalert/feature/posts/post_provider.dart';
 import 'package:amayalert/feature/posts/post_repository.dart';
 import 'package:amayalert/feature/profile/profile_provider.dart';
 import 'package:amayalert/feature/profile/profile_repository.dart';
+import 'package:amayalert/feature/search/search_repository.dart';
 import 'package:amayalert/feature/weather/weather_provider.dart';
 import 'package:amayalert/feature/weather/weather_repository.dart';
 import 'package:get_it/get_it.dart';
@@ -33,6 +34,14 @@ Future init() async {
   sl.registerLazySingleton(() => EvacuationRepository(provider: sl()));
   sl.registerLazySingleton(() => EvacuationProvider());
   sl.registerLazySingleton(() => ActivityRepository());
+  sl.registerLazySingleton(
+    () => SearchRepository(
+      postRepository: sl(),
+      alertRepository: sl(),
+      evacuationRepository: sl(),
+      activityRepository: sl(),
+    ),
+  );
   final sharedPreferences = await SharedPreferences.getInstance();
   sl.registerLazySingleton(() => sharedPreferences);
 }
