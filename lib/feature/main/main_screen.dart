@@ -4,6 +4,7 @@ import 'package:amayalert/core/theme/theme.dart';
 import 'package:amayalert/core/widgets/notification_badge.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:onesignal_flutter/onesignal_flutter.dart';
 
@@ -21,12 +22,34 @@ class _MainScreenState extends State<MainScreen> {
   @override
   void initState() {
     onesignalLogin();
+    updateCurretLocation();
     super.initState();
   }
 
   void onesignalLogin() async {
     if (userID != null) {
       await OneSignal.login(userID!);
+    }
+  }
+
+  void updateCurretLocation() async {
+    if (userID != null) {
+      Geolocator.getCurrentPosition()
+          .then((Position position) async {
+            debugPrint(
+              'Current Location: Lat: ${position.latitude}, Lng: ${position.longitude}',
+            );
+            await supabase
+                .from('users')
+                .update({
+                  'latitude': position.latitude,
+                  'longitude': position.longitude,
+                })
+                .eq('id', userID!);
+          })
+          .catchError((e) {
+            debugPrint('Error getting location: $e');
+          });
     }
   }
 

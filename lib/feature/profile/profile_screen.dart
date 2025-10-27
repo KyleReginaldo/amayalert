@@ -1,5 +1,6 @@
 import 'package:amayalert/core/router/app_route.gr.dart';
 import 'package:amayalert/core/theme/theme.dart';
+import 'package:amayalert/core/widgets/buttons/custom_buttons.dart';
 import 'package:amayalert/core/widgets/text/custom_text.dart';
 import 'package:amayalert/dependency.dart';
 import 'package:amayalert/feature/posts/post_repository.dart';
@@ -43,6 +44,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final user = context.select((ProfileRepository bloc) => bloc.profile);
+    final isLoading = context.select(
+      (ProfileRepository bloc) => bloc.isLoading,
+    );
     final userPosts = context.select((PostRepository bloc) => bloc.userPosts);
     return Scaffold(
       backgroundColor: AppColors.gray50,
@@ -65,10 +69,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ],
       ),
-      body: user == null
+      body: isLoading
           ? Center(
               child: CircularProgressIndicator(
                 valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+              ),
+            )
+          : user == null
+          ? Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                spacing: 8,
+                children: [
+                  CustomText(
+                    text: 'No user data found.',
+                    fontWeight: FontWeight.w500,
+                  ),
+                  CustomText(text: 'Please sign in to continue.', fontSize: 13),
+
+                  CustomElevatedButton(
+                    label: 'Sign In',
+                    onPressed: () {},
+                    icon: LucideIcons.logIn,
+                    size: ButtonSize.sm,
+                  ),
+                ],
               ),
             )
           : SingleChildScrollView(

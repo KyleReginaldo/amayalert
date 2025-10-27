@@ -8,6 +8,8 @@ class ProfileRepository extends ChangeNotifier {
   final ProfileProvider provider;
 
   Profile? _profile;
+  bool _isLoading = false;
+  bool get isLoading => _isLoading;
   Profile? get profile => _profile;
   String? _errorMessage;
   String? get errorMessage => _errorMessage;
@@ -15,12 +17,17 @@ class ProfileRepository extends ChangeNotifier {
   ProfileRepository({required this.provider});
 
   Future<void> getUserProfile(String userId) async {
+    _isLoading = true;
+    notifyListeners();
+
     final result = await provider.getUserProfile(userId);
     if (result.isError) {
       _errorMessage = result.error;
+      _isLoading = false;
       notifyListeners();
     } else {
       _profile = result.value;
+      _isLoading = false;
       notifyListeners();
     }
   }
