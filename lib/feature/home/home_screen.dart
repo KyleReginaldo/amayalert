@@ -164,75 +164,83 @@ class _HomeScreenState extends State<HomeScreen> {
             stops: const [0.0, 0.4, 1.0],
           ),
         ),
-        child: CustomScrollView(
-          slivers: [
-            // Custom App Bar
-            SliverAppBar(
-              elevation: 0,
-              backgroundColor: Colors.transparent,
-              expandedHeight: 120,
-              floating: true,
-              pinned: false,
-              flexibleSpace: FlexibleSpaceBar(
-                background: Container(
-                  padding: const EdgeInsets.fromLTRB(20, 60, 20, 20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      CustomText(
-                        text: 'Good ${_getGreeting()}',
-                        fontSize: 28,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimaryDark,
-                      ),
-                      CustomText(
-                        text: 'Stay informed, stay safe',
-                        fontSize: 16,
-                        color: AppColors.textPrimaryDark,
-                      ),
-                    ],
+        child: RefreshIndicator(
+          onRefresh: () async {
+            getCurrentLocation();
+            await context.read<PostRepository>().loadPosts();
+            await context.read<AlertRepository>().loadAlerts();
+            context.read<EvacuationRepository>().getEvacuationCenters();
+          },
+          child: CustomScrollView(
+            slivers: [
+              // Custom App Bar
+              SliverAppBar(
+                elevation: 0,
+                backgroundColor: Colors.transparent,
+                expandedHeight: 120,
+                floating: true,
+                pinned: false,
+                flexibleSpace: FlexibleSpaceBar(
+                  background: Container(
+                    padding: const EdgeInsets.fromLTRB(20, 60, 20, 20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        CustomText(
+                          text: 'Good ${_getGreeting()}',
+                          fontSize: 28,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimaryDark,
+                        ),
+                        CustomText(
+                          text: 'Stay informed, stay safe',
+                          fontSize: 16,
+                          color: AppColors.textPrimaryDark,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
 
-            // Content
-            SliverPadding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              sliver: SliverList(
-                delegate: SliverChildListDelegate([
-                  // Emergency Alert Section (always shown)
-                  _buildAlertSection(),
-                  const SizedBox(height: 24),
-
-                  // Search Section (always shown)
-                  _buildSearchSection(),
-
-                  // Regular content (hidden when showing search results)
-                  if (!_showSearchResults) ...[
+              // Content
+              SliverPadding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                sliver: SliverList(
+                  delegate: SliverChildListDelegate([
+                    // Emergency Alert Section (always shown)
+                    _buildAlertSection(),
                     const SizedBox(height: 24),
 
-                    // Weather Section
-                    _buildWeatherSection(weather, isLoading, errorMessage),
-                    const SizedBox(height: 32),
+                    // Search Section (always shown)
+                    _buildSearchSection(),
 
-                    // Emergency Actions Section
-                    _buildEmergencyActionsSection(context),
-                    const SizedBox(height: 32),
+                    // Regular content (hidden when showing search results)
+                    if (!_showSearchResults) ...[
+                      const SizedBox(height: 24),
 
-                    // Quick Actions Section
-                    _buildQuickActionsSection(context),
-                    const SizedBox(height: 32),
+                      // Weather Section
+                      _buildWeatherSection(weather, isLoading, errorMessage),
+                      const SizedBox(height: 32),
 
-                    // Posts Section
-                    _buildPostsSection(),
-                  ],
+                      // Emergency Actions Section
+                      _buildEmergencyActionsSection(context),
+                      const SizedBox(height: 32),
 
-                  const SizedBox(height: 20),
-                ]),
+                      // Quick Actions Section
+                      _buildQuickActionsSection(context),
+                      const SizedBox(height: 32),
+
+                      // Posts Section
+                      _buildPostsSection(),
+                    ],
+
+                    const SizedBox(height: 20),
+                  ]),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

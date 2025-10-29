@@ -196,13 +196,13 @@ class SunEvents with SunEventsMappable {
 @MappableClass()
 class MoonEvents with MoonEventsMappable {
   final String moonPhase;
-  final List<DateTime> moonriseTimes;
-  final List<DateTime> moonsetTimes;
+  final List<DateTime>? moonriseTimes;
+  final List<DateTime>? moonsetTimes;
 
   const MoonEvents({
     required this.moonPhase,
-    required this.moonriseTimes,
-    required this.moonsetTimes,
+    this.moonriseTimes,
+    this.moonsetTimes,
   });
 }
 

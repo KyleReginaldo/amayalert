@@ -2402,15 +2402,17 @@ class MoonEventsMapper extends ClassMapperBase<MoonEvents> {
     'moonPhase',
     _$moonPhase,
   );
-  static List<DateTime> _$moonriseTimes(MoonEvents v) => v.moonriseTimes;
+  static List<DateTime>? _$moonriseTimes(MoonEvents v) => v.moonriseTimes;
   static const Field<MoonEvents, List<DateTime>> _f$moonriseTimes = Field(
     'moonriseTimes',
     _$moonriseTimes,
+    opt: true,
   );
-  static List<DateTime> _$moonsetTimes(MoonEvents v) => v.moonsetTimes;
+  static List<DateTime>? _$moonsetTimes(MoonEvents v) => v.moonsetTimes;
   static const Field<MoonEvents, List<DateTime>> _f$moonsetTimes = Field(
     'moonsetTimes',
     _$moonsetTimes,
+    opt: true,
   );
 
   @override
@@ -2488,9 +2490,9 @@ extension MoonEventsValueCopy<$R, $Out>
 
 abstract class MoonEventsCopyWith<$R, $In extends MoonEvents, $Out>
     implements ClassCopyWith<$R, $In, $Out> {
-  ListCopyWith<$R, DateTime, ObjectCopyWith<$R, DateTime, DateTime>>
+  ListCopyWith<$R, DateTime, ObjectCopyWith<$R, DateTime, DateTime>>?
   get moonriseTimes;
-  ListCopyWith<$R, DateTime, ObjectCopyWith<$R, DateTime, DateTime>>
+  ListCopyWith<$R, DateTime, ObjectCopyWith<$R, DateTime, DateTime>>?
   get moonsetTimes;
   $R call({
     String? moonPhase,
@@ -2509,29 +2511,33 @@ class _MoonEventsCopyWithImpl<$R, $Out>
   late final ClassMapperBase<MoonEvents> $mapper =
       MoonEventsMapper.ensureInitialized();
   @override
-  ListCopyWith<$R, DateTime, ObjectCopyWith<$R, DateTime, DateTime>>
-  get moonriseTimes => ListCopyWith(
-    $value.moonriseTimes,
-    (v, t) => ObjectCopyWith(v, $identity, t),
-    (v) => call(moonriseTimes: v),
-  );
+  ListCopyWith<$R, DateTime, ObjectCopyWith<$R, DateTime, DateTime>>?
+  get moonriseTimes => $value.moonriseTimes != null
+      ? ListCopyWith(
+          $value.moonriseTimes!,
+          (v, t) => ObjectCopyWith(v, $identity, t),
+          (v) => call(moonriseTimes: v),
+        )
+      : null;
   @override
-  ListCopyWith<$R, DateTime, ObjectCopyWith<$R, DateTime, DateTime>>
-  get moonsetTimes => ListCopyWith(
-    $value.moonsetTimes,
-    (v, t) => ObjectCopyWith(v, $identity, t),
-    (v) => call(moonsetTimes: v),
-  );
+  ListCopyWith<$R, DateTime, ObjectCopyWith<$R, DateTime, DateTime>>?
+  get moonsetTimes => $value.moonsetTimes != null
+      ? ListCopyWith(
+          $value.moonsetTimes!,
+          (v, t) => ObjectCopyWith(v, $identity, t),
+          (v) => call(moonsetTimes: v),
+        )
+      : null;
   @override
   $R call({
     String? moonPhase,
-    List<DateTime>? moonriseTimes,
-    List<DateTime>? moonsetTimes,
+    Object? moonriseTimes = $none,
+    Object? moonsetTimes = $none,
   }) => $apply(
     FieldCopyWithData({
       if (moonPhase != null) #moonPhase: moonPhase,
-      if (moonriseTimes != null) #moonriseTimes: moonriseTimes,
-      if (moonsetTimes != null) #moonsetTimes: moonsetTimes,
+      if (moonriseTimes != $none) #moonriseTimes: moonriseTimes,
+      if (moonsetTimes != $none) #moonsetTimes: moonsetTimes,
     }),
   );
   @override

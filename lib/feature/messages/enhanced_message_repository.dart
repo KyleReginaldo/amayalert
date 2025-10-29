@@ -3,6 +3,8 @@ import 'package:amayalert/core/services/badge_service.dart';
 import 'package:amayalert/core/services/push_notification_service.dart';
 import 'package:amayalert/feature/messages/enhanced_message_provider.dart';
 import 'package:amayalert/feature/messages/message_model.dart';
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -29,6 +31,9 @@ class EnhancedMessageRepository extends ChangeNotifier {
 
   RealtimeChannel? _conversationSubscription;
   RealtimeChannel? _userMessagesSubscription;
+  // Batch incoming conversation updates to avoid UI thrash
+  final List<Message> _conversationBatch = [];
+  Timer? _conversationBatchTimer;
 
   // Getters
   List<ChatConversation> get conversations => _conversations;
@@ -56,13 +61,23 @@ class EnhancedMessageRepository extends ChangeNotifier {
     );
 
     if (result.isSuccess) {
-      // Add message to current conversation if it matches
-      if (_currentConversationPartnerId == request.receiver) {
-        _currentConversationMessages.add(result.value);
-        notifyListeners();
+      // Add message to current conversation if it involves the current partner
+      try {
+        _maybeAddMessageToCurrentConversation(result.value);
+      } catch (e, st) {
+        debugPrint(
+          '⚠️ Error adding sent message to current conversation: $e\n$st',
+        );
       }
-      // Refresh conversations to update last message
-      await loadConversations(senderId);
+
+      // Update conversations list locally (avoid reloading from network)
+      try {
+        _applyMessageToConversations(result.value);
+      } catch (e, st) {
+        debugPrint(
+          '⚠️ Error updating conversations locally after send: $e\n$st',
+        );
+      }
 
       // Send push notification to the receiver
       await _sendPushNotification(
@@ -92,7 +107,6 @@ class EnhancedMessageRepository extends ChangeNotifier {
           .select('full_name')
           .eq('id', senderId)
           .single();
-
       final senderName = senderResponse['full_name'] ?? 'Someone';
 
       // Send push notification
@@ -328,31 +342,178 @@ class EnhancedMessageRepository extends ChangeNotifier {
     _userMessagesSubscription = _provider.subscribeToUserMessages(
       userId: userId,
       onNewMessage: (message) {
-        // Refresh conversations when new message received
-        loadConversations(userId);
+        // Defensive logging + batch updates to avoid UI thrash
+        try {
+          debugPrint('📥 Incoming message (subscribe): id=${message.id} sender=${message.sender} receiver=${message.receiver} createdAt=${message.createdAt}');
+
+          // Add to batch and schedule flush
+          _conversationBatch.removeWhere((m) => m.id == message.id);
+          _conversationBatch.add(message);
+          _conversationBatchTimer?.cancel();
+          _conversationBatchTimer = Timer(const Duration(milliseconds: 300), () {
+            try {
+              _flushConversationBatch();
+            } catch (e, st) {
+              debugPrint('⚠️ Error flushing conversation batch: $e\n$st');
+            }
+          });
+
+          // If the conversation is open, also add to current messages immediately
+          try {
+            if (_messageBelongsToOpenConversation(message)) {
+              _maybeAddMessageToCurrentConversation(message);
+            }
+          } catch (e, st) {
+            debugPrint('⚠️ Error adding incoming message to open conversation: $e\n$st');
+          }
+        } catch (e, st) {
+          debugPrint('⚠️ Error applying incoming message to conversations: $e\n$st');
+        }
       },
     );
   }
 
+  void _flushConversationBatch() {
+    if (_conversationBatch.isEmpty) return;
+
+    // Merge batch by message id keeping the latest createdAt
+    final map = <int, Message>{};
+    for (final m in _conversationBatch) {
+      final existing = map[m.id];
+      if (existing == null || m.createdAt.isAfter(existing.createdAt)) {
+        map[m.id] = m;
+      }
+    }
+
+    final messages = map.values.toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+    for (final message in messages) {
+      try {
+        _applyMessageToConversations(message);
+      } catch (e, st) {
+        debugPrint('⚠️ Error applying batched message: $e\n$st');
+      }
+    }
+
+    _conversationBatch.clear();
+    _conversationBatchTimer = null;
+  }
+
   /// Handle new message from real-time subscription
   void _handleNewMessage(Message message) {
-    // Add to current conversation if it matches
-    if (_currentConversationPartnerId != null &&
-        (message.sender == _currentConversationPartnerId ||
-            message.receiver == _currentConversationPartnerId)) {
-      _currentConversationMessages.add(message);
+    try {
+      debugPrint(
+        '📥 Realtime new message handler: id=${message.id} sender=${message.sender} receiver=${message.receiver} createdAt=${message.createdAt}',
+      );
+      // Ensure this message belongs to the currently open conversation (both participants match)
+      if (_messageBelongsToOpenConversation(message)) {
+        // Avoid duplicates: if message with same id exists, update it instead
+        final existingIndex = _currentConversationMessages.indexWhere(
+          (m) => m.id == message.id,
+        );
+        if (existingIndex != -1) {
+          _currentConversationMessages[existingIndex] = message;
+        } else {
+          _currentConversationMessages.add(message);
+        }
 
-      // Auto-mark as seen if user is viewing the conversation and message is for them
-      final currentUserId = Supabase.instance.client.auth.currentUser?.id;
-      if (currentUserId != null &&
-          message.receiver == currentUserId &&
-          message.sender == _currentConversationPartnerId) {
-        // Mark this specific message as seen
-        markMessageAsSeen(messageId: message.id, userId: currentUserId);
+        // Auto-mark as seen if the current user is the receiver
+        final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+        if (currentUserId != null && message.receiver == currentUserId) {
+          // Best-effort; don't throw if it fails
+          try {
+            markMessageAsSeen(messageId: message.id, userId: currentUserId);
+          } catch (e, st) {
+            debugPrint('⚠️ Error auto-marking message as seen: $e\n$st');
+          }
+        }
+
+        debugPrint(
+          'ℹ️ Message applied to open conversation: id=${message.id} existingIndex=$existingIndex currentMessages=${_currentConversationMessages.length}',
+        );
+        notifyListeners();
       }
+    } catch (e, st) {
+      debugPrint('⚠️ Error handling incoming message: $e\n$st');
+    }
+  }
 
+  /// Helper to get current authenticated user id (or null)
+  String? _currentUserId() => Supabase.instance.client.auth.currentUser?.id;
+
+  /// Returns true when the message involves both the current user and the open conversation partner
+  bool _messageBelongsToOpenConversation(Message message) {
+    final partner = _currentConversationPartnerId;
+    final me = _currentUserId();
+    if (partner == null || me == null) return false;
+    return (message.sender == partner && message.receiver == me) ||
+        (message.receiver == partner && message.sender == me);
+  }
+
+  /// Add message to current conversation if it belongs to it
+  void _maybeAddMessageToCurrentConversation(Message message) {
+    if (_messageBelongsToOpenConversation(message)) {
+      // If message already exists (e.g., local add then realtime echo), replace it instead of duplicating
+      final existingIndex = _currentConversationMessages.indexWhere(
+        (m) => m.id == message.id,
+      );
+      if (existingIndex != -1) {
+        _currentConversationMessages[existingIndex] = message;
+      } else {
+        _currentConversationMessages.add(message);
+      }
       notifyListeners();
     }
+  }
+
+  /// Apply a message to the conversations list (update lastMessage, unread count, badge)
+  void _applyMessageToConversations(Message message) {
+    final me = _currentUserId();
+    if (me == null) return;
+
+    // determine the partner id (the other participant)
+    final partnerId = message.sender == me ? message.receiver : message.sender;
+
+    final idx = _conversations.indexWhere((c) => c.participantId == partnerId);
+    final isIncomingToMe = message.receiver == me && message.seenAt == null;
+
+    if (idx != -1) {
+      final old = _conversations[idx];
+      final updated = ChatConversation(
+        participantId: old.participantId,
+        participantName: old.participantName,
+        participantProfilePicture: old.participantProfilePicture,
+        participantEmail: old.participantEmail,
+        isOnline: old.isOnline,
+        lastSeen: old.lastSeen,
+        lastMessage: message,
+        unreadCount: old.unreadCount + (isIncomingToMe ? 1 : 0),
+        lastActivity: message.createdAt,
+        type: old.type,
+      );
+
+      _conversations[idx] = updated;
+    } else {
+      // create a minimal conversation entry
+      final newConv = ChatConversation(
+        participantId: partnerId,
+        participantName: partnerId,
+        participantProfilePicture: null,
+        participantEmail: null,
+        isOnline: false,
+        lastSeen: null,
+        lastMessage: message,
+        unreadCount: isIncomingToMe ? 1 : 0,
+        lastActivity: message.createdAt,
+        type: ConversationType.direct,
+      );
+      _conversations.insert(0, newConv);
+    }
+
+    // update app badge and notify
+    _updateBadgeCount();
+    notifyListeners();
   }
 
   /// Handle message update from real-time subscription
@@ -469,22 +630,55 @@ class EnhancedMessageRepository extends ChangeNotifier {
       userId: userId,
       otherUserId: otherUserId,
     );
-
     if (result.isSuccess) {
       debugPrint('✅ Messages marked as seen successfully');
-      // Refresh conversations to update unread counts and badge
-      await loadConversations(userId);
-      // Refresh current conversation to show seen status
+
+      // Update local current conversation messages if open
       if (_currentConversationPartnerId == otherUserId) {
-        loadConversation(userId1: userId, userId2: otherUserId);
+        final now = DateTime.now();
+        var updated = false;
+        _currentConversationMessages = _currentConversationMessages.map((m) {
+          if (m.sender == otherUserId && m.receiver == userId && m.seenAt == null) {
+            updated = true;
+            return Message(
+              id: m.id,
+              sender: m.sender,
+              receiver: m.receiver,
+              content: m.content,
+              attachmentUrl: m.attachmentUrl,
+              createdAt: m.createdAt,
+              updatedAt: m.updatedAt,
+              seenAt: now,
+            );
+          }
+          return m;
+        }).toList();
+
+        if (updated) notifyListeners();
+      }
+
+      // Update conversation unread count locally
+      final convIdx = _conversations.indexWhere((c) => c.participantId == otherUserId);
+      if (convIdx != -1) {
+        final old = _conversations[convIdx];
+        final updatedConv = ChatConversation(
+          participantId: old.participantId,
+          participantName: old.participantName,
+          participantProfilePicture: old.participantProfilePicture,
+          participantEmail: old.participantEmail,
+          isOnline: old.isOnline,
+          lastSeen: old.lastSeen,
+          lastMessage: old.lastMessage,
+          unreadCount: 0,
+          lastActivity: old.lastActivity,
+          type: old.type,
+        );
+        _conversations[convIdx] = updatedConv;
+        _updateBadgeCount();
+        notifyListeners();
       }
     } else {
-      debugPrint(
-        '❌ Failed to mark messages as seen, but continuing gracefully',
-      );
-      // Don't set error since this is now handled gracefully in the provider
-      // Still refresh conversations to update badge count
-      await loadConversations(userId);
+      debugPrint('❌ Failed to mark messages as seen, continuing (no reload)');
     }
   }
 
@@ -518,9 +712,27 @@ class EnhancedMessageRepository extends ChangeNotifier {
         _currentConversationMessages[messageIndex] = updatedMessage;
         notifyListeners();
       }
-
-      // Refresh conversations to update badge count
-      await loadConversations(userId);
+      // Update conversation unread count locally
+      final partnerId = _currentConversationMessages[messageIndex >= 0 ? messageIndex : 0].sender;
+      final convIdx = _conversations.indexWhere((c) => c.participantId == partnerId);
+      if (convIdx != -1) {
+        final old = _conversations[convIdx];
+        final updatedConv = ChatConversation(
+          participantId: old.participantId,
+          participantName: old.participantName,
+          participantProfilePicture: old.participantProfilePicture,
+          participantEmail: old.participantEmail,
+          isOnline: old.isOnline,
+          lastSeen: old.lastSeen,
+          lastMessage: old.lastMessage,
+          unreadCount: 0,
+          lastActivity: old.lastActivity,
+          type: old.type,
+        );
+        _conversations[convIdx] = updatedConv;
+        _updateBadgeCount();
+        notifyListeners();
+      }
     } else {
       _setResultError(result, 'Failed to mark message as seen');
     }

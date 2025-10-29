@@ -37,6 +37,16 @@ class _MessageScreenState extends State<MessageScreen> {
     BadgeService().clearUnreadCount();
   }
 
+  @override
+  void dispose() {
+    // Unsubscribe from user-level messages when leaving the messages screen
+    try {
+      final repository = context.read<EnhancedMessageRepository>();
+      repository.unsubscribeFromUserMessages();
+    } catch (_) {}
+    super.dispose();
+  }
+
   void _loadConversations() {
     final currentUser = Supabase.instance.client.auth.currentUser;
     if (currentUser != null) {

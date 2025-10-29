@@ -31,8 +31,6 @@ void main() async {
     'OneSignal SDK initialized: ${await OneSignal.User.getExternalId()}',
   );
   OneSignal.Notifications.requestPermission(true);
-
-  // Initialize notification handler
   NotificationHandler.initialize();
 
   runApp(MyApp());

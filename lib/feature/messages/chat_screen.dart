@@ -51,6 +51,12 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     _messageController.dispose();
     _scrollController.dispose();
     WidgetsBinding.instance.removeObserver(this);
+    // Unsubscribe from conversation channel when leaving chat screen
+    try {
+      final repository = context.read<EnhancedMessageRepository>();
+      repository.unsubscribeFromConversation();
+    } catch (_) {}
+
     super.dispose();
   }
 
