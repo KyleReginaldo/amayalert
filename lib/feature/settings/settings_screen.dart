@@ -1,3 +1,4 @@
+import 'package:amayalert/core/constant/constant.dart';
 import 'package:amayalert/core/router/app_route.gr.dart';
 import 'package:amayalert/core/theme/theme.dart';
 import 'package:amayalert/core/widgets/text/custom_text.dart';
@@ -56,9 +57,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
       // Navigate to sign in screen and clear all routes
       if (mounted) {
+        userID = null;
         Navigator.of(context).pop(); // Remove loading dialog
         context.router.popUntilRoot();
-        context.router.push(SignInRoute());
+        context.router.replace(MainRoute());
+        // context.router.push(SignInRoute());
       }
     } catch (e) {
       // Handle error

@@ -53,11 +53,11 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyB26BHGy5bhgtNfpaA-mk7kZZ6SDtPY86E',
-    appId: '1:528831153116:android:5f20553977c9ee42214519',
-    messagingSenderId: '528831153116',
-    projectId: 'amayalert-7b818',
-    storageBucket: 'amayalert-7b818.firebasestorage.app',
+    apiKey: 'AIzaSyDgdmHmiXiZ7eOvgVlu1X8NB4Lmq5n5JOA',
+    appId: '1:535448226446:android:30b263f285f1a02a7d97df',
+    messagingSenderId: '535448226446',
+    projectId: 'amayalert-version-2',
+    storageBucket: 'amayalert-version-2.firebasestorage.app',
   );
 
 }

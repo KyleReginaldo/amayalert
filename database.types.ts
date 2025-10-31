@@ -41,6 +41,45 @@ export type Database = {
         }
         Relationships: []
       }
+      comments: {
+        Row: {
+          comment: string | null
+          created_at: string
+          id: number
+          post: number | null
+          user: string | null
+        }
+        Insert: {
+          comment?: string | null
+          created_at?: string
+          id?: number
+          post?: number | null
+          user?: string | null
+        }
+        Update: {
+          comment?: string | null
+          created_at?: string
+          id?: number
+          post?: number | null
+          user?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comments_post_fkey"
+            columns: ["post"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comments_user_fkey"
+            columns: ["user"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       evacuation_centers: {
         Row: {
           address: string
@@ -107,6 +146,7 @@ export type Database = {
           created_at: string
           id: number
           receiver: string
+          seen_at: string | null
           sender: string
           updated_at: string | null
         }
@@ -116,6 +156,7 @@ export type Database = {
           created_at?: string
           id?: number
           receiver: string
+          seen_at?: string | null
           sender: string
           updated_at?: string | null
         }
@@ -125,6 +166,7 @@ export type Database = {
           created_at?: string
           id?: number
           receiver?: string
+          seen_at?: string | null
           sender?: string
           updated_at?: string | null
         }
@@ -151,6 +193,7 @@ export type Database = {
           created_at: string
           id: number
           media_url: string | null
+          shared_post: number | null
           updated_at: string | null
           user: string
           visibility: string | null
@@ -160,6 +203,7 @@ export type Database = {
           created_at?: string
           id?: number
           media_url?: string | null
+          shared_post?: number | null
           updated_at?: string | null
           user: string
           visibility?: string | null
@@ -169,11 +213,19 @@ export type Database = {
           created_at?: string
           id?: number
           media_url?: string | null
+          shared_post?: number | null
           updated_at?: string | null
           user?: string
           visibility?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "posts_shared_post_fkey"
+            columns: ["shared_post"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "posts_user_fkey"
             columns: ["user"]
@@ -186,12 +238,17 @@ export type Database = {
       rescues: {
         Row: {
           completed_at: string | null
+          contact_phone: string | null
           created_at: string
           description: string | null
+          email: string | null
+          emergency_type: string | null
           id: string
+          important_information: string | null
           lat: number | null
           lng: number | null
           metadata: Json | null
+          number_of_people: number | null
           priority: number
           reported_at: string
           scheduled_for: string | null
@@ -202,12 +259,17 @@ export type Database = {
         }
         Insert: {
           completed_at?: string | null
+          contact_phone?: string | null
           created_at?: string
           description?: string | null
+          email?: string | null
+          emergency_type?: string | null
           id?: string
+          important_information?: string | null
           lat?: number | null
           lng?: number | null
           metadata?: Json | null
+          number_of_people?: number | null
           priority?: number
           reported_at?: string
           scheduled_for?: string | null
@@ -218,12 +280,17 @@ export type Database = {
         }
         Update: {
           completed_at?: string | null
+          contact_phone?: string | null
           created_at?: string
           description?: string | null
+          email?: string | null
+          emergency_type?: string | null
           id?: string
+          important_information?: string | null
           lat?: number | null
           lng?: number | null
           metadata?: Json | null
+          number_of_people?: number | null
           priority?: number
           reported_at?: string
           scheduled_for?: string | null
@@ -276,12 +343,14 @@ export type Database = {
           birth_date: string | null
           created_at: string
           device_token: string | null
-          email: string
+          email: string | null
           full_name: string
           gender: string | null
           id: string
           id_picture: string | null
-          phone_number: string
+          latitude: number | null
+          longitude: number | null
+          phone_number: string | null
           profile_picture: string | null
           role: Database["public"]["Enums"]["user_role"] | null
         }
@@ -289,12 +358,14 @@ export type Database = {
           birth_date?: string | null
           created_at?: string
           device_token?: string | null
-          email: string
+          email?: string | null
           full_name: string
           gender?: string | null
           id: string
           id_picture?: string | null
-          phone_number: string
+          latitude?: number | null
+          longitude?: number | null
+          phone_number?: string | null
           profile_picture?: string | null
           role?: Database["public"]["Enums"]["user_role"] | null
         }
@@ -302,12 +373,14 @@ export type Database = {
           birth_date?: string | null
           created_at?: string
           device_token?: string | null
-          email?: string
+          email?: string | null
           full_name?: string
           gender?: string | null
           id?: string
           id_picture?: string | null
-          phone_number?: string
+          latitude?: number | null
+          longitude?: number | null
+          phone_number?: string | null
           profile_picture?: string | null
           role?: Database["public"]["Enums"]["user_role"] | null
         }

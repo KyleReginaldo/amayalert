@@ -473,6 +473,8 @@ class CreateRescueRequestMapper extends ClassMapperBase<CreateRescueRequest> {
   static CreateRescueRequestMapper ensureInitialized() {
     if (_instance == null) {
       MapperContainer.globals.use(_instance = CreateRescueRequestMapper._());
+      RescuePriorityMapper.ensureInitialized();
+      EmergencyTypeMapper.ensureInitialized();
     }
     return _instance!;
   }
@@ -503,11 +505,38 @@ class CreateRescueRequestMapper extends ClassMapperBase<CreateRescueRequest> {
     _$lng,
     opt: true,
   );
-  static int _$priority(CreateRescueRequest v) => v.priority;
-  static const Field<CreateRescueRequest, int> _f$priority = Field(
+  static RescuePriority _$priority(CreateRescueRequest v) => v.priority;
+  static const Field<CreateRescueRequest, RescuePriority> _f$priority = Field(
     'priority',
     _$priority,
   );
+  static EmergencyType _$emergencyType(CreateRescueRequest v) =>
+      v.emergencyType;
+  static const Field<CreateRescueRequest, EmergencyType> _f$emergencyType =
+      Field('emergencyType', _$emergencyType, key: r'emergency_type');
+  static int? _$numberOfPeople(CreateRescueRequest v) => v.numberOfPeople;
+  static const Field<CreateRescueRequest, int> _f$numberOfPeople = Field(
+    'numberOfPeople',
+    _$numberOfPeople,
+    key: r'number_of_people',
+    opt: true,
+  );
+  static String? _$contactPhone(CreateRescueRequest v) => v.contactPhone;
+  static const Field<CreateRescueRequest, String> _f$contactPhone = Field(
+    'contactPhone',
+    _$contactPhone,
+    key: r'contact_phone',
+    opt: true,
+  );
+  static String? _$importantInformation(CreateRescueRequest v) =>
+      v.importantInformation;
+  static const Field<CreateRescueRequest, String> _f$importantInformation =
+      Field(
+        'importantInformation',
+        _$importantInformation,
+        key: r'important_information',
+        opt: true,
+      );
   static DateTime? _$scheduledFor(CreateRescueRequest v) => v.scheduledFor;
   static const Field<CreateRescueRequest, DateTime> _f$scheduledFor = Field(
     'scheduledFor',
@@ -521,6 +550,11 @@ class CreateRescueRequestMapper extends ClassMapperBase<CreateRescueRequest> {
     _$user,
     opt: true,
   );
+  static String _$email(CreateRescueRequest v) => v.email;
+  static const Field<CreateRescueRequest, String> _f$email = Field(
+    'email',
+    _$email,
+  );
   static Map<String, dynamic>? _$metadata(CreateRescueRequest v) => v.metadata;
   static const Field<CreateRescueRequest, Map<String, dynamic>> _f$metadata =
       Field('metadata', _$metadata, opt: true);
@@ -532,8 +566,13 @@ class CreateRescueRequestMapper extends ClassMapperBase<CreateRescueRequest> {
     #lat: _f$lat,
     #lng: _f$lng,
     #priority: _f$priority,
+    #emergencyType: _f$emergencyType,
+    #numberOfPeople: _f$numberOfPeople,
+    #contactPhone: _f$contactPhone,
+    #importantInformation: _f$importantInformation,
     #scheduledFor: _f$scheduledFor,
     #user: _f$user,
+    #email: _f$email,
     #metadata: _f$metadata,
   };
 
@@ -544,8 +583,13 @@ class CreateRescueRequestMapper extends ClassMapperBase<CreateRescueRequest> {
       lat: data.dec(_f$lat),
       lng: data.dec(_f$lng),
       priority: data.dec(_f$priority),
+      emergencyType: data.dec(_f$emergencyType),
+      numberOfPeople: data.dec(_f$numberOfPeople),
+      contactPhone: data.dec(_f$contactPhone),
+      importantInformation: data.dec(_f$importantInformation),
       scheduledFor: data.dec(_f$scheduledFor),
       user: data.dec(_f$user),
+      email: data.dec(_f$email),
       metadata: data.dec(_f$metadata),
     );
   }
@@ -627,9 +671,14 @@ abstract class CreateRescueRequestCopyWith<
     String? description,
     double? lat,
     double? lng,
-    int? priority,
+    RescuePriority? priority,
+    EmergencyType? emergencyType,
+    int? numberOfPeople,
+    String? contactPhone,
+    String? importantInformation,
     DateTime? scheduledFor,
     String? user,
+    String? email,
     Map<String, dynamic>? metadata,
   });
   CreateRescueRequestCopyWith<$R2, $In, $Out2> $chain<$R2, $Out2>(
@@ -660,9 +709,14 @@ class _CreateRescueRequestCopyWithImpl<$R, $Out>
     Object? description = $none,
     Object? lat = $none,
     Object? lng = $none,
-    int? priority,
+    RescuePriority? priority,
+    EmergencyType? emergencyType,
+    Object? numberOfPeople = $none,
+    Object? contactPhone = $none,
+    Object? importantInformation = $none,
     Object? scheduledFor = $none,
     Object? user = $none,
+    String? email,
     Object? metadata = $none,
   }) => $apply(
     FieldCopyWithData({
@@ -671,8 +725,14 @@ class _CreateRescueRequestCopyWithImpl<$R, $Out>
       if (lat != $none) #lat: lat,
       if (lng != $none) #lng: lng,
       if (priority != null) #priority: priority,
+      if (emergencyType != null) #emergencyType: emergencyType,
+      if (numberOfPeople != $none) #numberOfPeople: numberOfPeople,
+      if (contactPhone != $none) #contactPhone: contactPhone,
+      if (importantInformation != $none)
+        #importantInformation: importantInformation,
       if (scheduledFor != $none) #scheduledFor: scheduledFor,
       if (user != $none) #user: user,
+      if (email != null) #email: email,
       if (metadata != $none) #metadata: metadata,
     }),
   );
@@ -683,8 +743,16 @@ class _CreateRescueRequestCopyWithImpl<$R, $Out>
     lat: data.get(#lat, or: $value.lat),
     lng: data.get(#lng, or: $value.lng),
     priority: data.get(#priority, or: $value.priority),
+    emergencyType: data.get(#emergencyType, or: $value.emergencyType),
+    numberOfPeople: data.get(#numberOfPeople, or: $value.numberOfPeople),
+    contactPhone: data.get(#contactPhone, or: $value.contactPhone),
+    importantInformation: data.get(
+      #importantInformation,
+      or: $value.importantInformation,
+    ),
     scheduledFor: data.get(#scheduledFor, or: $value.scheduledFor),
     user: data.get(#user, or: $value.user),
+    email: data.get(#email, or: $value.email),
     metadata: data.get(#metadata, or: $value.metadata),
   );
 

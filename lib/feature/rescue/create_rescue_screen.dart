@@ -23,9 +23,9 @@ class _CreateRescueScreenState extends State<CreateRescueScreen> {
   final _titleController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _contactController = TextEditingController();
+  final _emailController = TextEditingController();
   final _additionalInfoController = TextEditingController();
   final _victimCountController = TextEditingController();
-
   final _rescueProvider = RescueProvider();
 
   EmergencyType _selectedEmergencyType = EmergencyType.other;
@@ -39,6 +39,7 @@ class _CreateRescueScreenState extends State<CreateRescueScreen> {
     _titleController.dispose();
     _descriptionController.dispose();
     _contactController.dispose();
+    _emailController.dispose();
     _additionalInfoController.dispose();
     _victimCountController.dispose();
     super.dispose();
@@ -93,7 +94,28 @@ class _CreateRescueScreenState extends State<CreateRescueScreen> {
     EasyLoading.show(status: 'Submitting rescue request...');
 
     try {
-      final dto = CreateRescueDTO(
+      // Validate required contact email
+      final emailText = _emailController.text.trim();
+      if (emailText.isEmpty) {
+        EasyLoading.dismiss();
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enter a contact email.')),
+        );
+        return;
+      }
+
+      // Basic email format check
+      final emailRegex = RegExp(r"^[^@\s]+@[^@\s]+\.[^@\s]+$");
+      if (!emailRegex.hasMatch(emailText)) {
+        EasyLoading.dismiss();
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enter a valid email address.')),
+        );
+        return;
+      }
+      final request = CreateRescueRequest(
         title: _titleController.text.trim(),
         description: _descriptionController.text.trim().isEmpty
             ? null
@@ -102,20 +124,21 @@ class _CreateRescueScreenState extends State<CreateRescueScreen> {
         lng: _currentLocation?.longitude,
         priority: _selectedPriority,
         emergencyType: _selectedEmergencyType,
-        victimCount: _victimCountController.text.isEmpty
+        numberOfPeople: _victimCountController.text.isEmpty
             ? null
             : int.tryParse(_victimCountController.text),
         contactPhone: _contactController.text.trim().isEmpty
             ? null
             : _contactController.text.trim(),
-        additionalInfo: _additionalInfoController.text.trim().isEmpty
+        importantInformation: _additionalInfoController.text.trim().isEmpty
             ? null
             : _additionalInfoController.text.trim(),
+        email: _emailController.text.trim(),
       );
 
       final result = await _rescueProvider.createRescue(
         userId: userId,
-        dto: dto,
+        request: request,
       );
 
       EasyLoading.dismiss();
@@ -234,6 +257,12 @@ class _CreateRescueScreenState extends State<CreateRescueScreen> {
                   ),
                 ),
               ],
+            ),
+            const SizedBox(height: 12),
+            CustomTextField(
+              controller: _emailController,
+              hint: 'Contact email (optional)',
+              keyboardType: TextInputType.emailAddress,
             ),
             const SizedBox(height: 12),
             CustomTextField(

@@ -81,6 +81,14 @@ class AppRouter extends RootStackRouter {
       transitionsBuilder: TransitionsBuilders.slideLeft,
     ),
     CustomRoute(
+      page: CommentsRoute.page,
+      transitionsBuilder: TransitionsBuilders.slideLeft,
+    ),
+    CustomRoute(
+      page: SharePostRoute.page,
+      transitionsBuilder: TransitionsBuilders.slideLeft,
+    ),
+    CustomRoute(
       page: WebViewRoute.page,
       transitionsBuilder: TransitionsBuilders.slideLeft,
     ),

@@ -4,15 +4,27 @@ import 'package:amayalert/core/theme/theme.dart';
 import 'package:amayalert/core/widgets/buttons/custom_buttons.dart';
 import 'package:amayalert/core/widgets/text/custom_text.dart';
 import 'package:amayalert/dependency.dart';
+import 'package:amayalert/feature/profile/profile_repository.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:lucide_flutter/lucide_flutter.dart';
+import 'package:provider/provider.dart';
+
+import '../../core/constant/constant.dart';
 
 @RoutePage()
-class OnBoardingScreen extends StatefulWidget {
+class OnBoardingScreen extends StatefulWidget implements AutoRouteWrapper {
   final void Function(bool success)? onResult;
 
   const OnBoardingScreen({super.key, this.onResult});
+
+  @override
+  Widget wrappedRoute(BuildContext context) {
+    return ChangeNotifierProvider.value(
+      value: sl<ProfileRepository>(),
+      child: this,
+    );
+  }
 
   @override
   State<OnBoardingScreen> createState() => _OnBoardingScreenState();
@@ -20,7 +32,7 @@ class OnBoardingScreen extends StatefulWidget {
 
 class _OnBoardingScreenState extends State<OnBoardingScreen> {
   void completeOnboarding() {
-    sl<SharedPreferences>().setBool('onboarding_done', true);
+    // sl<SharedPreferences>().setBool('onboarding_done', true);
     widget.onResult?.call(true);
   }
 
@@ -80,6 +92,32 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
               borderRadius: 50,
               foregroundColor: Color(0xFF0BA6DF),
               borderColor: Color(0xFF0BA6DF),
+            ),
+            SizedBox(height: 10),
+            CustomOutlinedButton(
+              label: 'Continue as Guest',
+
+              onPressed: () async {
+                final auth = await supabase.auth.signInAnonymously();
+                debugPrint('anon user: ${auth.user}');
+                if (auth.user != null) {
+                  await supabase.from('users').insert({
+                    'full_name': 'Guest User',
+                    'id': auth.user!.id,
+                    'email':
+                        'guest_${DateTime.now().millisecondsSinceEpoch}@gmail.com',
+                  });
+                  if (mounted) {
+                    context.read<ProfileRepository>().clear();
+                    userID = supabase.auth.currentUser?.id;
+                  }
+                  completeOnboarding();
+                }
+              },
+              borderRadius: 50,
+              icon: LucideIcons.hatGlasses,
+              foregroundColor: Color.fromARGB(255, 255, 255, 255),
+              borderColor: Color.fromARGB(255, 255, 255, 255),
             ),
             Spacer(),
           ],

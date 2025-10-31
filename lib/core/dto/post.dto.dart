@@ -4,12 +4,14 @@ class CreatePostDTO {
   final String content;
   final String? mediaUrl;
   final String visibility;
+  final int? sharedPost;
   final XFile? imageFile;
 
   CreatePostDTO({
     required this.content,
     this.mediaUrl,
     required this.visibility,
+    this.sharedPost,
     this.imageFile,
   });
 
@@ -17,6 +19,7 @@ class CreatePostDTO {
     return {
       'content': content,
       if (mediaUrl != null) 'media_url': mediaUrl,
+      if (sharedPost != null) 'shared_post': sharedPost,
       'visibility': visibility,
     };
   }

@@ -1,20 +1,31 @@
+import 'package:amayalert/core/constant/constant.dart';
 import 'package:amayalert/core/theme/theme.dart';
 import 'package:amayalert/core/widgets/buttons/custom_buttons.dart';
 import 'package:amayalert/core/widgets/input/custom_text_field.dart';
+import 'package:amayalert/dependency.dart';
 import 'package:amayalert/feature/auth/auth_provider.dart';
+import 'package:amayalert/feature/profile/profile_repository.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
+import 'package:provider/provider.dart';
 
 import '../../core/widgets/text/custom_text.dart';
 
 @RoutePage()
-class SignInScreen extends StatefulWidget {
+class SignInScreen extends StatefulWidget implements AutoRouteWrapper {
   final void Function(bool success)? onResult;
   const SignInScreen({super.key, this.onResult});
 
   @override
   State<SignInScreen> createState() => _SignInScreenState();
+  @override
+  Widget wrappedRoute(BuildContext context) {
+    return ChangeNotifierProvider.value(
+      value: sl<ProfileRepository>(),
+      child: this,
+    );
+  }
 }
 
 class _SignInScreenState extends State<SignInScreen> {
@@ -34,6 +45,10 @@ class _SignInScreenState extends State<SignInScreen> {
       EasyLoading.showError(result.error);
     } else {
       EasyLoading.dismiss();
+      if (mounted) {
+        context.read<ProfileRepository>().clear();
+        userID = supabase.auth.currentUser?.id;
+      }
       EasyLoading.showSuccess(result.value);
 
       if (mounted) {

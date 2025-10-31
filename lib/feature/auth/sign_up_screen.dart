@@ -5,16 +5,28 @@ import 'package:amayalert/core/widgets/text/custom_text.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
+import 'package:provider/provider.dart';
 
+import '../../core/constant/constant.dart';
 import '../../core/dto/user.dto.dart';
+import '../../dependency.dart';
+import '../profile/profile_repository.dart';
 import 'auth_provider.dart';
 
 @RoutePage()
-class SignUpScreen extends StatefulWidget {
+class SignUpScreen extends StatefulWidget implements AutoRouteWrapper {
   const SignUpScreen({super.key});
 
   @override
   State<SignUpScreen> createState() => _SignUpScreenState();
+
+  @override
+  Widget wrappedRoute(BuildContext context) {
+    return ChangeNotifierProvider.value(
+      value: sl<ProfileRepository>(),
+      child: this,
+    );
+  }
 }
 
 class _SignUpScreenState extends State<SignUpScreen> {
@@ -28,7 +40,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
   bool obscurePassword = true;
 
   void handleSignUp() async {
-    // Access all the form data:
     final String fullName = fullNameController.text;
     final String email = emailController.text;
     final String password = passwordController.text;
@@ -61,6 +72,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
       EasyLoading.dismiss();
       EasyLoading.showSuccess(result.value);
       if (mounted) {
+        context.read<ProfileRepository>().clear();
+        userID = supabase.auth.currentUser?.id;
+
         context.router.maybePop(true);
       }
     }

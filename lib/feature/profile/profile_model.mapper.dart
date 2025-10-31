@@ -31,19 +31,25 @@ class ProfileMapper extends ClassMapperBase<Profile> {
   );
   static String _$email(Profile v) => v.email;
   static const Field<Profile, String> _f$email = Field('email', _$email);
-  static DateTime _$birthDate(Profile v) => v.birthDate;
+  static DateTime? _$birthDate(Profile v) => v.birthDate;
   static const Field<Profile, DateTime> _f$birthDate = Field(
     'birthDate',
     _$birthDate,
     key: r'birth_date',
+    opt: true,
   );
-  static String _$gender(Profile v) => v.gender;
-  static const Field<Profile, String> _f$gender = Field('gender', _$gender);
-  static String _$phoneNumber(Profile v) => v.phoneNumber;
+  static String? _$gender(Profile v) => v.gender;
+  static const Field<Profile, String> _f$gender = Field(
+    'gender',
+    _$gender,
+    opt: true,
+  );
+  static String? _$phoneNumber(Profile v) => v.phoneNumber;
   static const Field<Profile, String> _f$phoneNumber = Field(
     'phoneNumber',
     _$phoneNumber,
     key: r'phone_number',
+    opt: true,
   );
   static String _$role(Profile v) => v.role;
   static const Field<Profile, String> _f$role = Field('role', _$role);
@@ -52,12 +58,14 @@ class ProfileMapper extends ClassMapperBase<Profile> {
     'profilePicture',
     _$profilePicture,
     key: r'profile_picture',
+    opt: true,
   );
   static String? _$idPicture(Profile v) => v.idPicture;
   static const Field<Profile, String> _f$idPicture = Field(
     'idPicture',
     _$idPicture,
     key: r'id_picture',
+    opt: true,
   );
   static String? _$deviceToken(Profile v) => v.deviceToken;
   static const Field<Profile, String> _f$deviceToken = Field(
@@ -181,9 +189,9 @@ class _ProfileCopyWithImpl<$R, $Out>
     String? id,
     String? fullName,
     String? email,
-    DateTime? birthDate,
-    String? gender,
-    String? phoneNumber,
+    Object? birthDate = $none,
+    Object? gender = $none,
+    Object? phoneNumber = $none,
     String? role,
     Object? profilePicture = $none,
     Object? idPicture = $none,
@@ -193,9 +201,9 @@ class _ProfileCopyWithImpl<$R, $Out>
       if (id != null) #id: id,
       if (fullName != null) #fullName: fullName,
       if (email != null) #email: email,
-      if (birthDate != null) #birthDate: birthDate,
-      if (gender != null) #gender: gender,
-      if (phoneNumber != null) #phoneNumber: phoneNumber,
+      if (birthDate != $none) #birthDate: birthDate,
+      if (gender != $none) #gender: gender,
+      if (phoneNumber != $none) #phoneNumber: phoneNumber,
       if (role != null) #role: role,
       if (profilePicture != $none) #profilePicture: profilePicture,
       if (idPicture != $none) #idPicture: idPicture,

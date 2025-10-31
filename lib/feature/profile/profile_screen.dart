@@ -76,26 +76,80 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             )
           : user == null
-          ? Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                spacing: 8,
-                children: [
-                  CustomText(
-                    text: 'No user data found.',
-                    fontWeight: FontWeight.w500,
-                  ),
-                  CustomText(text: 'Please sign in to continue.', fontSize: 13),
+          ? user == null && userID != null
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 480),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            border: Border.all(color: AppColors.gray200),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            spacing: 12,
+                            children: [
+                              // Icon + Title
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    LucideIcons.user,
+                                    size: 18,
+                                    color: AppColors.gray600,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const CustomText(
+                                    text: 'Guest mode',
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 16,
+                                  ),
+                                ],
+                              ),
 
-                  CustomElevatedButton(
-                    label: 'Sign In',
-                    onPressed: () {},
-                    icon: LucideIcons.logIn,
-                    size: ButtonSize.sm,
-                  ),
-                ],
-              ),
-            )
+                              // Message
+                              CustomText(
+                                text:
+                                    'You\'re browsing as a guest. Sign in to save your profile and posts.',
+                                fontSize: 13,
+                                color: AppColors.gray600,
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  )
+                : Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      spacing: 8,
+                      children: [
+                        CustomText(
+                          text: 'No user data found.',
+                          fontWeight: FontWeight.w500,
+                        ),
+                        CustomText(
+                          text: 'Please sign in to continue.',
+                          fontSize: 13,
+                        ),
+                        CustomElevatedButton(
+                          label: 'Sign In',
+                          onPressed: () {
+                            context.router.push(SignInRoute());
+                          },
+                          icon: LucideIcons.logIn,
+                          size: ButtonSize.sm,
+                        ),
+                      ],
+                    ),
+                  )
           : SingleChildScrollView(
               child: Column(
                 children: [
@@ -163,40 +217,41 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           color: AppColors.gray600,
                         ),
                         const SizedBox(height: 5),
-                        GestureDetector(
-                          onTap: () {
-                            context.router.push(
-                              EditProfileRoute(profile: user),
-                            );
-                          },
-                          child: Container(
-                            padding: EdgeInsets.symmetric(
-                              vertical: 8,
-                              horizontal: 16,
-                            ),
+                        if (!user.email.contains('guest'))
+                          GestureDetector(
+                            onTap: () {
+                              context.router.push(
+                                EditProfileRoute(profile: user),
+                              );
+                            },
+                            child: Container(
+                              padding: EdgeInsets.symmetric(
+                                vertical: 8,
+                                horizontal: 16,
+                              ),
 
-                            decoration: BoxDecoration(
-                              color: Colors.black,
-                              borderRadius: BorderRadius.circular(5),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              spacing: 5,
-                              children: [
-                                Icon(
-                                  LucideIcons.pen,
-                                  color: Colors.white,
-                                  size: 16,
-                                ),
-                                CustomText(
-                                  text: 'Edit Profile',
-                                  color: Colors.white,
-                                  fontSize: 14,
-                                ),
-                              ],
+                              decoration: BoxDecoration(
+                                color: Colors.black,
+                                borderRadius: BorderRadius.circular(5),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                spacing: 5,
+                                children: [
+                                  Icon(
+                                    LucideIcons.pen,
+                                    color: Colors.white,
+                                    size: 16,
+                                  ),
+                                  CustomText(
+                                    text: 'Edit Profile',
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
-                        ),
                       ],
                     ),
                   ),

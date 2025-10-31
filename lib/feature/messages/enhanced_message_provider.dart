@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:amayalert/core/result/result.dart';
+import 'package:amayalert/core/utils/onesignal.helper.dart';
 import 'package:amayalert/feature/messages/message_model.dart';
 import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
@@ -41,7 +42,11 @@ class EnhancedMessageProvider {
           .insert(messageData)
           .select()
           .single();
-
+      await sendNotif(
+        users: [request.receiver],
+        title: 'New message',
+        content: request.content,
+      );
       final message = MessageMapper.fromMap(response);
       return Result.success(message);
     } on PostgrestException catch (e) {

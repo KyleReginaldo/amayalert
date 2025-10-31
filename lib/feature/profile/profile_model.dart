@@ -8,9 +8,9 @@ class Profile with ProfileMappable {
   final String id;
   final String fullName;
   final String email;
-  final DateTime birthDate;
-  final String gender;
-  final String phoneNumber;
+  final DateTime? birthDate;
+  final String? gender;
+  final String? phoneNumber;
   final String role;
   final String? profilePicture;
   final String? idPicture;
@@ -20,12 +20,12 @@ class Profile with ProfileMappable {
     required this.id,
     required this.fullName,
     required this.email,
-    required this.birthDate,
-    required this.gender,
-    required this.phoneNumber,
+    this.birthDate,
+    this.gender,
+    this.phoneNumber,
     required this.role,
-    required this.profilePicture,
-    required this.idPicture,
+    this.profilePicture,
+    this.idPicture,
     this.deviceToken,
   });
 }

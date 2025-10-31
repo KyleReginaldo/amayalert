@@ -1,3 +1,4 @@
+// ignore_for_file: public_member_api_docs, sort_constructors_first
 import 'package:dart_mappable/dart_mappable.dart';
 
 part 'rescue_model.mapper.dart';
@@ -100,9 +101,16 @@ class CreateRescueRequest with CreateRescueRequestMappable {
   final String? description;
   final double? lat;
   final double? lng;
-  final int priority;
+  // Use enum for input; map to int (value) when sending to DB
+  final RescuePriority priority;
+  final EmergencyType emergencyType;
+  final int? numberOfPeople;
+  final String? contactPhone;
+  final String? importantInformation;
   final DateTime? scheduledFor;
   final String? user;
+  final String email;
+  // Optional additional metadata provided by caller; merged with computed
   final Map<String, dynamic>? metadata;
 
   const CreateRescueRequest({
@@ -111,41 +119,38 @@ class CreateRescueRequest with CreateRescueRequestMappable {
     this.lat,
     this.lng,
     required this.priority,
+    required this.emergencyType,
+    this.numberOfPeople,
+    this.contactPhone,
+    this.importantInformation,
     this.scheduledFor,
     this.user,
+    required this.email,
     this.metadata,
   });
-}
 
-class CreateRescueDTO {
-  final String title;
-  final String? description;
-  final double? lat;
-  final double? lng;
-  final RescuePriority priority;
-  final EmergencyType emergencyType;
-  final int? victimCount;
-  final String? contactPhone;
-  final String? additionalInfo;
-  final DateTime? scheduledFor;
+  // Computed metadata based on fields, merged with any provided metadata
+  Map<String, dynamic>? buildMetadata() =>
+      metadata == null ? null : {...metadata!};
 
-  CreateRescueDTO({
-    required this.title,
-    this.description,
-    this.lat,
-    this.lng,
-    required this.priority,
-    required this.emergencyType,
-    this.victimCount,
-    this.contactPhone,
-    this.additionalInfo,
-    this.scheduledFor,
-  });
-
-  Map<String, dynamic> get metadata => {
+  // Override toMap to ensure DB-compatible payload
+  @override
+  Map<String, dynamic> toMap() => {
+    'title': title.trim(),
+    'description': description,
+    'priority': priority.value,
+    // status, reported_at, created_at, updated_at handled by provider
+    'lat': lat,
+    'lng': lng,
+    'metadata': buildMetadata(),
+    'reported_at': null, // will be filled by provider if needed
+    'scheduled_for': scheduledFor?.toIso8601String(),
+    'user': user,
+    // New top-level fields per schema
     'emergency_type': emergencyType.name,
-    if (victimCount != null) 'victim_count': victimCount,
-    if (contactPhone != null) 'contact_phone': contactPhone,
-    if (additionalInfo != null) 'additional_info': additionalInfo,
+    'number_of_people': numberOfPeople,
+    'contact_phone': contactPhone,
+    'important_information': importantInformation,
+    'email': email,
   };
 }

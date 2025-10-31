@@ -8,39 +8,19 @@ class RescueProvider {
 
   Future<Result<String>> createRescue({
     required String userId,
-    required CreateRescueDTO dto,
+    required CreateRescueRequest request,
   }) async {
     try {
-      // Prepare metadata
-      final metadata = Map<String, dynamic>.from(dto.metadata);
-      debugPrint('Final metadata: $metadata');
-
-      // Create rescue request
-      final rescueRequest = CreateRescueRequest(
-        title: dto.title,
-        description: dto.description,
-        lat: dto.lat,
-        lng: dto.lng,
-        priority: dto.priority.value,
-        scheduledFor: dto.scheduledFor,
-        user: userId,
-        metadata: metadata,
-      );
-
-      // Insert into database
+      // Build insert map from request, overriding user and adding server-managed fields
+      final insertMap = request.toMap();
+      insertMap['user'] = userId;
+      debugPrint('Final metadata: ${insertMap['metadata']}');
       final response = await supabase
           .from('rescues')
           .insert({
-            'title': rescueRequest.title,
-            'description': rescueRequest.description,
-            'lat': rescueRequest.lat,
-            'lng': rescueRequest.lng,
-            'priority': rescueRequest.priority,
+            ...insertMap,
             'status': 'pending',
             'reported_at': DateTime.now().toIso8601String(),
-            'scheduled_for': rescueRequest.scheduledFor?.toIso8601String(),
-            'user': rescueRequest.user,
-            'metadata': rescueRequest.metadata,
             'created_at': DateTime.now().toIso8601String(),
             'updated_at': DateTime.now().toIso8601String(),
           })

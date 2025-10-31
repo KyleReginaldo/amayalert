@@ -84,7 +84,6 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     getCurrentLocation();
 
-    // Setup search listener
     _searchController.addListener(() {
       final query = _searchController.text.trim();
       if (query.isEmpty) {
@@ -112,7 +111,6 @@ class _HomeScreenState extends State<HomeScreen> {
           )
           .subscribe();
 
-      // Load initial data for search
       context.read<PostRepository>().loadPosts();
       context.read<AlertRepository>().loadAlerts();
       context.read<EvacuationRepository>().getEvacuationCenters();
@@ -150,96 +148,91 @@ class _HomeScreenState extends State<HomeScreen> {
       (WeatherRepository bloc) => bloc.errorMessage,
     );
 
-    return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              _getGradientTopColor(),
-              AppColors.gray50.withValues(alpha: 0.3),
-              Colors.white,
-            ],
-            stops: const [0.0, 0.4, 1.0],
+    return SafeArea(
+      top: false,
+      child: Scaffold(
+        body: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                _getGradientTopColor(),
+                AppColors.gray50.withValues(alpha: 0.3),
+                Colors.white,
+              ],
+              stops: const [0.0, 0.4, 1.0],
+            ),
           ),
-        ),
-        child: RefreshIndicator(
-          onRefresh: () async {
-            getCurrentLocation();
-            await context.read<PostRepository>().loadPosts();
-            await context.read<AlertRepository>().loadAlerts();
-            context.read<EvacuationRepository>().getEvacuationCenters();
-          },
-          child: CustomScrollView(
-            slivers: [
-              // Custom App Bar
-              SliverAppBar(
-                elevation: 0,
-                backgroundColor: Colors.transparent,
-                expandedHeight: 120,
-                floating: true,
-                pinned: false,
-                flexibleSpace: FlexibleSpaceBar(
-                  background: Container(
-                    padding: const EdgeInsets.fromLTRB(20, 60, 20, 20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        CustomText(
-                          text: 'Good ${_getGreeting()}',
-                          fontSize: 28,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimaryDark,
-                        ),
-                        CustomText(
-                          text: 'Stay informed, stay safe',
-                          fontSize: 16,
-                          color: AppColors.textPrimaryDark,
-                        ),
-                      ],
+          child: RefreshIndicator(
+            onRefresh: () async {
+              getCurrentLocation();
+              await context.read<PostRepository>().loadPosts();
+              await context.read<AlertRepository>().loadAlerts();
+              context.read<EvacuationRepository>().getEvacuationCenters();
+            },
+            child: CustomScrollView(
+              key: const PageStorageKey('home_scroll_view'),
+              slivers: [
+                SliverAppBar(
+                  elevation: 0,
+                  backgroundColor: Colors.transparent,
+                  expandedHeight: 120,
+                  floating: true,
+                  pinned: false,
+                  flexibleSpace: FlexibleSpaceBar(
+                    background: Container(
+                      padding: const EdgeInsets.fromLTRB(20, 60, 20, 20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          CustomText(
+                            text: 'Good ${_getGreeting()}',
+                            fontSize: 28,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimaryDark,
+                          ),
+                          CustomText(
+                            text: 'Stay informed, stay safe',
+                            fontSize: 16,
+                            color: AppColors.textPrimaryDark,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
 
-              // Content
-              SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                sliver: SliverList(
-                  delegate: SliverChildListDelegate([
-                    // Emergency Alert Section (always shown)
-                    _buildAlertSection(),
-                    const SizedBox(height: 24),
-
-                    // Search Section (always shown)
-                    _buildSearchSection(),
-
-                    // Regular content (hidden when showing search results)
-                    if (!_showSearchResults) ...[
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  sliver: SliverList(
+                    delegate: SliverChildListDelegate([
+                      _buildAlertSection(),
                       const SizedBox(height: 24),
 
-                      // Weather Section
-                      _buildWeatherSection(weather, isLoading, errorMessage),
-                      const SizedBox(height: 32),
+                      _buildSearchSection(),
 
-                      // Emergency Actions Section
-                      _buildEmergencyActionsSection(context),
-                      const SizedBox(height: 32),
+                      if (!_showSearchResults) ...[
+                        const SizedBox(height: 24),
 
-                      // Quick Actions Section
-                      _buildQuickActionsSection(context),
-                      const SizedBox(height: 32),
+                        _buildWeatherSection(weather, isLoading, errorMessage),
+                        const SizedBox(height: 32),
 
-                      // Posts Section
-                      _buildPostsSection(),
-                    ],
+                        _buildEmergencyActionsSection(context),
+                        const SizedBox(height: 32),
 
-                    const SizedBox(height: 20),
-                  ]),
+                        _buildQuickActionsSection(context),
+                        const SizedBox(height: 32),
+
+                        _buildPostsSection(),
+                      ],
+
+                      const SizedBox(height: 20),
+                    ]),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -256,13 +249,10 @@ class _HomeScreenState extends State<HomeScreen> {
   Color _getGradientTopColor() {
     final hour = DateTime.now().hour;
     if (hour < 12) {
-      // Morning - soft blue/purple gradient
       return const Color(0xFF64B5F6);
     } else if (hour < 17) {
-      // Afternoon - warm golden/orange gradient
       return const Color(0xFFFFB74D);
     } else {
-      // Evening - deep purple/pink gradient
       return const Color(0xFF7986CB);
     }
   }
@@ -296,7 +286,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
 
-        // Search Results
         if (_showSearchResults) ...[
           const SizedBox(height: 16),
           Consumer<SearchRepository>(
@@ -372,7 +361,6 @@ class _HomeScreenState extends State<HomeScreen> {
         const SizedBox(height: 16),
         Row(
           children: [
-            // Report Emergency Button
             Expanded(
               child: Container(
                 decoration: BoxDecoration(
@@ -427,7 +415,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
             const SizedBox(width: 16),
-            // View Rescues Button
+
             Expanded(
               child: Container(
                 decoration: BoxDecoration(
@@ -513,7 +501,6 @@ class _HomeScreenState extends State<HomeScreen> {
           padding: const EdgeInsets.all(20),
           child: Row(
             children: [
-              // Avatar placeholder
               Container(
                 width: 40,
                 height: 40,
@@ -528,7 +515,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               const SizedBox(width: 12),
-              // Post input
+
               Expanded(
                 child: GestureDetector(
                   onTap: () => context.router.push(const CreatePostsRoute()),
@@ -550,7 +537,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               const SizedBox(width: 12),
-              // Camera button
+
               Container(
                 width: 44,
                 height: 44,

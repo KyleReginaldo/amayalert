@@ -1,3 +1,4 @@
+import 'package:amayalert/feature/posts/post_comment.dart';
 import 'package:amayalert/feature/profile/profile_model.dart';
 import 'package:dart_mappable/dart_mappable.dart';
 
@@ -13,6 +14,8 @@ class Post with PostMappable {
   final PostVisibility visibility;
   final DateTime createdAt;
   final DateTime? updatedAt;
+  final List<PostComment>? comments;
+  final Post? sharedPost;
 
   const Post({
     required this.id,
@@ -22,43 +25,13 @@ class Post with PostMappable {
     required this.visibility,
     required this.createdAt,
     this.updatedAt,
+    this.comments,
+    this.sharedPost,
   });
 
   /// Check if post has media attachment
   bool get hasMedia {
     return mediaUrl != null && mediaUrl!.isNotEmpty;
-  }
-
-  @override
-  bool operator ==(Object other) {
-    if (identical(this, other)) return true;
-    return other is Post &&
-        other.id == id &&
-        other.user == user &&
-        other.content == content &&
-        other.mediaUrl == mediaUrl &&
-        other.visibility == visibility &&
-        other.createdAt == createdAt &&
-        other.updatedAt == updatedAt;
-  }
-
-  @override
-  int get hashCode {
-    return Object.hash(
-      id,
-      user,
-      content,
-      mediaUrl,
-      visibility,
-      createdAt,
-      updatedAt,
-    );
-  }
-
-  @override
-  String toString() {
-    return 'Post(id: $id, user: $user, content: $content, mediaUrl: $mediaUrl, '
-        'visibility: $visibility, createdAt: $createdAt, updatedAt: $updatedAt)';
   }
 }
 

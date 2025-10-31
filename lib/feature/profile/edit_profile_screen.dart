@@ -48,10 +48,12 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   void _populateFields() {
     fullNameController.text = widget.profile.fullName;
     emailController.text = widget.profile.email;
-    phoneNumberController.text = widget.profile.phoneNumber;
+    if (widget.profile.phoneNumber != null) {
+      phoneNumberController.text = widget.profile.phoneNumber!;
+    }
 
     // Normalize gender to match dropdown values
-    final profileGender = widget.profile.gender.toLowerCase();
+    final profileGender = widget.profile.gender?.toLowerCase();
     if (profileGender == 'male') {
       selectedGender = 'Male';
     } else if (profileGender == 'female') {

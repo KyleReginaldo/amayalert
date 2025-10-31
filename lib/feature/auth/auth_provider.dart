@@ -1,3 +1,4 @@
+import 'package:onesignal_flutter/onesignal_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/dto/user.dto.dart';
@@ -14,6 +15,8 @@ class AuthProvider {
         password: password,
       );
       if (response.session != null) {
+        await OneSignal.login(response.user!.id);
+
         return Result.success('Sign in successful');
       } else {
         return Result.error('Sign in failed');
@@ -36,6 +39,7 @@ class AuthProvider {
             .select()
             .single();
         if (user.isNotEmpty) {
+          await OneSignal.login(response.user!.id);
           return Result.success('Sign up successful');
         } else {
           await Supabase.instance.client.auth.signOut();

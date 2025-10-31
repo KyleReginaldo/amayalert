@@ -66,6 +66,8 @@ class PostMapper extends ClassMapperBase<Post> {
       MapperContainer.globals.use(_instance = PostMapper._());
       ProfileMapper.ensureInitialized();
       PostVisibilityMapper.ensureInitialized();
+      PostCommentMapper.ensureInitialized();
+      PostMapper.ensureInitialized();
     }
     return _instance!;
   }
@@ -104,18 +106,24 @@ class PostMapper extends ClassMapperBase<Post> {
     key: r'updated_at',
     opt: true,
   );
+  static List<PostComment>? _$comments(Post v) => v.comments;
+  static const Field<Post, List<PostComment>> _f$comments = Field(
+    'comments',
+    _$comments,
+    opt: true,
+  );
+  static Post? _$sharedPost(Post v) => v.sharedPost;
+  static const Field<Post, Post> _f$sharedPost = Field(
+    'sharedPost',
+    _$sharedPost,
+    key: r'shared_post',
+    opt: true,
+  );
   static bool _$hasMedia(Post v) => v.hasMedia;
   static const Field<Post, bool> _f$hasMedia = Field(
     'hasMedia',
     _$hasMedia,
     key: r'has_media',
-    mode: FieldMode.member,
-  );
-  static int _$hashCode(Post v) => v.hashCode;
-  static const Field<Post, int> _f$hashCode = Field(
-    'hashCode',
-    _$hashCode,
-    key: r'hash_code',
     mode: FieldMode.member,
   );
 
@@ -128,8 +136,9 @@ class PostMapper extends ClassMapperBase<Post> {
     #visibility: _f$visibility,
     #createdAt: _f$createdAt,
     #updatedAt: _f$updatedAt,
+    #comments: _f$comments,
+    #sharedPost: _f$sharedPost,
     #hasMedia: _f$hasMedia,
-    #hashCode: _f$hashCode,
   };
 
   static Post _instantiate(DecodingData data) {
@@ -141,6 +150,8 @@ class PostMapper extends ClassMapperBase<Post> {
       visibility: data.dec(_f$visibility),
       createdAt: data.dec(_f$createdAt),
       updatedAt: data.dec(_f$updatedAt),
+      comments: data.dec(_f$comments),
+      sharedPost: data.dec(_f$sharedPost),
     );
   }
 
@@ -191,6 +202,13 @@ extension PostValueCopy<$R, $Out> on ObjectCopyWith<$R, Post, $Out> {
 abstract class PostCopyWith<$R, $In extends Post, $Out>
     implements ClassCopyWith<$R, $In, $Out> {
   ProfileCopyWith<$R, Profile, Profile> get user;
+  ListCopyWith<
+    $R,
+    PostComment,
+    PostCommentCopyWith<$R, PostComment, PostComment>
+  >?
+  get comments;
+  PostCopyWith<$R, Post, Post>? get sharedPost;
   $R call({
     int? id,
     Profile? user,
@@ -199,6 +217,8 @@ abstract class PostCopyWith<$R, $In extends Post, $Out>
     PostVisibility? visibility,
     DateTime? createdAt,
     DateTime? updatedAt,
+    List<PostComment>? comments,
+    Post? sharedPost,
   });
   PostCopyWith<$R2, $In, $Out2> $chain<$R2, $Out2>(Then<$Out2, $R2> t);
 }
@@ -213,6 +233,22 @@ class _PostCopyWithImpl<$R, $Out> extends ClassCopyWithBase<$R, Post, $Out>
   ProfileCopyWith<$R, Profile, Profile> get user =>
       $value.user.copyWith.$chain((v) => call(user: v));
   @override
+  ListCopyWith<
+    $R,
+    PostComment,
+    PostCommentCopyWith<$R, PostComment, PostComment>
+  >?
+  get comments => $value.comments != null
+      ? ListCopyWith(
+          $value.comments!,
+          (v, t) => v.copyWith.$chain(t),
+          (v) => call(comments: v),
+        )
+      : null;
+  @override
+  PostCopyWith<$R, Post, Post>? get sharedPost =>
+      $value.sharedPost?.copyWith.$chain((v) => call(sharedPost: v));
+  @override
   $R call({
     int? id,
     Profile? user,
@@ -221,6 +257,8 @@ class _PostCopyWithImpl<$R, $Out> extends ClassCopyWithBase<$R, Post, $Out>
     PostVisibility? visibility,
     DateTime? createdAt,
     Object? updatedAt = $none,
+    Object? comments = $none,
+    Object? sharedPost = $none,
   }) => $apply(
     FieldCopyWithData({
       if (id != null) #id: id,
@@ -230,6 +268,8 @@ class _PostCopyWithImpl<$R, $Out> extends ClassCopyWithBase<$R, Post, $Out>
       if (visibility != null) #visibility: visibility,
       if (createdAt != null) #createdAt: createdAt,
       if (updatedAt != $none) #updatedAt: updatedAt,
+      if (comments != $none) #comments: comments,
+      if (sharedPost != $none) #sharedPost: sharedPost,
     }),
   );
   @override
@@ -241,6 +281,8 @@ class _PostCopyWithImpl<$R, $Out> extends ClassCopyWithBase<$R, Post, $Out>
     visibility: data.get(#visibility, or: $value.visibility),
     createdAt: data.get(#createdAt, or: $value.createdAt),
     updatedAt: data.get(#updatedAt, or: $value.updatedAt),
+    comments: data.get(#comments, or: $value.comments),
+    sharedPost: data.get(#sharedPost, or: $value.sharedPost),
   );
 
   @override
