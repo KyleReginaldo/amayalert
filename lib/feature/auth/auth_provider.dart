@@ -21,8 +21,8 @@ class AuthProvider {
       } else {
         return Result.error('Sign in failed');
       }
-    } catch (e) {
-      return Result.error(e.toString());
+    } on AuthException catch (e) {
+      return Result.error(e.message);
     }
   }
 
@@ -57,6 +57,75 @@ class AuthProvider {
       }
     } catch (e) {
       return Result.error(e.toString());
+    }
+  }
+
+  Future<Result<String>> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user == null) {
+        return Result.error('No user is currently signed in');
+      }
+
+      // First, verify the current password by re-authenticating
+      final response = await Supabase.instance.client.auth.signInWithPassword(
+        email: user.email!,
+        password: currentPassword,
+      );
+
+      if (response.session == null) {
+        return Result.error('Current password is incorrect');
+      }
+
+      // If re-authentication is successful, update the password
+      final updateResponse = await Supabase.instance.client.auth.updateUser(
+        UserAttributes(password: newPassword),
+      );
+
+      if (updateResponse.user != null) {
+        return Result.success('Password changed successfully');
+      } else {
+        return Result.error('Failed to update password');
+      }
+    } on AuthException catch (e) {
+      return Result.error(e.message);
+    } catch (e) {
+      return Result.error('An error occurred: ${e.toString()}');
+    }
+  }
+
+  Future<Result<String>> resetPassword({required String email}) async {
+    try {
+      await Supabase.instance.client.auth.resetPasswordForEmail(
+        email,
+        redirectTo: 'com.amayalert.app://reset-password',
+      );
+      return Result.success('Password reset email sent successfully');
+    } on AuthException catch (e) {
+      return Result.error(e.message);
+    } catch (e) {
+      return Result.error('An error occurred: ${e.toString()}');
+    }
+  }
+
+  Future<Result<String>> updatePassword({required String newPassword}) async {
+    try {
+      final response = await Supabase.instance.client.auth.updateUser(
+        UserAttributes(password: newPassword),
+      );
+
+      if (response.user != null) {
+        return Result.success('Password updated successfully');
+      } else {
+        return Result.error('Failed to update password');
+      }
+    } on AuthException catch (e) {
+      return Result.error(e.message);
+    } catch (e) {
+      return Result.error('An error occurred: ${e.toString()}');
     }
   }
 }

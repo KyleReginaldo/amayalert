@@ -37,16 +37,6 @@ class _MessageScreenState extends State<MessageScreen> {
     BadgeService().clearUnreadCount();
   }
 
-  @override
-  void dispose() {
-    // Unsubscribe from user-level messages when leaving the messages screen
-    try {
-      final repository = context.read<EnhancedMessageRepository>();
-      repository.unsubscribeFromUserMessages();
-    } catch (_) {}
-    super.dispose();
-  }
-
   void _loadConversations() {
     final currentUser = Supabase.instance.client.auth.currentUser;
     if (currentUser != null) {
@@ -311,15 +301,29 @@ class ConversationItem extends StatelessWidget {
                           children: [
                             Expanded(
                               child: CustomText(
-                                text: conversation.lastMessage!.content,
+                                text:
+                                    conversation.lastMessage?.hasAttachment ==
+                                        true
+                                    ? 'Sent an image'
+                                    : conversation.lastMessage!.content,
                                 fontSize: 14,
-                                color: conversation.unreadCount > 0
+                                color:
+                                    (conversation.unreadCount > 0 &&
+                                        conversation.lastMessage?.sender ==
+                                            conversation.participantId &&
+                                        conversation.lastMessage?.seenAt ==
+                                            null)
                                     ? Colors.black87
                                     : Colors.grey.shade600,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                fontWeight: conversation.unreadCount > 0
-                                    ? FontWeight.w500
+                                fontWeight:
+                                    (conversation.unreadCount > 0 &&
+                                        conversation.lastMessage?.sender ==
+                                            conversation.participantId &&
+                                        conversation.lastMessage?.seenAt ==
+                                            null)
+                                    ? FontWeight.w600
                                     : FontWeight.normal,
                               ),
                             ),

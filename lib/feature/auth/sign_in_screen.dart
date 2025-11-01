@@ -1,4 +1,5 @@
 import 'package:amayalert/core/constant/constant.dart';
+import 'package:amayalert/core/router/app_route.gr.dart';
 import 'package:amayalert/core/theme/theme.dart';
 import 'package:amayalert/core/widgets/buttons/custom_buttons.dart';
 import 'package:amayalert/core/widgets/input/custom_text_field.dart';
@@ -122,7 +123,12 @@ class _SignInScreenState extends State<SignInScreen> {
               visualDensity: VisualDensity(horizontal: -4, vertical: -4),
             ),
             CustomElevatedButton(label: 'Sign In', onPressed: handleSignIn),
-            CustomTextButton(label: 'Forgot password?', onPressed: () {}),
+            CustomTextButton(
+              label: 'Forgot password?',
+              onPressed: () {
+                context.router.push(const ForgotPasswordRoute());
+              },
+            ),
           ],
         ),
       ),

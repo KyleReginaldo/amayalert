@@ -1,9 +1,12 @@
+import 'dart:io';
+
 import 'package:amayalert/core/widgets/text/custom_text.dart';
 import 'package:amayalert/dependency.dart';
 import 'package:amayalert/feature/messages/enhanced_message_repository.dart';
 import 'package:amayalert/feature/messages/message_model.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -13,11 +16,13 @@ import 'package:timeago/timeago.dart' as timeago;
 class ChatScreen extends StatefulWidget implements AutoRouteWrapper {
   final String otherUserId;
   final String otherUserName;
+  final ImagePicker? imagePicker;
 
   const ChatScreen({
     super.key,
     required this.otherUserId,
     required this.otherUserName,
+    this.imagePicker,
   });
 
   @override
@@ -36,6 +41,8 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   bool _isComposing = false;
+  bool _isUploading = false;
+  double _uploadProgress = 0.0;
 
   @override
   void initState() {
@@ -51,12 +58,6 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     _messageController.dispose();
     _scrollController.dispose();
     WidgetsBinding.instance.removeObserver(this);
-    // Unsubscribe from conversation channel when leaving chat screen
-    try {
-      final repository = context.read<EnhancedMessageRepository>();
-      repository.unsubscribeFromConversation();
-    } catch (_) {}
-
     super.dispose();
   }
 
@@ -70,10 +71,11 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   }
 
   void _markMessagesAsSeen() {
-    final currentUser = Supabase.instance.client.auth.currentUser;
-    if (currentUser != null && mounted) {
-      context.read<EnhancedMessageRepository>().markMessagesAsSeen(
-        userId: currentUser.id,
+    final repo = context.read<EnhancedMessageRepository>();
+    final currentUserId = repo.currentUserId;
+    if (currentUserId != null && mounted) {
+      repo.markMessagesAsSeen(
+        userId: currentUserId,
         otherUserId: widget.otherUserId,
       );
     }
@@ -86,28 +88,34 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   }
 
   void _loadMessages() {
-    final currentUser = Supabase.instance.client.auth.currentUser;
+    final repo = context.read<EnhancedMessageRepository>();
+    final currentUser = repo.currentUserId;
     if (currentUser != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         final repository = context.read<EnhancedMessageRepository>();
 
         // Load conversation messages
-        repository.loadConversation(
-          userId1: currentUser.id,
-          userId2: widget.otherUserId,
-        );
 
-        // Mark messages as seen from this user
-        repository.markMessagesAsSeen(
-          userId: currentUser.id,
-          otherUserId: widget.otherUserId,
-        );
+        try {
+          repository.loadConversation(
+            userId1: currentUser,
+            userId2: widget.otherUserId,
+          );
 
-        // Subscribe to real-time updates
-        repository.subscribeToConversation(
-          userId1: currentUser.id,
-          userId2: widget.otherUserId,
-        );
+          // Mark messages as seen from this user
+          repository.markMessagesAsSeen(
+            userId: currentUser,
+            otherUserId: widget.otherUserId,
+          );
+
+          // Subscribe to real-time updates (best-effort in test environments)
+          try {
+            repository.subscribeToConversation(
+              userId1: currentUser,
+              userId2: widget.otherUserId,
+            );
+          } catch (_) {}
+        } catch (_) {}
       });
     }
   }
@@ -126,10 +134,9 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     final content = _messageController.text.trim();
     if (content.isEmpty) return;
 
-    final currentUser = Supabase.instance.client.auth.currentUser;
-    if (currentUser == null) return;
-
     final messageRepository = context.read<EnhancedMessageRepository>();
+    final currentUserId = messageRepository.currentUserId;
+    if (currentUserId == null) return;
 
     _messageController.clear();
     setState(() {
@@ -142,7 +149,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     );
 
     final result = await messageRepository.sendMessage(
-      senderId: currentUser.id,
+      senderId: currentUserId,
       request: request,
     );
 
@@ -285,10 +292,20 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                   },
                 ),
               ),
+              // Show upload progress if active
+              if (_isUploading) LinearProgressIndicator(value: _uploadProgress),
               MessageInput(
                 controller: _messageController,
                 isComposing: _isComposing,
                 onSend: _sendMessage,
+                receiverId: widget.otherUserId,
+                onUploadStart: () => setState(() => _isUploading = true),
+                onUploadProgress: (p) => setState(() => _uploadProgress = p),
+                onUploadEnd: () => setState(() {
+                  _isUploading = false;
+                  _uploadProgress = 0.0;
+                }),
+                imagePicker: widget.imagePicker,
               ),
             ],
           ),
@@ -339,12 +356,104 @@ class MessageBubble extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  CustomText(
-                    text: message.content,
-                    color: isMe ? Colors.white : Colors.black87,
-                    fontSize: 14,
-                  ),
-                  const SizedBox(height: 4),
+                  if (message.content.isNotEmpty) ...[
+                    CustomText(
+                      text: message.content,
+                      color: isMe ? Colors.white : Colors.black87,
+                      fontSize: 14,
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+
+                  if (message.hasAttachment &&
+                      message.attachmentType == AttachmentType.image) ...[
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Builder(
+                        builder: (context) {
+                          final url = message.attachmentUrl ?? '';
+                          final isNetwork = url.startsWith('http');
+                          if (isNetwork) {
+                            return Image.network(
+                              url,
+                              fit: BoxFit.cover,
+                              width: MediaQuery.of(context).size.width * 0.6,
+                              height: 160,
+                              loadingBuilder: (context, child, loadingProgress) {
+                                if (loadingProgress == null) return child;
+                                return SizedBox(
+                                  width:
+                                      MediaQuery.of(context).size.width * 0.6,
+                                  height: 160,
+                                  child: Center(
+                                    child: CircularProgressIndicator(
+                                      value:
+                                          loadingProgress.expectedTotalBytes !=
+                                              null
+                                          ? loadingProgress
+                                                    .cumulativeBytesLoaded /
+                                                (loadingProgress
+                                                        .expectedTotalBytes ??
+                                                    1)
+                                          : null,
+                                    ),
+                                  ),
+                                );
+                              },
+                              errorBuilder: (context, error, stackTrace) =>
+                                  Container(
+                                    width:
+                                        MediaQuery.of(context).size.width * 0.6,
+                                    height: 160,
+                                    color: Colors.grey.shade300,
+                                    child: const Center(
+                                      child: Icon(LucideIcons.image),
+                                    ),
+                                  ),
+                            );
+                          }
+
+                          // Local file placeholder (optimistic). Use Image.file so tests/platforms handle it.
+                          return Image.file(
+                            File(url),
+                            fit: BoxFit.cover,
+                            width: MediaQuery.of(context).size.width * 0.6,
+                            height: 160,
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                  ] else if (message.hasAttachment) ...[
+                    // Generic attachment preview for non-image types
+                    Container(
+                      width: MediaQuery.of(context).size.width * 0.6,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: isMe
+                            ? Colors.blue.shade700
+                            : Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          Text(
+                            message.attachmentType?.icon ?? '📎',
+                            style: const TextStyle(fontSize: 24),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: CustomText(
+                              text: message.attachmentUrl ?? 'Attachment',
+                              color: isMe ? Colors.white : Colors.black87,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
                   Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -367,6 +476,53 @@ class MessageBubble extends StatelessWidget {
                       ],
                     ],
                   ),
+                  // Show failed / retry for optimistic placeholders
+                  Builder(
+                    builder: (context) {
+                      final repo = Provider.of<EnhancedMessageRepository>(
+                        context,
+                        listen: false,
+                      );
+                      if (message.id < 0 &&
+                          repo.failedUploads.contains(message.id)) {
+                        return Row(
+                          children: [
+                            const SizedBox(width: 4),
+                            Icon(
+                              Icons.error_outline,
+                              color: Colors.red.shade400,
+                              size: 14,
+                            ),
+                            const SizedBox(width: 6),
+                            GestureDetector(
+                              onTap: () async {
+                                final localPath =
+                                    repo.uploadPlaceholders[message.id];
+                                if (localPath == null) return;
+                                final currentUser =
+                                    Supabase.instance.client.auth.currentUser;
+                                if (currentUser == null) return;
+                                final file = XFile(localPath);
+                                await repo.retryUpload(
+                                  tempId: message.id,
+                                  senderId: currentUser.id,
+                                  file: file,
+                                );
+                              },
+                              child: CustomText(
+                                text: 'Upload failed — tap to retry',
+                                color: isMe
+                                    ? Colors.white70
+                                    : Colors.red.shade400,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        );
+                      }
+                      return const SizedBox.shrink();
+                    },
+                  ),
                 ],
               ),
             ),
@@ -385,17 +541,139 @@ class MessageBubble extends StatelessWidget {
   }
 }
 
-class MessageInput extends StatelessWidget {
+class MessageInput extends StatefulWidget {
   final TextEditingController controller;
   final bool isComposing;
   final VoidCallback onSend;
+  final String receiverId;
+  final VoidCallback? onUploadStart;
+  final void Function(double progress)? onUploadProgress;
+  final VoidCallback? onUploadEnd;
+  final ImagePicker? imagePicker;
 
   const MessageInput({
     super.key,
     required this.controller,
     required this.isComposing,
     required this.onSend,
+    required this.receiverId,
+    this.onUploadStart,
+    this.onUploadProgress,
+    this.onUploadEnd,
+    this.imagePicker,
   });
+
+  @override
+  State<MessageInput> createState() => _MessageInputState();
+}
+
+class _MessageInputState extends State<MessageInput> {
+  late final ImagePicker _picker = widget.imagePicker ?? ImagePicker();
+  bool _sendingImage = false;
+
+  Future<void> _pickAndSendImage(ImageSource source) async {
+    try {
+      final XFile? picked = await _picker.pickImage(
+        source: source,
+        maxWidth: 1600,
+        imageQuality: 80,
+      );
+      if (picked == null) return;
+
+      final repository = context.read<EnhancedMessageRepository>();
+      final currentUserId = repository.currentUserId;
+      if (currentUserId == null) return;
+
+      setState(() => _sendingImage = true);
+
+      // Minimal attach: directly upload/send the picked image without optimistic placeholders
+      widget.onUploadStart?.call();
+
+      final request = CreateMessageRequest(
+        receiver: widget.receiverId,
+        content: '',
+      );
+
+      final result = await repository.sendMessage(
+        senderId: currentUserId,
+        request: request,
+        attachmentFile: picked,
+      );
+
+      if (!result.isSuccess) {
+        if (mounted)
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to send image: ${result.error}')),
+          );
+      } else {
+        if (mounted)
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Image sent')));
+        // success — scroll to bottom if desired
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          // parent ChatScreen handles scrolling; attempt a best-effort call
+          final state = context.findAncestorStateOfType<_ChatScreenState>();
+          state?._scrollToBottom();
+        });
+      }
+    } catch (e) {
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error picking/sending image: $e')),
+        );
+    } finally {
+      if (mounted) setState(() => _sendingImage = false);
+      widget.onUploadEnd?.call();
+    }
+  }
+
+  // Helper used by tests to bypass UI modal and directly provide a picked file
+  Future<void> pickAndSendFile(XFile file) async {
+    try {
+      final repository = context.read<EnhancedMessageRepository>();
+      final currentUserId = repository.currentUserId;
+      if (currentUserId == null) return;
+
+      setState(() => _sendingImage = true);
+
+      widget.onUploadStart?.call();
+
+      final request = CreateMessageRequest(
+        receiver: widget.receiverId,
+        content: '',
+      );
+      final result = await repository.sendMessage(
+        senderId: currentUserId,
+        request: request,
+        attachmentFile: file,
+      );
+
+      if (!result.isSuccess) {
+        if (mounted)
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to send image: ${result.error}')),
+          );
+      } else {
+        if (mounted)
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text('Image sent')));
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          final state = context.findAncestorStateOfType<_ChatScreenState>();
+          state?._scrollToBottom();
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _sendingImage = false);
+      widget.onUploadEnd?.call();
+    }
+  }
+
+  // Minimal attach: open gallery directly
+  Future<void> _onImageButtonPressed() async {
+    await _pickAndSendImage(ImageSource.gallery);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -408,6 +686,10 @@ class MessageInput extends StatelessWidget {
       child: SafeArea(
         child: Row(
           children: [
+            IconButton(
+              onPressed: _sendingImage ? null : _onImageButtonPressed,
+              icon: Icon(LucideIcons.image, color: Colors.grey.shade700),
+            ),
             Expanded(
               child: Container(
                 decoration: BoxDecoration(
@@ -415,7 +697,7 @@ class MessageInput extends StatelessWidget {
                   borderRadius: BorderRadius.circular(24),
                 ),
                 child: TextField(
-                  controller: controller,
+                  controller: widget.controller,
                   decoration: const InputDecoration(
                     hintText: 'Type a message...',
                     border: InputBorder.none,
@@ -425,7 +707,7 @@ class MessageInput extends StatelessWidget {
                     ),
                   ),
                   textInputAction: TextInputAction.send,
-                  onSubmitted: (_) => onSend(),
+                  onSubmitted: (_) => widget.onSend(),
                   maxLines: null,
                 ),
               ),
@@ -434,10 +716,14 @@ class MessageInput extends StatelessWidget {
             AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               child: IconButton(
-                onPressed: isComposing ? onSend : null,
+                onPressed: (widget.isComposing && !_sendingImage)
+                    ? widget.onSend
+                    : null,
                 icon: Icon(
                   LucideIcons.send,
-                  color: isComposing ? Colors.blue : Colors.grey,
+                  color: (widget.isComposing && !_sendingImage)
+                      ? Colors.blue
+                      : Colors.grey,
                 ),
               ),
             ),

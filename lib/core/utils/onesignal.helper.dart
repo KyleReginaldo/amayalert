@@ -25,7 +25,7 @@ Future sendNotif({
     headers: {
       'Content-Type': 'application/json; charset=utf-8',
       'Authorization':
-          'Bearer Key os_v2_app_daiscdpew5bqjdgvhxt2dwuoeznz7q5k6xkuaxfhko7axlymp6klvsoy34q34c3p3viqwnwq6rgg77br7rke6nuevljrbpx45m5frui',
+          'Bearer Key os_v2_app_daiscdpew5bqjdgvhxt2dwuoe3ai5p7xuajeu5mf7o2n5ukxauh6jw3guvl5p5r7ncboa6etsirycpxsns46easyphrggcb5asjebhy',
     },
   );
 }

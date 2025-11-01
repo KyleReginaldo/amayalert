@@ -57,6 +57,18 @@ class AppRouter extends RootStackRouter {
       transitionsBuilder: TransitionsBuilders.slideLeft,
     ),
     CustomRoute(
+      page: ChangePasswordRoute.page,
+      transitionsBuilder: TransitionsBuilders.slideLeft,
+    ),
+    CustomRoute(
+      page: ForgotPasswordRoute.page,
+      transitionsBuilder: TransitionsBuilders.slideLeft,
+    ),
+    CustomRoute(
+      page: ResetPasswordRoute.page,
+      transitionsBuilder: TransitionsBuilders.slideLeft,
+    ),
+    CustomRoute(
       page: CreatePostsRoute.page,
       transitionsBuilder: TransitionsBuilders.slideBottom,
     ),
@@ -86,6 +98,10 @@ class AppRouter extends RootStackRouter {
     ),
     CustomRoute(
       page: SharePostRoute.page,
+      transitionsBuilder: TransitionsBuilders.slideLeft,
+    ),
+    CustomRoute(
+      page: OtpVerificationRoute.page,
       transitionsBuilder: TransitionsBuilders.slideLeft,
     ),
     CustomRoute(

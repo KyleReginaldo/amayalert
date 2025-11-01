@@ -1,3 +1,4 @@
+import 'package:amayalert/core/result/result.dart';
 import 'package:amayalert/feature/profile/profile_model.dart';
 import 'package:flutter/material.dart';
 
@@ -47,6 +48,28 @@ class ProfileRepository extends ChangeNotifier {
       await getUserProfile(userId);
       return true;
     }
+  }
+
+  Future<Result<String>> requestPhoneChangeOtp({
+    required String userId,
+    required String newPhone,
+  }) async {
+    return await provider.requestPhoneChangeOtp(
+      userId: userId,
+      newPhone: newPhone,
+    );
+  }
+
+  Future<Result<String>> verifyPhoneChangeOtp({
+    required String userId,
+    required String newPhone,
+    required String code,
+  }) async {
+    return await provider.verifyPhoneChangeOtp(
+      userId: userId,
+      newPhone: newPhone,
+      code: code,
+    );
   }
 
   void clear() {

@@ -7,6 +7,7 @@ import 'package:amayalert/feature/posts/post_model.dart';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/constant/constant.dart';
 import '../../core/utils/onesignal.helper.dart';
 
 const String postQuery =
@@ -43,6 +44,11 @@ class PostProvider {
           .single();
       if (response.isNotEmpty) {
         if (dto.sharedPost != null) {
+          final user = await supabase
+              .from('users')
+              .select('full_name')
+              .eq('id', userId)
+              .single();
           final shared = await supabase
               .from('posts')
               .select('user:users(id)')
@@ -51,7 +57,7 @@ class PostProvider {
           await sendNotif(
             users: [shared['user']['id']],
             title: 'Post Shared',
-            content: 'Your post was shared',
+            content: '${user['full_name']} shared your post',
           );
         }
 
@@ -305,16 +311,19 @@ class PostProvider {
           .select()
           .single();
 
-      if (response['id'] != null) {
+      if (response['user'] != null && post['user'] != userID) {
+        final user = await supabase
+            .from('users')
+            .select('full_name')
+            .eq('id', userId)
+            .single();
         await sendNotif(
           users: [post['user']],
           title: 'New Comment on Your Post',
-          content: comment,
+          content: '${user['full_name']} commented: $comment',
         );
-        return Result.success(response['id'].toString());
       }
-
-      return Result.error('Failed to create post comment');
+      return Result.success(response['id'].toString());
     } on PostgrestException catch (e) {
       return Result.error(e.message);
     } catch (e) {

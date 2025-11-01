@@ -3,8 +3,6 @@ import 'package:amayalert/core/services/badge_service.dart';
 import 'package:amayalert/core/services/push_notification_service.dart';
 import 'package:amayalert/feature/messages/enhanced_message_provider.dart';
 import 'package:amayalert/feature/messages/message_model.dart';
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -12,13 +10,27 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 /// Enhanced message repository with comprehensive messaging features
 class EnhancedMessageRepository extends ChangeNotifier {
   final EnhancedMessageProvider _provider;
+  final String? Function()? _currentUserIdGetter;
 
-  EnhancedMessageRepository({EnhancedMessageProvider? provider})
-    : _provider = provider ?? EnhancedMessageProvider();
+  EnhancedMessageRepository({
+    EnhancedMessageProvider? provider,
+    String? Function()? currentUserIdGetter,
+  }) : _provider = provider ?? EnhancedMessageProvider(),
+       _currentUserIdGetter =
+           currentUserIdGetter ??
+           (() => Supabase.instance.client.auth.currentUser?.id);
 
   // State management
   List<ChatConversation> _conversations = [];
   List<Message> _currentConversationMessages = [];
+  // optimistic upload placeholders (temp negative ids -> local path)
+  final Map<int, String> _uploadPlaceholders = {};
+  final Set<int> _failedUploads = {};
+
+  // Expose read-only views for UI
+  Map<int, String> get uploadPlaceholders =>
+      Map.unmodifiable(_uploadPlaceholders);
+  Set<int> get failedUploads => Set.unmodifiable(_failedUploads);
   List<MessageUser> _availableUsers = [];
   List<MessageSearchResult> _searchResults = [];
   final Map<String, TypingIndicator> _typingIndicators = {};
@@ -31,9 +43,6 @@ class EnhancedMessageRepository extends ChangeNotifier {
 
   RealtimeChannel? _conversationSubscription;
   RealtimeChannel? _userMessagesSubscription;
-  // Batch incoming conversation updates to avoid UI thrash
-  final List<Message> _conversationBatch = [];
-  Timer? _conversationBatchTimer;
 
   // Getters
   List<ChatConversation> get conversations => _conversations;
@@ -53,11 +62,13 @@ class EnhancedMessageRepository extends ChangeNotifier {
     required String senderId,
     required CreateMessageRequest request,
     XFile? attachmentFile,
+    void Function(double progress)? onUploadProgress,
   }) async {
     final result = await _provider.sendMessage(
       senderId: senderId,
       request: request,
       attachmentFile: attachmentFile,
+      onUploadProgress: onUploadProgress,
     );
 
     if (result.isSuccess) {
@@ -79,18 +90,123 @@ class EnhancedMessageRepository extends ChangeNotifier {
         );
       }
 
-      // Send push notification to the receiver
-      await _sendPushNotification(
-        senderId: senderId,
-        receiverId: request.receiver,
-        messageContent: request.content,
-        messageId: result.value.id.toString(),
-      );
+      // Send push notification to the receiver (fire-and-forget to avoid blocking UI/tests)
+      try {
+        // If the message has an attachment but no textual content, provide a short
+        // placeholder so push notifications are meaningful (e.g., "Sent an image").
+        final pushContent = (request.content.trim().isNotEmpty)
+            ? request.content
+            : (attachmentFile != null ? 'Sent an image' : '');
+
+        _sendPushNotification(
+          senderId: senderId,
+          receiverId: request.receiver,
+          messageContent: pushContent,
+          messageId: result.value.id.toString(),
+        );
+      } catch (_) {}
     } else {
       _setResultError(result, 'Failed to send message');
     }
 
     return result;
+  }
+
+  /// Create an optimistic placeholder for an uploading attachment.
+  /// Returns the temporary negative id assigned.
+  int createUploadPlaceholder({
+    required String localPath,
+    required String senderId,
+    required String receiverId,
+  }) {
+    final tempId = -DateTime.now().microsecondsSinceEpoch;
+    final placeholder = Message(
+      id: tempId,
+      sender: senderId,
+      receiver: receiverId,
+      content: '',
+      attachmentUrl: localPath,
+      createdAt: DateTime.now(),
+      updatedAt: null,
+      seenAt: null,
+    );
+
+    _currentConversationMessages.add(placeholder);
+    _applyMessageToConversations(placeholder);
+    _uploadPlaceholders[tempId] = localPath;
+    notifyListeners();
+    return tempId;
+  }
+
+  /// Replace an optimistic placeholder (tempId) with the real message from server
+  void replacePlaceholderWithReal({
+    required int tempId,
+    required Message realMessage,
+  }) {
+    final indexTemp = _currentConversationMessages.indexWhere(
+      (m) => m.id == tempId,
+    );
+    final indexReal = _currentConversationMessages.indexWhere(
+      (m) => m.id == realMessage.id,
+    );
+
+    if (indexTemp != -1) {
+      if (indexReal != -1) {
+        // Real message already present (realtime arrived first). Remove placeholder.
+        _currentConversationMessages.removeAt(indexTemp);
+        // ensure ordering: move real message to most recent if needed
+        final real = _currentConversationMessages.removeAt(
+          indexReal > indexTemp ? indexReal - 1 : indexReal,
+        );
+        _currentConversationMessages.add(real);
+      } else {
+        // Replace placeholder with real message
+        _currentConversationMessages[indexTemp] = realMessage;
+      }
+    } else {
+      // No placeholder found. If real isn't present, add; otherwise nothing to do.
+      if (indexReal == -1) {
+        _currentConversationMessages.add(realMessage);
+      }
+    }
+
+    _uploadPlaceholders.remove(tempId);
+    _failedUploads.remove(tempId);
+    _applyMessageToConversations(realMessage);
+    notifyListeners();
+  }
+
+  /// Mark a placeholder upload as failed so UI can show retry
+  void markPlaceholderFailed(int tempId) {
+    _failedUploads.add(tempId);
+    notifyListeners();
+  }
+
+  /// Retry sending an attachment for a failed placeholder
+  Future<void> retryUpload({
+    required int tempId,
+    required String senderId,
+    required XFile file,
+  }) async {
+    final localPath = _uploadPlaceholders[tempId];
+    if (localPath == null) return;
+
+    // create request with empty content but attachment (provider handles upload)
+    final receiverId = _currentConversationPartnerId ?? '';
+    final request = CreateMessageRequest(receiver: receiverId, content: '');
+
+    final result = await sendMessage(
+      senderId: senderId,
+      request: request,
+      attachmentFile: file,
+      onUploadProgress: (p) {},
+    );
+
+    if (result.isSuccess) {
+      replacePlaceholderWithReal(tempId: tempId, realMessage: result.value);
+    } else {
+      markPlaceholderFailed(tempId);
+    }
   }
 
   /// Send push notification when a message is sent
@@ -342,62 +458,30 @@ class EnhancedMessageRepository extends ChangeNotifier {
     _userMessagesSubscription = _provider.subscribeToUserMessages(
       userId: userId,
       onNewMessage: (message) {
-        // Defensive logging + batch updates to avoid UI thrash
+        // Defensive logging + update conversations locally for incoming message (avoid heavy reload)
         try {
-          debugPrint('📥 Incoming message (subscribe): id=${message.id} sender=${message.sender} receiver=${message.receiver} createdAt=${message.createdAt}');
+          debugPrint(
+            '📥 Incoming message (subscribe): id=${message.id} sender=${message.sender} receiver=${message.receiver} createdAt=${message.createdAt}',
+          );
+          _applyMessageToConversations(message);
 
-          // Add to batch and schedule flush
-          _conversationBatch.removeWhere((m) => m.id == message.id);
-          _conversationBatch.add(message);
-          _conversationBatchTimer?.cancel();
-          _conversationBatchTimer = Timer(const Duration(milliseconds: 300), () {
-            try {
-              _flushConversationBatch();
-            } catch (e, st) {
-              debugPrint('⚠️ Error flushing conversation batch: $e\n$st');
-            }
-          });
-
-          // If the conversation is open, also add to current messages immediately
+          // If the conversation is open, also add to current messages (avoids separate reload)
           try {
             if (_messageBelongsToOpenConversation(message)) {
               _maybeAddMessageToCurrentConversation(message);
             }
           } catch (e, st) {
-            debugPrint('⚠️ Error adding incoming message to open conversation: $e\n$st');
+            debugPrint(
+              '⚠️ Error adding incoming message to open conversation: $e\n$st',
+            );
           }
         } catch (e, st) {
-          debugPrint('⚠️ Error applying incoming message to conversations: $e\n$st');
+          debugPrint(
+            '⚠️ Error applying incoming message to conversations: $e\n$st',
+          );
         }
       },
     );
-  }
-
-  void _flushConversationBatch() {
-    if (_conversationBatch.isEmpty) return;
-
-    // Merge batch by message id keeping the latest createdAt
-    final map = <int, Message>{};
-    for (final m in _conversationBatch) {
-      final existing = map[m.id];
-      if (existing == null || m.createdAt.isAfter(existing.createdAt)) {
-        map[m.id] = m;
-      }
-    }
-
-    final messages = map.values.toList()
-      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
-
-    for (final message in messages) {
-      try {
-        _applyMessageToConversations(message);
-      } catch (e, st) {
-        debugPrint('⚠️ Error applying batched message: $e\n$st');
-      }
-    }
-
-    _conversationBatch.clear();
-    _conversationBatchTimer = null;
   }
 
   /// Handle new message from real-time subscription
@@ -440,7 +524,12 @@ class EnhancedMessageRepository extends ChangeNotifier {
   }
 
   /// Helper to get current authenticated user id (or null)
-  String? _currentUserId() => Supabase.instance.client.auth.currentUser?.id;
+  String? _currentUserId() =>
+      _currentUserIdGetter?.call() ??
+      Supabase.instance.client.auth.currentUser?.id;
+
+  /// Public accessor for current user id (uses injected getter if provided)
+  String? get currentUserId => _currentUserId();
 
   /// Returns true when the message involves both the current user and the open conversation partner
   bool _messageBelongsToOpenConversation(Message message) {
@@ -630,55 +719,22 @@ class EnhancedMessageRepository extends ChangeNotifier {
       userId: userId,
       otherUserId: otherUserId,
     );
+
     if (result.isSuccess) {
       debugPrint('✅ Messages marked as seen successfully');
-
-      // Update local current conversation messages if open
+      // Refresh conversations to update unread counts and badge
+      await loadConversations(userId);
+      // Refresh current conversation to show seen status
       if (_currentConversationPartnerId == otherUserId) {
-        final now = DateTime.now();
-        var updated = false;
-        _currentConversationMessages = _currentConversationMessages.map((m) {
-          if (m.sender == otherUserId && m.receiver == userId && m.seenAt == null) {
-            updated = true;
-            return Message(
-              id: m.id,
-              sender: m.sender,
-              receiver: m.receiver,
-              content: m.content,
-              attachmentUrl: m.attachmentUrl,
-              createdAt: m.createdAt,
-              updatedAt: m.updatedAt,
-              seenAt: now,
-            );
-          }
-          return m;
-        }).toList();
-
-        if (updated) notifyListeners();
-      }
-
-      // Update conversation unread count locally
-      final convIdx = _conversations.indexWhere((c) => c.participantId == otherUserId);
-      if (convIdx != -1) {
-        final old = _conversations[convIdx];
-        final updatedConv = ChatConversation(
-          participantId: old.participantId,
-          participantName: old.participantName,
-          participantProfilePicture: old.participantProfilePicture,
-          participantEmail: old.participantEmail,
-          isOnline: old.isOnline,
-          lastSeen: old.lastSeen,
-          lastMessage: old.lastMessage,
-          unreadCount: 0,
-          lastActivity: old.lastActivity,
-          type: old.type,
-        );
-        _conversations[convIdx] = updatedConv;
-        _updateBadgeCount();
-        notifyListeners();
+        loadConversation(userId1: userId, userId2: otherUserId);
       }
     } else {
-      debugPrint('❌ Failed to mark messages as seen, continuing (no reload)');
+      debugPrint(
+        '❌ Failed to mark messages as seen, but continuing gracefully',
+      );
+      // Don't set error since this is now handled gracefully in the provider
+      // Still refresh conversations to update badge count
+      await loadConversations(userId);
     }
   }
 
@@ -712,27 +768,9 @@ class EnhancedMessageRepository extends ChangeNotifier {
         _currentConversationMessages[messageIndex] = updatedMessage;
         notifyListeners();
       }
-      // Update conversation unread count locally
-      final partnerId = _currentConversationMessages[messageIndex >= 0 ? messageIndex : 0].sender;
-      final convIdx = _conversations.indexWhere((c) => c.participantId == partnerId);
-      if (convIdx != -1) {
-        final old = _conversations[convIdx];
-        final updatedConv = ChatConversation(
-          participantId: old.participantId,
-          participantName: old.participantName,
-          participantProfilePicture: old.participantProfilePicture,
-          participantEmail: old.participantEmail,
-          isOnline: old.isOnline,
-          lastSeen: old.lastSeen,
-          lastMessage: old.lastMessage,
-          unreadCount: 0,
-          lastActivity: old.lastActivity,
-          type: old.type,
-        );
-        _conversations[convIdx] = updatedConv;
-        _updateBadgeCount();
-        notifyListeners();
-      }
+
+      // Refresh conversations to update badge count
+      await loadConversations(userId);
     } else {
       _setResultError(result, 'Failed to mark message as seen');
     }

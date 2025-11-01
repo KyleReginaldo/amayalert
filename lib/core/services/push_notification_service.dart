@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 class PushNotificationService {
-  static const String _oneSignalAppId = '0ca16ba7-1326-4710-9e13-e6118e4de2e7';
+  static const String _oneSignalAppId = '1811210d-e4b7-4304-8cd5-3de7a1da8e26';
   static const String _baseUrl = 'https://api.onesignal.com';
 
   // Get OneSignal REST API Key from environment or fallback to hardcoded value
@@ -24,7 +24,7 @@ class PushNotificationService {
         headers: {
           'Content-Type': 'application/json',
           'Authorization':
-              'Bearer Key os_v2_app_bsqwxjytezdrbhqt4yiy4tpc446n5tl33olepmfhutpmjc2d5bwsvxyggezetgqheotl7ypycc7slkeaiwrfi74wjabblwk5jsyt7ei',
+              'Bearer Key os_v2_app_daiscdpew5bqjdgvhxt2dwuoe3ai5p7xuajeu5mf7o2n5ukxauh6jw3guvl5p5r7ncboa6etsirycpxsns46easyphrggcb5asjebhy',
         },
         body: jsonEncode({
           'app_id': _oneSignalAppId,
@@ -44,15 +44,6 @@ class PushNotificationService {
           'include_aliases': {
             'external_id': [receiverUserId],
           },
-          // 'data': {
-          //   'type': 'chat_message',
-          //   'sender_id': additionalData?['sender_id'],
-          //   'sender_name': senderName,
-          //   'conversation_id': additionalData?['conversation_id'],
-          //   ...?additionalData,
-          // },
-
-          // Add sound and visual customization
         }),
       );
 

@@ -9,20 +9,29 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Enhanced message provider with comprehensive messaging features
 class EnhancedMessageProvider {
-  final supabase = Supabase.instance.client;
+  final SupabaseClient? _client;
+
+  /// If you want to inject a Supabase client (useful for tests), pass it here.
+  EnhancedMessageProvider({SupabaseClient? client}) : _client = client;
+
+  SupabaseClient get supabase => _client ?? Supabase.instance.client;
 
   /// Send a message with enhanced features
   Future<Result<Message>> sendMessage({
     required String senderId,
     required CreateMessageRequest request,
     XFile? attachmentFile,
+    void Function(double progress)? onUploadProgress,
   }) async {
     try {
       String? attachmentUrl;
 
-      // Upload attachment if provided
+      // Upload attachment if provided (report progress via callback)
       if (attachmentFile != null) {
-        final uploadResult = await _uploadAttachment(attachmentFile);
+        final uploadResult = await _uploadAttachment(
+          attachmentFile,
+          onUploadProgress: onUploadProgress,
+        );
         if (!uploadResult.isSuccess) {
           return Result.error(uploadResult.error);
         }
@@ -252,15 +261,65 @@ class EnhancedMessageProvider {
     }
   }
 
-  /// Upload attachment file
-  Future<Result<String>> _uploadAttachment(XFile file) async {
+  /// Upload attachment file with optional progress callback and signed URL creation
+  Future<Result<String>> _uploadAttachment(
+    XFile file, {
+    void Function(double progress)? onUploadProgress,
+  }) async {
     try {
       final fileName =
           'messages/${DateTime.now().microsecondsSinceEpoch}_${file.name}';
 
+      // Simulate initial progress
+      try {
+        onUploadProgress?.call(0.05);
+      } catch (_) {}
+
+      // Upload file
       await supabase.storage.from('files').upload(fileName, File(file.path));
 
+      // Simulate mid progress
+      try {
+        onUploadProgress?.call(0.7);
+      } catch (_) {}
+
+      // Try to create a signed URL (useful for private buckets). Fall back to public URL.
+      try {
+        final dynamic signed = await supabase.storage
+            .from('files')
+            .createSignedUrl(fileName, 60 * 60 * 24 * 7);
+        // createSignedUrl may return a Map or a String depending on SDK; attempt to extract
+        String? signedUrl;
+        if (signed is String) {
+          signedUrl = signed;
+        } else if (signed is Map) {
+          // try common keys
+          if (signed.containsKey('signedURL') &&
+              signed['signedURL'] is String) {
+            signedUrl = signed['signedURL'] as String;
+          } else if (signed.containsKey('signedUrl') &&
+              signed['signedUrl'] is String) {
+            signedUrl = signed['signedUrl'] as String;
+          } else if (signed.containsKey('url') && signed['url'] is String) {
+            signedUrl = signed['url'] as String;
+          }
+        }
+
+        if (signedUrl != null && signedUrl.isNotEmpty) {
+          onUploadProgress?.call(1.0);
+          return Result.success(signedUrl);
+        }
+      } catch (e) {
+        debugPrint(
+          'Could not create signed URL, falling back to public URL: $e',
+        );
+      }
+
+      // Fallback to public URL
       final url = supabase.storage.from('files').getPublicUrl(fileName);
+      try {
+        onUploadProgress?.call(1.0);
+      } catch (_) {}
       return Result.success(url);
     } catch (e) {
       return Result.error('Failed to upload attachment: $e');

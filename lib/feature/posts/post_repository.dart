@@ -4,12 +4,15 @@ import 'package:amayalert/feature/posts/post_comment.dart';
 import 'package:amayalert/feature/posts/post_model.dart';
 import 'package:amayalert/feature/posts/post_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class PostRepository extends ChangeNotifier {
   final PostProvider _postProvider;
 
   PostRepository({PostProvider? provider})
     : _postProvider = provider ?? PostProvider();
+
+  RealtimeChannel? _commentsChannel;
 
   List<Post> _posts = [];
   List<Post> _userPosts = [];
@@ -47,12 +50,88 @@ class PostRepository extends ChangeNotifier {
     if (result.isSuccess) {
       _posts = result.value;
       _errorMessage = null;
+      // After loading posts, subscribe to realtime comments so UI reflects live counts
+      _subscribeToComments();
     } else {
       _errorMessage = result.error;
       _posts = [];
     }
 
     _setLoading(false);
+  }
+
+  void _subscribeToComments() {
+    try {
+      // Unsubscribe previous channel if exists
+      _commentsChannel?.unsubscribe();
+
+      final supabase = Supabase.instance.client;
+      debugPrint('Subscribing to comments realtime channel');
+      _commentsChannel = supabase.channel('posts_comments_channel');
+
+      _commentsChannel!.onPostgresChanges(
+        event: PostgresChangeEvent.insert,
+        schema: 'public',
+        table: 'comments',
+        callback: (payload) {
+          try {
+            debugPrint(
+              'Comments realtime payload received: ${payload.newRecord}',
+            );
+
+            // payload.newRecord is provided by supabase realtime.
+            final record = payload.newRecord;
+            // Defensive: Supabase realtime sometimes returns relation fields as an
+            // ID string (e.g. user: '<user-id>') instead of a nested object.
+            // The PostCommentMapper expects `user` to be a Map (Profile) or null.
+            final map = Map<String, dynamic>.from(record);
+            if (map['user'] is String) {
+              debugPrint(
+                'Realtime comment payload contains user as id string; clearing user to avoid mapper error',
+              );
+              map['user'] = null;
+            }
+
+            final comment = PostCommentMapper.fromMap(map);
+
+            debugPrint(
+              'Parsed comment for post ${comment.post} id=${comment.id}',
+            );
+
+            final idx = _posts.indexWhere((p) => p.id == comment.post);
+            if (idx != -1) {
+              final p = _posts[idx];
+              final updatedComments = <PostComment>[];
+              if (p.comments != null) updatedComments.addAll(p.comments!);
+              updatedComments.add(comment);
+
+              final updatedPost = Post(
+                id: p.id,
+                user: p.user,
+                content: p.content,
+                mediaUrl: p.mediaUrl,
+                visibility: p.visibility,
+                createdAt: p.createdAt,
+                updatedAt: p.updatedAt,
+                comments: updatedComments,
+                sharedPost: p.sharedPost,
+              );
+
+              _posts[idx] = updatedPost;
+              notifyListeners();
+            } else {
+              debugPrint('Received comment for unknown post ${comment.post}');
+            }
+          } catch (e, st) {
+            debugPrint('Error handling new comment realtime payload: $e\n$st');
+          }
+        },
+      );
+
+      _commentsChannel!.subscribe();
+    } catch (e, st) {
+      debugPrint('Failed to subscribe to post comments realtime: $e\n$st');
+    }
   }
 
   Future<void> loadUserPosts(String userId) async {
@@ -186,5 +265,13 @@ class PostRepository extends ChangeNotifier {
   void _setLoading(bool loading) {
     _isLoading = loading;
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    try {
+      _commentsChannel?.unsubscribe();
+    } catch (_) {}
+    super.dispose();
   }
 }

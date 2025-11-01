@@ -17,8 +17,12 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  bool _notificationsEnabled = true;
-  bool _locationServicesEnabled = true;
+  final bool _notificationsEnabled = true;
+
+  bool get _isGuestUser {
+    final user = Supabase.instance.client.auth.currentUser;
+    return user?.isAnonymous ?? false;
+  }
 
   void _signOut() async {
     try {
@@ -163,37 +167,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
           children: [
             const SizedBox(height: 8),
 
-            // Notifications Section
-            _buildSection([
-              _buildSimpleTile(
-                icon: LucideIcons.bell,
-                title: 'Push Notifications',
-                trailing: Switch.adaptive(
-                  value: _notificationsEnabled,
-                  onChanged: (value) {
-                    setState(() {
-                      _notificationsEnabled = value;
-                    });
+            // Security Section (only for non-guest users)
+            if (!_isGuestUser) ...[
+              _buildSection([
+                _buildSimpleTile(
+                  icon: LucideIcons.key,
+                  title: 'Change Password',
+                  subtitle: 'Update your account password',
+                  onTap: () {
+                    context.router.push(const ChangePasswordRoute());
                   },
-                  activeColor: AppColors.primary,
                 ),
-              ),
-              _buildSimpleTile(
-                icon: LucideIcons.mapPin,
-                title: 'Location Services',
-                trailing: Switch.adaptive(
-                  value: _locationServicesEnabled,
-                  onChanged: (value) {
-                    setState(() {
-                      _locationServicesEnabled = value;
-                    });
+                _buildSimpleTile(
+                  icon: LucideIcons.mailX,
+                  title: 'Reset Password via Email',
+                  subtitle: 'Send password reset email',
+                  onTap: () {
+                    context.router.push(const ForgotPasswordRoute());
                   },
-                  activeColor: AppColors.primary,
                 ),
-              ),
-            ]),
-
-            const SizedBox(height: 24),
+              ]),
+              const SizedBox(height: 16),
+            ],
 
             // About Section
             _buildSection([
