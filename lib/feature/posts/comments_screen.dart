@@ -1,4 +1,5 @@
 import 'package:amayalert/core/constant/constant.dart';
+import 'package:amayalert/core/router/app_route.gr.dart';
 import 'package:amayalert/core/theme/theme.dart';
 import 'package:amayalert/core/widgets/input/custom_text_field.dart';
 import 'package:amayalert/core/widgets/text/custom_text.dart';
@@ -142,22 +143,34 @@ class _CommentsScreenState extends State<CommentsScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             // Avatar or initials
-                            CircleAvatar(
-                              radius: 18,
-                              backgroundColor: Colors.grey.shade200,
-                              backgroundImage: author?.profilePicture != null
-                                  ? NetworkImage(author!.profilePicture!)
-                                        as ImageProvider
-                                  : null,
-                              child: author?.profilePicture == null
-                                  ? Text(
-                                      initials(authorName),
-                                      style: const TextStyle(
-                                        color: AppColors.primary,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    )
-                                  : null,
+                            GestureDetector(
+                              onTap: () {
+                                if (author != null) {
+                                  context.router.push(
+                                    UserProfileRoute(
+                                      userId: author.id,
+                                      userName: authorName,
+                                    ),
+                                  );
+                                }
+                              },
+                              child: CircleAvatar(
+                                radius: 18,
+                                backgroundColor: Colors.grey.shade200,
+                                backgroundImage: author?.profilePicture != null
+                                    ? NetworkImage(author!.profilePicture!)
+                                          as ImageProvider
+                                    : null,
+                                child: author?.profilePicture == null
+                                    ? Text(
+                                        initials(authorName),
+                                        style: const TextStyle(
+                                          color: AppColors.primary,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      )
+                                    : null,
+                              ),
                             ),
                             const SizedBox(width: 12),
                             // Name, time and comment
@@ -168,10 +181,22 @@ class _CommentsScreenState extends State<CommentsScreen> {
                                   Row(
                                     children: [
                                       Expanded(
-                                        child: CustomText(
-                                          text: authorName,
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w700,
+                                        child: GestureDetector(
+                                          onTap: () {
+                                            if (author != null) {
+                                              context.router.push(
+                                                UserProfileRoute(
+                                                  userId: author.id,
+                                                  userName: authorName,
+                                                ),
+                                              );
+                                            }
+                                          },
+                                          child: CustomText(
+                                            text: authorName,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w700,
+                                          ),
                                         ),
                                       ),
                                       const SizedBox(width: 8),

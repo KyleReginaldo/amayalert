@@ -1,9 +1,11 @@
 import 'package:amayalert/core/constant/constant.dart';
+import 'package:amayalert/core/router/app_route.gr.dart';
 import 'package:amayalert/core/theme/theme.dart';
 import 'package:amayalert/core/widgets/input/custom_text_field.dart';
 import 'package:amayalert/core/widgets/text/custom_text.dart';
 import 'package:amayalert/feature/posts/post_provider.dart';
 import 'package:amayalert/feature/posts/post_repository.dart';
+import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:provider/provider.dart';
@@ -121,32 +123,44 @@ class _CommentsSheetState extends State<_CommentsSheet> {
                         separatorBuilder: (_, __) => const Divider(height: 1),
                         itemBuilder: (context, index) {
                           final c = comments[index];
-                          return ListTile(
-                            leading: CircleAvatar(
-                              radius: 18,
-                              backgroundColor: Colors.grey.shade200,
-                              backgroundImage: c.user?.profilePicture != null
-                                  ? NetworkImage(c.user!.profilePicture!)
-                                        as ImageProvider
-                                  : null,
-                              child: c.user?.profilePicture == null
-                                  ? Icon(
-                                      Icons.person,
-                                      color: AppColors.primary,
-                                      size: 18,
-                                    )
-                                  : null,
-                            ),
-                            title: CustomText(text: c.comment ?? ''),
-                            subtitle: CustomText(
-                              text: c.user?.fullName ?? 'Unknown',
-                              fontSize: 12,
-                              color: AppColors.textSecondaryLight,
-                            ),
-                            trailing: CustomText(
-                              text: '${c.createdAt.toLocal()}'.split(' ')[0],
-                              fontSize: 12,
-                              color: AppColors.textSecondaryLight,
+                          return GestureDetector(
+                            onTap: () {
+                              if (c.user != null) {
+                                context.router.push(
+                                  UserProfileRoute(
+                                    userId: c.user!.id,
+                                    userName: c.user!.fullName,
+                                  ),
+                                );
+                              }
+                            },
+                            child: ListTile(
+                              leading: CircleAvatar(
+                                radius: 18,
+                                backgroundColor: Colors.grey.shade200,
+                                backgroundImage: c.user?.profilePicture != null
+                                    ? NetworkImage(c.user!.profilePicture!)
+                                          as ImageProvider
+                                    : null,
+                                child: c.user?.profilePicture == null
+                                    ? Icon(
+                                        Icons.person,
+                                        color: AppColors.primary,
+                                        size: 18,
+                                      )
+                                    : null,
+                              ),
+                              title: CustomText(text: c.comment ?? ''),
+                              subtitle: CustomText(
+                                text: c.user?.fullName ?? 'Unknown',
+                                fontSize: 12,
+                                color: AppColors.textSecondaryLight,
+                              ),
+                              trailing: CustomText(
+                                text: '${c.createdAt.toLocal()}'.split(' ')[0],
+                                fontSize: 12,
+                                color: AppColors.textSecondaryLight,
+                              ),
                             ),
                           );
                         },

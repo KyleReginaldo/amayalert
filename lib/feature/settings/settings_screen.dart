@@ -17,8 +17,6 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  final bool _notificationsEnabled = true;
-
   bool get _isGuestUser {
     final user = Supabase.instance.client.auth.currentUser;
     return user?.isAnonymous ?? false;
@@ -178,14 +176,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     context.router.push(const ChangePasswordRoute());
                   },
                 ),
-                _buildSimpleTile(
-                  icon: LucideIcons.mailX,
-                  title: 'Reset Password via Email',
-                  subtitle: 'Send password reset email',
-                  onTap: () {
-                    context.router.push(const ForgotPasswordRoute());
-                  },
-                ),
+                // _buildSimpleTile(
+                //   icon: LucideIcons.mailX,
+                //   title: 'Reset Password via Email',
+                //   subtitle: 'Send password reset email',
+                //   onTap: () {
+                //     context.router.push(const ForgotPasswordRoute());
+                //   },
+                // ),
               ]),
               const SizedBox(height: 16),
             ],

@@ -8,6 +8,7 @@ import 'package:onesignal_flutter/onesignal_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'core/router/app_route.dart';
+import 'core/services/deep_link_handler.dart';
 import 'core/services/notification_handler.dart';
 import 'core/theme/theme.dart';
 
@@ -35,9 +36,28 @@ void main() async {
   runApp(MyApp());
 }
 
-class MyApp extends StatelessWidget {
-  MyApp({super.key});
+class MyApp extends StatefulWidget {
+  const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
   final appRouter = AppRouter();
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize deep link handler for auth state changes
+    DeepLinkHandler.initialize(appRouter);
+  }
+
+  @override
+  void dispose() {
+    DeepLinkHandler.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -45,6 +65,7 @@ class MyApp extends StatelessWidget {
       title: 'Amayalert',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
+
       // darkTheme: AppTheme.darkTheme,
       // themeMode: ThemeMode.system,
       routerConfig: appRouter.config(),

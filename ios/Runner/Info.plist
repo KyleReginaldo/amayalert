@@ -51,5 +51,16 @@
 		<string>This app needs access to photo library to select profile images</string>
 		<key>UIStatusBarHidden</key>
 		<false/>
+		<key>CFBundleURLTypes</key>
+		<array>
+			<dict>
+				<key>CFBundleURLName</key>
+				<string>com.amayalert.app.deeplink</string>
+				<key>CFBundleURLSchemes</key>
+				<array>
+					<string>com.amayalert.app</string>
+				</array>
+			</dict>
+		</array>
 	</dict>
 </plist>

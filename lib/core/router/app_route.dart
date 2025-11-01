@@ -108,5 +108,9 @@ class AppRouter extends RootStackRouter {
       page: WebViewRoute.page,
       transitionsBuilder: TransitionsBuilders.slideLeft,
     ),
+    CustomRoute(
+      page: UserProfileRoute.page,
+      transitionsBuilder: TransitionsBuilders.slideLeft,
+    ),
   ];
 }

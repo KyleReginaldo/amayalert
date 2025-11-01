@@ -101,7 +101,7 @@ class AuthProvider {
     try {
       await Supabase.instance.client.auth.resetPasswordForEmail(
         email,
-        redirectTo: 'com.amayalert.app://reset-password',
+        redirectTo: 'https://amayalert.site/reset-password',
       );
       return Result.success('Password reset email sent successfully');
     } on AuthException catch (e) {

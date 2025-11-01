@@ -283,6 +283,178 @@ class ActivityRepository extends ChangeNotifier {
     loadActivities();
   }
 
+  /// Delete a user activity based on its type and ID
+  Future<bool> deleteActivity(Activity activity, String currentUserId) async {
+    try {
+      // Check if user owns the activity
+      if (activity.userId != currentUserId && activity.userId != 'system') {
+        throw Exception('You can only delete your own activities');
+      }
+
+      bool success = false;
+
+      switch (activity.type) {
+        case ActivityType.post:
+          success = await _deletePostActivity(activity);
+          break;
+        case ActivityType.alert:
+          success = await _deleteAlertActivity(activity);
+          break;
+        case ActivityType.evacuation:
+          success = await _deleteEvacuationActivity(activity);
+          break;
+        case ActivityType.rescue:
+          success = await _deleteRescueActivity(activity);
+          break;
+      }
+
+      if (success) {
+        // Remove from local list
+        _activities.removeWhere((a) => a.id == activity.id);
+        _calculateStats();
+        notifyListeners();
+      }
+
+      return success;
+    } catch (e) {
+      debugPrint('Error deleting activity: $e');
+      return false;
+    }
+  }
+
+  Future<bool> _deletePostActivity(Activity activity) async {
+    try {
+      final postId = int.parse(activity.id);
+
+      // Check if post exists and user owns it
+      final postCheck = await _supabase
+          .from('posts')
+          .select('user, media_url')
+          .eq('id', postId)
+          .single();
+
+      if (postCheck['user'] != activity.userId) {
+        throw Exception('You can only delete your own posts');
+      }
+
+      // Delete associated media if exists
+      final mediaUrl = postCheck['media_url'] as String?;
+      if (mediaUrl != null && mediaUrl.isNotEmpty) {
+        try {
+          final uri = Uri.parse(mediaUrl);
+          final filePath = uri.pathSegments.skip(4).join('/');
+          await _supabase.storage.from('files').remove([filePath]);
+        } catch (e) {
+          debugPrint('Failed to delete media file: $e');
+        }
+      }
+
+      // Delete post
+      await _supabase.from('posts').delete().eq('id', postId);
+      return true;
+    } catch (e) {
+      debugPrint('Error deleting post activity: $e');
+      return false;
+    }
+  }
+
+  Future<bool> _deleteAlertActivity(Activity activity) async {
+    try {
+      final alertId = int.parse(activity.id);
+      await _supabase.from('alert').delete().eq('id', alertId);
+      return true;
+    } catch (e) {
+      debugPrint('Error deleting alert activity: $e');
+      return false;
+    }
+  }
+
+  Future<bool> _deleteEvacuationActivity(Activity activity) async {
+    try {
+      final evacuationId = int.parse(activity.id);
+      await _supabase
+          .from('evacuation_centers')
+          .delete()
+          .eq('id', evacuationId);
+      return true;
+    } catch (e) {
+      debugPrint('Error deleting evacuation activity: $e');
+      return false;
+    }
+  }
+
+  Future<bool> _deleteRescueActivity(Activity activity) async {
+    try {
+      final rescueId = int.parse(activity.id);
+      await _supabase.from('rescues').delete().eq('id', rescueId);
+      return true;
+    } catch (e) {
+      debugPrint('Error deleting rescue activity: $e');
+      return false;
+    }
+  }
+
+  /// Delete all activities for a specific user
+  Future<Map<String, int>> deleteAllUserActivities(String userId) async {
+    final results = {
+      'posts': 0,
+      'alerts': 0,
+      'evacuations': 0,
+      'rescues': 0,
+      'errors': 0,
+    };
+
+    // Get all user activities
+    final userActivities = _activities
+        .where((a) => a.userId == userId)
+        .toList();
+
+    try {
+      for (final activity in userActivities) {
+        try {
+          bool success = false;
+
+          switch (activity.type) {
+            case ActivityType.post:
+              success = await _deletePostActivity(activity);
+              if (success) results['posts'] = results['posts']! + 1;
+              break;
+            case ActivityType.alert:
+              success = await _deleteAlertActivity(activity);
+              if (success) results['alerts'] = results['alerts']! + 1;
+              break;
+            case ActivityType.evacuation:
+              success = await _deleteEvacuationActivity(activity);
+              if (success) results['evacuations'] = results['evacuations']! + 1;
+              break;
+            case ActivityType.rescue:
+              success = await _deleteRescueActivity(activity);
+              if (success) results['rescues'] = results['rescues']! + 1;
+              break;
+          }
+
+          if (!success) {
+            results['errors'] = results['errors']! + 1;
+          }
+        } catch (e) {
+          debugPrint('Error deleting activity ${activity.id}: $e');
+          results['errors'] = results['errors']! + 1;
+        }
+      }
+
+      // Remove deleted activities from local list
+      _activities.removeWhere((a) => a.userId == userId);
+      _calculateStats();
+      notifyListeners();
+
+      return results;
+    } catch (e) {
+      debugPrint('Error deleting user activities: $e');
+      results['errors'] = userActivities.length;
+      return results;
+    }
+  }
+
   Future<void> testIndividualTables() async {
     debugPrint('=== Testing Individual Tables ===');
 

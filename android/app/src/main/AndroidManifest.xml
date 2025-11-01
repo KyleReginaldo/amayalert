@@ -41,7 +41,7 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="https"
-                      android:host="amayalert.com"
+                      android:host="amayalert.site"
                       android:pathPrefix="/reset-password" />
             </intent-filter>
             
@@ -50,7 +50,7 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="com.amayalert.app" />
+                <data android:scheme="com.amaya.amayalert" />
             </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.

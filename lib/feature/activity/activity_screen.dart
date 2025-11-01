@@ -1,3 +1,4 @@
+import 'package:amayalert/core/constant/constant.dart';
 import 'package:amayalert/core/theme/theme.dart';
 import 'package:amayalert/core/widgets/text/custom_text.dart';
 import 'package:amayalert/dependency.dart';
@@ -5,6 +6,7 @@ import 'package:amayalert/feature/activity/activity_model.dart';
 import 'package:amayalert/feature/activity/activity_repository.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:timeago/timeago.dart' as timeago;
@@ -54,6 +56,44 @@ class _ActivityScreenState extends State<ActivityScreen> {
               context.read<ActivityRepository>().refresh();
             },
             icon: Icon(LucideIcons.refreshCw, color: AppColors.gray600),
+          ),
+          Consumer<ActivityRepository>(
+            builder: (context, activityRepo, _) {
+              final userActivities = activityRepo.activities
+                  .where((a) => a.userId == userID)
+                  .toList();
+
+              if (userActivities.isEmpty) return const SizedBox.shrink();
+
+              return PopupMenuButton<String>(
+                icon: Icon(Icons.more_vert, color: AppColors.gray600),
+                onSelected: (value) {
+                  if (value == 'delete_all') {
+                    _showDeleteAllConfirmation();
+                  }
+                },
+                itemBuilder: (context) => [
+                  PopupMenuItem<String>(
+                    value: 'delete_all',
+                    child: Row(
+                      children: [
+                        Icon(
+                          LucideIcons.trash2,
+                          size: 16,
+                          color: AppColors.error,
+                        ),
+                        const SizedBox(width: 8),
+                        CustomText(
+                          text: 'Delete All My Activities',
+                          color: AppColors.error,
+                          fontSize: 14,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
         ],
       ),
@@ -231,6 +271,9 @@ class _ActivityScreenState extends State<ActivityScreen> {
 
   Widget _buildActivityItem(Activity activity) {
     final typeConfig = _getActivityTypeConfig(activity.type);
+    final currentUserId = userID; // Get current user ID from constants
+    final canDelete =
+        activity.userId == currentUserId && activity.userId != 'system';
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -263,6 +306,17 @@ class _ActivityScreenState extends State<ActivityScreen> {
                     fontSize: 12,
                     color: AppColors.gray500,
                   ),
+                  if (canDelete) ...[
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: () => _showDeleteConfirmation(activity),
+                      child: Icon(
+                        LucideIcons.trash2,
+                        size: 16,
+                        color: AppColors.error,
+                      ),
+                    ),
+                  ],
                 ],
               ),
               const SizedBox(height: 4),
@@ -323,6 +377,264 @@ class _ActivityScreenState extends State<ActivityScreen> {
         return {'icon': LucideIcons.mapPin, 'color': AppColors.error};
       case ActivityType.rescue:
         return {'icon': LucideIcons.shield, 'color': AppColors.success};
+    }
+  }
+
+  void _showDeleteConfirmation(Activity activity) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Row(
+            children: [
+              Icon(LucideIcons.trash2, color: AppColors.error, size: 20),
+              const SizedBox(width: 8),
+              const CustomText(
+                text: 'Delete Activity',
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CustomText(
+                text:
+                    'Are you sure you want to delete this ${activity.type.name}?',
+                fontSize: 16,
+              ),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.gray100,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    CustomText(
+                      text: activity.title,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    const SizedBox(height: 4),
+                    CustomText(
+                      text: activity.description,
+                      fontSize: 12,
+                      color: AppColors.gray600,
+                      maxLines: 2,
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              const CustomText(
+                text: 'This action cannot be undone.',
+                fontSize: 14,
+                color: AppColors.error,
+                fontWeight: FontWeight.w500,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: CustomText(text: 'Cancel', color: AppColors.gray600),
+            ),
+            ElevatedButton(
+              onPressed: () => _deleteActivity(activity),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.error,
+                foregroundColor: Colors.white,
+              ),
+              child: const CustomText(
+                text: 'Delete',
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _deleteActivity(Activity activity) async {
+    Navigator.of(context).pop(); // Close dialog
+
+    EasyLoading.show(status: 'Deleting ${activity.type.name}...');
+
+    try {
+      final activityRepo = context.read<ActivityRepository>();
+      final success = await activityRepo.deleteActivity(activity, userID ?? '');
+
+      EasyLoading.dismiss();
+
+      if (success) {
+        final typeName =
+            activity.type.name[0].toUpperCase() +
+            activity.type.name.substring(1);
+        EasyLoading.showSuccess('$typeName deleted successfully');
+      } else {
+        EasyLoading.showError('Failed to delete ${activity.type.name}');
+      }
+    } catch (e) {
+      EasyLoading.dismiss();
+      EasyLoading.showError('Error: ${e.toString()}');
+    }
+  }
+
+  void _showDeleteAllConfirmation() {
+    final activityRepo = context.read<ActivityRepository>();
+    final userActivities = activityRepo.activities
+        .where((a) => a.userId == userID)
+        .toList();
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Row(
+            children: [
+              Icon(LucideIcons.trash2, color: AppColors.error, size: 20),
+              const SizedBox(width: 8),
+              const CustomText(
+                text: 'Delete All Activities',
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CustomText(
+                text: 'Are you sure you want to delete all your activities?',
+                fontSize: 16,
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.gray100,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    CustomText(
+                      text: 'This will delete:',
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    const SizedBox(height: 8),
+                    ...ActivityType.values.map((type) {
+                      final count = userActivities
+                          .where((a) => a.type == type)
+                          .length;
+                      if (count > 0) {
+                        final typeName =
+                            type.name[0].toUpperCase() + type.name.substring(1);
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 4),
+                          child: Row(
+                            children: [
+                              Icon(
+                                _getActivityTypeConfig(type)['icon'],
+                                size: 16,
+                                color: _getActivityTypeConfig(type)['color'],
+                              ),
+                              const SizedBox(width: 8),
+                              CustomText(
+                                text: '$count $typeName${count > 1 ? 's' : ''}',
+                                fontSize: 12,
+                                color: AppColors.gray600,
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+                      return const SizedBox.shrink();
+                    }),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              const CustomText(
+                text: 'This action cannot be undone.',
+                fontSize: 14,
+                color: AppColors.error,
+                fontWeight: FontWeight.w500,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: CustomText(text: 'Cancel', color: AppColors.gray600),
+            ),
+            ElevatedButton(
+              onPressed: () => _deleteAllActivities(),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.error,
+                foregroundColor: Colors.white,
+              ),
+              child: const CustomText(
+                text: 'Delete All',
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _deleteAllActivities() async {
+    Navigator.of(context).pop(); // Close dialog
+
+    EasyLoading.show(status: 'Deleting all activities...');
+
+    try {
+      final activityRepo = context.read<ActivityRepository>();
+      final results = await activityRepo.deleteAllUserActivities(userID ?? '');
+
+      EasyLoading.dismiss();
+
+      final totalDeleted =
+          results['posts']! +
+          results['alerts']! +
+          results['evacuations']! +
+          results['rescues']!;
+      final errors = results['errors']!;
+
+      if (totalDeleted > 0) {
+        if (errors > 0) {
+          EasyLoading.showToast(
+            'Deleted $totalDeleted activities with $errors errors',
+          );
+        } else {
+          EasyLoading.showSuccess(
+            'Successfully deleted $totalDeleted activities',
+          );
+        }
+      } else {
+        EasyLoading.showError('Failed to delete activities');
+      }
+    } catch (e) {
+      EasyLoading.dismiss();
+      EasyLoading.showError('Error: ${e.toString()}');
     }
   }
 }

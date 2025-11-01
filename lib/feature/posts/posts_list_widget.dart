@@ -155,46 +155,66 @@ class PostCard extends StatelessWidget {
           // Post header
           Row(
             children: [
-              CircleAvatar(
-                radius: 20,
-                backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                child: post.user.profilePicture != null
-                    ? ClipOval(
-                        child: CachedNetworkImage(
-                          imageUrl: post.user.profilePicture!,
-                          width: 36,
-                          height: 36,
-                          fit: BoxFit.cover,
-                          placeholder: (context, url) => Container(
+              GestureDetector(
+                onTap: () {
+                  context.router.push(
+                    UserProfileRoute(
+                      userId: post.user.id,
+                      userName: post.user.fullName,
+                    ),
+                  );
+                },
+                child: CircleAvatar(
+                  radius: 20,
+                  backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                  child: post.user.profilePicture != null
+                      ? ClipOval(
+                          child: CachedNetworkImage(
+                            imageUrl: post.user.profilePicture!,
                             width: 36,
                             height: 36,
-                            color: Colors.grey.shade200,
-                            child: const Center(
-                              child: CircularProgressIndicator(),
+                            fit: BoxFit.cover,
+                            placeholder: (context, url) => Container(
+                              width: 36,
+                              height: 36,
+                              color: Colors.grey.shade200,
+                              child: const Center(
+                                child: CircularProgressIndicator(),
+                              ),
+                            ),
+                            errorWidget: (context, url, error) => Icon(
+                              LucideIcons.user,
+                              color: AppColors.primary,
+                              size: 20,
                             ),
                           ),
-                          errorWidget: (context, url, error) => Icon(
-                            LucideIcons.user,
-                            color: AppColors.primary,
-                            size: 20,
-                          ),
+                        )
+                      : Icon(
+                          LucideIcons.user,
+                          color: AppColors.primary,
+                          size: 20,
                         ),
-                      )
-                    : Icon(
-                        LucideIcons.user,
-                        color: AppColors.primary,
-                        size: 20,
-                      ),
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    CustomText(
-                      text: post.user.fullName, // Shortened user ID
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
+                    GestureDetector(
+                      onTap: () {
+                        context.router.push(
+                          UserProfileRoute(
+                            userId: post.user.id,
+                            userName: post.user.fullName,
+                          ),
+                        );
+                      },
+                      child: CustomText(
+                        text: post.user.fullName, // Shortened user ID
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
                     ),
                     CustomText(
                       text: timeago.format(post.createdAt),
@@ -260,36 +280,56 @@ class PostCard extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      CircleAvatar(
-                        radius: 16,
-                        backgroundColor: AppColors.primary.withValues(
-                          alpha: 0.08,
-                        ),
-                        child: post.sharedPost!.user.profilePicture != null
-                            ? ClipOval(
-                                child: CachedNetworkImage(
-                                  imageUrl:
-                                      post.sharedPost!.user.profilePicture!,
-                                  width: 28,
-                                  height: 28,
-                                  fit: BoxFit.cover,
+                      GestureDetector(
+                        onTap: () {
+                          context.router.push(
+                            UserProfileRoute(
+                              userId: post.sharedPost!.user.id,
+                              userName: post.sharedPost!.user.fullName,
+                            ),
+                          );
+                        },
+                        child: CircleAvatar(
+                          radius: 16,
+                          backgroundColor: AppColors.primary.withValues(
+                            alpha: 0.08,
+                          ),
+                          child: post.sharedPost!.user.profilePicture != null
+                              ? ClipOval(
+                                  child: CachedNetworkImage(
+                                    imageUrl:
+                                        post.sharedPost!.user.profilePicture!,
+                                    width: 28,
+                                    height: 28,
+                                    fit: BoxFit.cover,
+                                  ),
+                                )
+                              : Icon(
+                                  LucideIcons.user,
+                                  color: AppColors.primary,
+                                  size: 16,
                                 ),
-                              )
-                            : Icon(
-                                LucideIcons.user,
-                                color: AppColors.primary,
-                                size: 16,
-                              ),
+                        ),
                       ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            CustomText(
-                              text: post.sharedPost!.user.fullName,
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
+                            GestureDetector(
+                              onTap: () {
+                                context.router.push(
+                                  UserProfileRoute(
+                                    userId: post.sharedPost!.user.id,
+                                    userName: post.sharedPost!.user.fullName,
+                                  ),
+                                );
+                              },
+                              child: CustomText(
+                                text: post.sharedPost!.user.fullName,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                             CustomText(
                               text: timeago.format(post.sharedPost!.createdAt),
