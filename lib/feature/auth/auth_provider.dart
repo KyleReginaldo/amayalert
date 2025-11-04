@@ -1,3 +1,5 @@
+import 'package:amayalert/core/services/auth_storage_service.dart';
+import 'package:amayalert/dependency.dart';
 import 'package:onesignal_flutter/onesignal_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -122,6 +124,61 @@ class AuthProvider {
       } else {
         return Result.error('Failed to update password');
       }
+    } on AuthException catch (e) {
+      return Result.error(e.message);
+    } catch (e) {
+      return Result.error('An error occurred: ${e.toString()}');
+    }
+  }
+
+  Future<Result<String>> resetPasswordWithEmail({
+    required String email,
+    required String newPassword,
+  }) async {
+    try {
+      // This is a simplified version - in production, you'd need proper verification
+      // First, try to sign the user in temporarily to update password
+      final userResponse = await Supabase.instance.client
+          .from('users')
+          .select()
+          .eq('email', email)
+          .maybeSingle();
+
+      if (userResponse == null) {
+        return Result.error('User not found');
+      }
+
+      // Use admin functions or a secure server endpoint to update password
+      // For this demo, we'll use the client update (requires authentication)
+      final response = await Supabase.instance.client.auth.updateUser(
+        UserAttributes(password: newPassword),
+      );
+
+      if (response.user != null) {
+        return Result.success('Password updated successfully');
+      } else {
+        return Result.error('Failed to update password');
+      }
+    } on AuthException catch (e) {
+      return Result.error(e.message);
+    } catch (e) {
+      return Result.error('An error occurred: ${e.toString()}');
+    }
+  }
+
+  Future<Result<String>> signOut() async {
+    try {
+      // Clear saved credentials when signing out
+      final authStorage = sl<AuthStorageService>();
+      await authStorage.clearCredentials();
+
+      // Sign out from Supabase
+      await Supabase.instance.client.auth.signOut();
+
+      // Sign out from OneSignal
+      await OneSignal.logout();
+
+      return Result.success('Sign out successful');
     } on AuthException catch (e) {
       return Result.error(e.message);
     } catch (e) {

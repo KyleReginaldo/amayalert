@@ -9,22 +9,23 @@ class PushNotificationService {
 
   // Get OneSignal REST API Key from environment or fallback to hardcoded value
   static String get _restApiKey =>
-      'os_v2_app_bsqwxjytezdrbhqt4yiy4tpc446n5tl33olepmfhutpmjc2d5bwsvxyggezetgqheotl7ypycc7slkeaiwrfi74wjabblwk5jsyt7ei';
+      'os_v2_app_daiscdpew5bqjdgvhxt2dwuoezejniwvkbqew7n3qi4mmdpk4rw3vzdevzbfb5vvcsqxeht3kwdrzpqgwoojeocveyluuj3aipdgabi';
 
   /// Send a push notification to a specific user
   static Future<bool> sendMessageNotification({
     required String receiverUserId,
     required String senderName,
     required String messageContent,
+    String? attachmentUrl,
     Map<String, dynamic>? additionalData,
   }) async {
     try {
       final response = await http.post(
         Uri.parse('https://api.onesignal.com/notifications?c=push'),
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json; charset=utf-8',
           'Authorization':
-              'Bearer Key os_v2_app_daiscdpew5bqjdgvhxt2dwuoe3ai5p7xuajeu5mf7o2n5ukxauh6jw3guvl5p5r7ncboa6etsirycpxsns46easyphrggcb5asjebhy',
+              'Bearer Key os_v2_app_daiscdpew5bqjdgvhxt2dwuoezejniwvkbqew7n3qi4mmdpk4rw3vzdevzbfb5vvcsqxeht3kwdrzpqgwoojeocveyluuj3aipdgabi',
         },
         body: jsonEncode({
           'app_id': _oneSignalAppId,
@@ -41,6 +42,7 @@ class PushNotificationService {
           "ios_interruption_level": "active",
           "ios_badgeType": "None",
           "ttl": 259200,
+          "big_picture": attachmentUrl,
           'include_aliases': {
             'external_id': [receiverUserId],
           },
@@ -77,7 +79,7 @@ class PushNotificationService {
       final response = await http.post(
         Uri.parse('$_baseUrl/notifications?c=push'),
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json; charset=utf-8',
           'Authorization': 'Bearer Key $_restApiKey',
         },
         body: jsonEncode({
@@ -141,7 +143,7 @@ class PushNotificationService {
       final response = await http.post(
         Uri.parse('$_baseUrl/notifications?c=push'),
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json; charset=utf-8',
           'Authorization': 'Basic $_restApiKey',
         },
         body: jsonEncode({
@@ -225,7 +227,7 @@ class PushNotificationService {
       final response = await http.post(
         Uri.parse('$_baseUrl/notifications?c=push'),
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json; charset=utf-8',
           'Authorization': 'Basic $_restApiKey',
         },
         body: jsonEncode(notificationBody),

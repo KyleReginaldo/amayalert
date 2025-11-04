@@ -2,6 +2,7 @@ import 'package:amayalert/core/constant/constant.dart';
 import 'package:amayalert/core/theme/theme.dart';
 import 'package:amayalert/core/widgets/text/custom_text.dart';
 import 'package:amayalert/dependency.dart';
+import 'package:amayalert/feature/activity/activity_detail_screen.dart';
 import 'package:amayalert/feature/activity/activity_model.dart';
 import 'package:amayalert/feature/activity/activity_repository.dart';
 import 'package:auto_route/auto_route.dart';
@@ -275,95 +276,125 @@ class _ActivityScreenState extends State<ActivityScreen> {
     final canDelete =
         activity.userId == currentUserId && activity.userId != 'system';
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: typeConfig['color'].withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(typeConfig['icon'], size: 20, color: typeConfig['color']),
+    return GestureDetector(
+      onTap: () => _navigateToActivityDetail(activity),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: typeConfig['color'].withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                typeConfig['icon'],
+                size: 20,
+                color: typeConfig['color'],
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    child: CustomText(
-                      text: activity.title,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black87,
-                    ),
-                  ),
-                  CustomText(
-                    text: timeago.format(activity.createdAt),
-                    fontSize: 12,
-                    color: AppColors.gray500,
-                  ),
-                  if (canDelete) ...[
-                    const SizedBox(width: 8),
-                    GestureDetector(
-                      onTap: () => _showDeleteConfirmation(activity),
-                      child: Icon(
-                        LucideIcons.trash2,
-                        size: 16,
-                        color: AppColors.error,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: CustomText(
+                          text: activity.title,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                        ),
                       ),
-                    ),
-                  ],
-                ],
-              ),
-              const SizedBox(height: 4),
-              CustomText(
-                text: activity.description,
-                fontSize: 13,
-                color: AppColors.gray600,
-                maxLines: 2,
-              ),
-              if (activity.location != null) ...[
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Icon(
-                      LucideIcons.mapPin,
-                      size: 12,
-                      color: AppColors.gray500,
-                    ),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: CustomText(
-                        text: activity.location!,
+                      CustomText(
+                        text: timeago.format(activity.createdAt),
                         fontSize: 12,
                         color: AppColors.gray500,
                       ),
+                      if (canDelete) ...[
+                        const SizedBox(width: 8),
+                        GestureDetector(
+                          onTap: () => _showDeleteConfirmation(activity),
+                          child: Icon(
+                            LucideIcons.trash2,
+                            size: 16,
+                            color: AppColors.error,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  CustomText(
+                    text: activity.description,
+                    fontSize: 13,
+                    color: AppColors.gray600,
+                    maxLines: 2,
+                  ),
+                  if (activity.location != null) ...[
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(
+                          LucideIcons.mapPin,
+                          size: 12,
+                          color: AppColors.gray500,
+                        ),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: CustomText(
+                            text: activity.location!,
+                            fontSize: 12,
+                            color: AppColors.gray500,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
-                ),
-              ],
-              if (activity.userName != null) ...[
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Icon(LucideIcons.user, size: 12, color: AppColors.gray500),
-                    const SizedBox(width: 4),
-                    CustomText(
-                      text: activity.userName!,
-                      fontSize: 12,
-                      color: AppColors.gray500,
+                  if (activity.userName != null) ...[
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        Icon(
+                          LucideIcons.user,
+                          size: 12,
+                          color: AppColors.gray500,
+                        ),
+                        const SizedBox(width: 4),
+                        CustomText(
+                          text: activity.userName!,
+                          fontSize: 12,
+                          color: AppColors.gray500,
+                        ),
+                      ],
                     ),
                   ],
-                ),
-              ],
-            ],
-          ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Icon(LucideIcons.eye, size: 12, color: AppColors.gray400),
+                      const SizedBox(width: 4),
+                      CustomText(
+                        text: 'Tap to view details',
+                        fontSize: 11,
+                        color: AppColors.gray400,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 
@@ -378,6 +409,18 @@ class _ActivityScreenState extends State<ActivityScreen> {
       case ActivityType.rescue:
         return {'icon': LucideIcons.shield, 'color': AppColors.success};
     }
+  }
+
+  void _navigateToActivityDetail(Activity activity) {
+    // Use MaterialPageRoute for now since the route isn't set up in AutoRouter yet
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => ChangeNotifierProvider.value(
+          value: sl<ActivityRepository>(),
+          child: ActivityDetailScreen(activity: activity),
+        ),
+      ),
+    );
   }
 
   void _showDeleteConfirmation(Activity activity) {

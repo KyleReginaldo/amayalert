@@ -764,6 +764,13 @@ class ChatConversationMapper extends ClassMapperBase<ChatConversation> {
     key: r'participant_email',
     opt: true,
   );
+  static String? _$phoneNumber(ChatConversation v) => v.phoneNumber;
+  static const Field<ChatConversation, String> _f$phoneNumber = Field(
+    'phoneNumber',
+    _$phoneNumber,
+    key: r'phone_number',
+    opt: true,
+  );
   static bool _$isOnline(ChatConversation v) => v.isOnline;
   static const Field<ChatConversation, bool> _f$isOnline = Field(
     'isOnline',
@@ -837,6 +844,7 @@ class ChatConversationMapper extends ClassMapperBase<ChatConversation> {
     #participantName: _f$participantName,
     #participantProfilePicture: _f$participantProfilePicture,
     #participantEmail: _f$participantEmail,
+    #phoneNumber: _f$phoneNumber,
     #isOnline: _f$isOnline,
     #lastSeen: _f$lastSeen,
     #lastMessage: _f$lastMessage,
@@ -854,6 +862,7 @@ class ChatConversationMapper extends ClassMapperBase<ChatConversation> {
       participantName: data.dec(_f$participantName),
       participantProfilePicture: data.dec(_f$participantProfilePicture),
       participantEmail: data.dec(_f$participantEmail),
+      phoneNumber: data.dec(_f$phoneNumber),
       isOnline: data.dec(_f$isOnline),
       lastSeen: data.dec(_f$lastSeen),
       lastMessage: data.dec(_f$lastMessage),
@@ -931,6 +940,7 @@ abstract class ChatConversationCopyWith<$R, $In extends ChatConversation, $Out>
     String? participantName,
     String? participantProfilePicture,
     String? participantEmail,
+    String? phoneNumber,
     bool? isOnline,
     DateTime? lastSeen,
     Message? lastMessage,
@@ -960,6 +970,7 @@ class _ChatConversationCopyWithImpl<$R, $Out>
     String? participantName,
     Object? participantProfilePicture = $none,
     Object? participantEmail = $none,
+    Object? phoneNumber = $none,
     bool? isOnline,
     Object? lastSeen = $none,
     Object? lastMessage = $none,
@@ -973,6 +984,7 @@ class _ChatConversationCopyWithImpl<$R, $Out>
       if (participantProfilePicture != $none)
         #participantProfilePicture: participantProfilePicture,
       if (participantEmail != $none) #participantEmail: participantEmail,
+      if (phoneNumber != $none) #phoneNumber: phoneNumber,
       if (isOnline != null) #isOnline: isOnline,
       if (lastSeen != $none) #lastSeen: lastSeen,
       if (lastMessage != $none) #lastMessage: lastMessage,
@@ -990,6 +1002,7 @@ class _ChatConversationCopyWithImpl<$R, $Out>
       or: $value.participantProfilePicture,
     ),
     participantEmail: data.get(#participantEmail, or: $value.participantEmail),
+    phoneNumber: data.get(#phoneNumber, or: $value.phoneNumber),
     isOnline: data.get(#isOnline, or: $value.isOnline),
     lastSeen: data.get(#lastSeen, or: $value.lastSeen),
     lastMessage: data.get(#lastMessage, or: $value.lastMessage),

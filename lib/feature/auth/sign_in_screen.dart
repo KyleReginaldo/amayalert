@@ -1,5 +1,6 @@
 import 'package:amayalert/core/constant/constant.dart';
 import 'package:amayalert/core/router/app_route.gr.dart';
+import 'package:amayalert/core/services/auth_storage_service.dart';
 import 'package:amayalert/core/theme/theme.dart';
 import 'package:amayalert/core/widgets/buttons/custom_buttons.dart';
 import 'package:amayalert/core/widgets/input/custom_text_field.dart';
@@ -34,6 +35,31 @@ class _SignInScreenState extends State<SignInScreen> {
   final password = TextEditingController();
   bool obscureText = true;
   bool rememberMe = false;
+  late AuthStorageService _authStorage;
+
+  @override
+  void initState() {
+    super.initState();
+    _authStorage = sl<AuthStorageService>();
+    _loadSavedCredentials();
+  }
+
+  Future<void> _loadSavedCredentials() async {
+    final savedCredentials = await _authStorage.getSavedCredentials();
+    final isRememberMeEnabled = _authStorage.isRememberMeEnabled();
+
+    if (mounted) {
+      setState(() {
+        rememberMe = isRememberMeEnabled;
+        if (savedCredentials['email'] != null) {
+          email.text = savedCredentials['email']!;
+        }
+        if (savedCredentials['password'] != null) {
+          password.text = savedCredentials['password']!;
+        }
+      });
+    }
+  }
 
   void handleSignIn() async {
     EasyLoading.show(status: 'Signing In...');
@@ -45,6 +71,13 @@ class _SignInScreenState extends State<SignInScreen> {
       EasyLoading.dismiss();
       EasyLoading.showError(result.error);
     } else {
+      // Save credentials based on remember me checkbox
+      await _authStorage.saveCredentials(
+        email: email.text,
+        password: password.text,
+        rememberMe: rememberMe,
+      );
+
       EasyLoading.dismiss();
       if (mounted) {
         context.read<ProfileRepository>().clear();
@@ -56,6 +89,13 @@ class _SignInScreenState extends State<SignInScreen> {
         context.router.maybePop(true);
       }
     }
+  }
+
+  @override
+  void dispose() {
+    email.dispose();
+    password.dispose();
+    super.dispose();
   }
 
   @override

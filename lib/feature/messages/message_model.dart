@@ -1,3 +1,4 @@
+// ignore_for_file: public_member_api_docs, sort_constructors_first
 import 'package:dart_mappable/dart_mappable.dart';
 
 part 'message_model.mapper.dart';
@@ -285,6 +286,7 @@ class ChatConversation with ChatConversationMappable {
   final String participantName;
   final String? participantProfilePicture;
   final String? participantEmail;
+  final String? phoneNumber;
   final bool isOnline;
   final DateTime? lastSeen;
   final Message? lastMessage;
@@ -297,6 +299,7 @@ class ChatConversation with ChatConversationMappable {
     required this.participantName,
     this.participantProfilePicture,
     this.participantEmail,
+    this.phoneNumber,
     this.isOnline = false,
     this.lastSeen,
     this.lastMessage,
@@ -312,6 +315,7 @@ class ChatConversation with ChatConversationMappable {
     String? participantEmail,
     bool isOnline = false,
     DateTime? lastSeen,
+    String? phoneNumber,
     required List<Message> messages,
     required String currentUserId,
     ConversationType type = ConversationType.direct,
@@ -340,6 +344,7 @@ class ChatConversation with ChatConversationMappable {
       lastSeen: lastSeen,
       lastMessage: lastMessage,
       unreadCount: unreadCount,
+      phoneNumber: phoneNumber,
       lastActivity: lastMessage?.createdAt,
       type: type,
     );

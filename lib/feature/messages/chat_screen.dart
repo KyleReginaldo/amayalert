@@ -5,23 +5,27 @@ import 'package:amayalert/dependency.dart';
 import 'package:amayalert/feature/messages/enhanced_message_repository.dart';
 import 'package:amayalert/feature/messages/message_model.dart';
 import 'package:auto_route/auto_route.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:timeago/timeago.dart' as timeago;
+import 'package:url_launcher/url_launcher.dart';
 
 @RoutePage()
 class ChatScreen extends StatefulWidget implements AutoRouteWrapper {
   final String otherUserId;
   final String otherUserName;
+  final String? otherUserPhone;
   final ImagePicker? imagePicker;
 
   const ChatScreen({
     super.key,
     required this.otherUserId,
     required this.otherUserName,
+    this.otherUserPhone,
     this.imagePicker,
   });
 
@@ -47,6 +51,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    debugPrint('ChatScreen initialized with phone: ${widget.otherUserPhone}');
     _loadMessages();
     _messageController.addListener(_onTextChanged);
     WidgetsBinding.instance.addObserver(this);
@@ -174,6 +179,79 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     }
   }
 
+  Future<void> _makePhoneCall() async {
+    if (widget.otherUserPhone == null || widget.otherUserPhone!.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Phone number not available'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+
+    // Clean the phone number - remove any spaces, dashes, or other formatting
+    final cleanPhoneNumber = widget.otherUserPhone!.replaceAll(
+      RegExp(r'[^\d+]'),
+      '',
+    );
+
+    try {
+      debugPrint('Attempting to call: $cleanPhoneNumber');
+
+      // Try different URL schemes
+      final phoneUrls = [
+        Uri.parse('tel:$cleanPhoneNumber'),
+        Uri.parse('tel://$cleanPhoneNumber'),
+      ];
+
+      bool launched = false;
+
+      for (final phoneUrl in phoneUrls) {
+        debugPrint('Trying phone URL: $phoneUrl');
+
+        try {
+          if (await canLaunchUrl(phoneUrl)) {
+            await launchUrl(phoneUrl, mode: LaunchMode.externalApplication);
+            debugPrint('Phone call launched successfully with URL: $phoneUrl');
+            launched = true;
+            break;
+          }
+        } catch (e) {
+          debugPrint('Failed to launch with URL $phoneUrl: $e');
+          continue;
+        }
+      }
+
+      if (!launched) {
+        debugPrint('All phone URL attempts failed');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Cannot make phone calls on this device.\nPhone: $cleanPhoneNumber',
+              ),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('Phone call error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error making phone call: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider.value(
@@ -195,6 +273,29 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
               ),
             ],
           ),
+          actions: [
+            if (widget.otherUserPhone != null &&
+                widget.otherUserPhone!.isNotEmpty)
+              IconButton(
+                onPressed: _makePhoneCall,
+                icon: const Icon(LucideIcons.phone),
+                tooltip: 'Call ${widget.otherUserName}',
+              ),
+            // Debug button to show phone number (remove in production)
+            if (kDebugMode && widget.otherUserPhone != null)
+              IconButton(
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Phone: ${widget.otherUserPhone}'),
+                      duration: const Duration(seconds: 2),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.info_outline),
+                tooltip: 'Show phone number',
+              ),
+          ],
         ),
         body: SizedBox(
           height: MediaQuery.sizeOf(context).height,

@@ -83,22 +83,25 @@ class _RescueDetailScreenState extends State<RescueDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.scaffoldLight,
-      appBar: AppBar(
+    return SafeArea(
+      top: false,
+      child: Scaffold(
         backgroundColor: AppColors.scaffoldLight,
-        elevation: 0,
-        leading: IconButton(
-          onPressed: () => context.router.pop(),
-          icon: const Icon(LucideIcons.arrowLeft),
+        appBar: AppBar(
+          backgroundColor: AppColors.scaffoldLight,
+          elevation: 0,
+          leading: IconButton(
+            onPressed: () => context.router.pop(),
+            icon: const Icon(LucideIcons.arrowLeft),
+          ),
+          title: const CustomText(
+            text: 'Emergency Details',
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+          ),
         ),
-        title: const CustomText(
-          text: 'Emergency Details',
-          fontSize: 18,
-          fontWeight: FontWeight.w600,
-        ),
+        body: _buildBody(),
       ),
-      body: _buildBody(),
     );
   }
 
@@ -538,24 +541,6 @@ class _RescueDetailScreenState extends State<RescueDetailScreen> {
 
     return Column(
       children: [
-        if (rescue.status == RescueStatus.pending) ...[
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () => _updateStatus(RescueStatus.inProgress),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: const Text('Start Rescue Operation'),
-            ),
-          ),
-          const SizedBox(height: 12),
-        ],
         if (rescue.status == RescueStatus.inProgress) ...[
           SizedBox(
             width: double.infinity,

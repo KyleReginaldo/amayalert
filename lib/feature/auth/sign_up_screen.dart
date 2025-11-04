@@ -39,6 +39,123 @@ class _SignUpScreenState extends State<SignUpScreen> {
   DateTime? birthDate;
   bool obscurePassword = true;
 
+  @override
+  void initState() {
+    super.initState();
+    // Add listener to password controller to update requirements in real-time
+    passwordController.addListener(() {
+      setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    fullNameController.dispose();
+    emailController.dispose();
+    passwordController.dispose();
+    phoneNumberController.dispose();
+    super.dispose();
+  }
+
+  String? _validatePassword(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Please enter a password';
+    }
+
+    List<String> errors = [];
+
+    if (value.length < 8) {
+      errors.add('At least 8 characters');
+    }
+
+    if (!RegExp(r'[A-Z]').hasMatch(value)) {
+      errors.add('One uppercase letter');
+    }
+
+    if (!RegExp(r'[a-z]').hasMatch(value)) {
+      errors.add('One lowercase letter');
+    }
+
+    if (!RegExp(r'[0-9]').hasMatch(value)) {
+      errors.add('One number');
+    }
+
+    if (!RegExp(r'[!@#$%^&*(),.?":{}|<>]').hasMatch(value)) {
+      errors.add('One special character');
+    }
+
+    if (errors.isNotEmpty) {
+      return 'Password must contain: ${errors.join(', ')}';
+    }
+
+    return null;
+  }
+
+  Widget _buildPasswordRequirements() {
+    final password = passwordController.text;
+
+    return Container(
+      padding: EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.grey.shade300),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CustomText(
+            text: 'Password Requirements:',
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: AppColors.textPrimaryLight,
+          ),
+          SizedBox(height: 8),
+          _buildRequirementItem('At least 8 characters', password.length >= 8),
+          _buildRequirementItem(
+            'One uppercase letter (A-Z)',
+            RegExp(r'[A-Z]').hasMatch(password),
+          ),
+          _buildRequirementItem(
+            'One lowercase letter (a-z)',
+            RegExp(r'[a-z]').hasMatch(password),
+          ),
+          _buildRequirementItem(
+            'One number (0-9)',
+            RegExp(r'[0-9]').hasMatch(password),
+          ),
+          _buildRequirementItem(
+            'One special character (!@#\$%^&*)',
+            RegExp(r'[!@#$%^&*(),.?":{}|<>]').hasMatch(password),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRequirementItem(String requirement, bool isMet) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          Icon(
+            isMet ? Icons.check_circle : Icons.cancel,
+            size: 16,
+            color: isMet ? Colors.green : Colors.red,
+          ),
+          SizedBox(width: 8),
+          Expanded(
+            child: CustomText(
+              text: requirement,
+              fontSize: 12,
+              color: isMet ? Colors.green : Colors.red,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   void handleSignUp() async {
     final String fullName = fullNameController.text;
     final String email = emailController.text;
@@ -46,6 +163,35 @@ class _SignUpScreenState extends State<SignUpScreen> {
     final String phoneNumber = phoneNumberController.text;
     final int? genderValue = gender;
     final DateTime? birthDateValue = birthDate;
+
+    // Validate password before proceeding
+    final passwordValidation = _validatePassword(password);
+    if (passwordValidation != null) {
+      EasyLoading.showError(passwordValidation);
+      return;
+    }
+
+    // Validate other required fields
+    if (fullName.trim().isEmpty) {
+      EasyLoading.showError('Please enter your full name');
+      return;
+    }
+    if (!email.contains('@')) {
+      EasyLoading.showError('Please enter a valid email address');
+      return;
+    }
+    if (phoneNumber.trim().isEmpty) {
+      EasyLoading.showError('Please enter your phone number');
+      return;
+    }
+    if (genderValue == null) {
+      EasyLoading.showError('Please select your gender');
+      return;
+    }
+    if (birthDateValue == null) {
+      EasyLoading.showError('Please select your birth date');
+      return;
+    }
 
     debugPrint('Full Name: $fullName');
     debugPrint('Email: $email');
@@ -62,7 +208,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
         password: password,
         phoneNumber: '+63$phoneNumber',
         gender: (genderValue == 0) ? 'Male' : 'Female',
-        birthDate: birthDateValue!,
+        birthDate: birthDateValue,
       ),
     );
     if (result.isError) {
@@ -145,12 +291,12 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 },
               ),
               validator: (value) {
-                if (value == null || value.length < 6) {
-                  return 'Password must be at least 6 characters';
-                }
-                return null;
+                return _validatePassword(value);
               },
             ),
+            // Password Requirements
+            if (passwordController.text.isNotEmpty)
+              _buildPasswordRequirements(),
             // Phone Number Field
             CustomText(text: 'Phone Number'),
             CustomTextField(

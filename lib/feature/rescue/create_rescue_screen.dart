@@ -129,7 +129,7 @@ class _CreateRescueScreenState extends State<CreateRescueScreen> {
             : int.tryParse(_victimCountController.text),
         contactPhone: _contactController.text.trim().isEmpty
             ? null
-            : _contactController.text.trim(),
+            : '+63${_contactController.text.trim()}',
         importantInformation: _additionalInfoController.text.trim().isEmpty
             ? null
             : _additionalInfoController.text.trim(),
@@ -225,11 +225,13 @@ class _CreateRescueScreenState extends State<CreateRescueScreen> {
             CustomTextField(
               controller: _titleController,
               hint: 'Brief description of the emergency',
+              label: 'Description',
               maxLines: 2,
             ),
             const SizedBox(height: 12),
             CustomTextField(
               controller: _descriptionController,
+              label: 'Additional details',
               hint: 'Additional details about the situation...',
               maxLines: 4,
             ),
@@ -240,11 +242,13 @@ class _CreateRescueScreenState extends State<CreateRescueScreen> {
             _buildSectionHeader('Additional Information', LucideIcons.info),
             const SizedBox(height: 12),
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
                   child: CustomTextField(
                     controller: _victimCountController,
-                    hint: 'Number of people affected',
+                    hint: 'e.g. 10',
+                    label: 'Number of people affected',
                     keyboardType: TextInputType.number,
                   ),
                 ),
@@ -252,7 +256,14 @@ class _CreateRescueScreenState extends State<CreateRescueScreen> {
                 Expanded(
                   child: CustomTextField(
                     controller: _contactController,
-                    hint: 'Contact phone',
+                    hint: 'e.g. 9923189664',
+                    label: 'Contact phone',
+                    prefixIcon: IconButton(
+                      onPressed: null,
+                      icon: CustomText(text: '+63'),
+                    ),
+                    maxLength: 10,
+
                     keyboardType: TextInputType.phone,
                   ),
                 ),
@@ -261,13 +272,15 @@ class _CreateRescueScreenState extends State<CreateRescueScreen> {
             const SizedBox(height: 12),
             CustomTextField(
               controller: _emailController,
-              hint: 'Contact email (optional)',
+              hint: 'e.g. juandelacruz@example.com',
+              label: 'Contact email',
               keyboardType: TextInputType.emailAddress,
             ),
             const SizedBox(height: 12),
             CustomTextField(
               controller: _additionalInfoController,
-              hint: 'Any other important information...',
+              hint: 'e.g. Wala na yung bubong nilipad na',
+              label: 'Important information',
               maxLines: 3,
             ),
 

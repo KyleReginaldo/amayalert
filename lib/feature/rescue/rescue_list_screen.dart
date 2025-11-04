@@ -165,7 +165,7 @@ class _RescueListScreenState extends State<RescueListScreen> {
         child: InkWell(
           onTap: () {
             // Navigate to rescue detail screen
-            context.router.pushNamed('/rescue-detail/${rescue.id}');
+            context.router.push(RescueDetailRoute(rescueId: rescue.id));
           },
           borderRadius: BorderRadius.circular(16),
           child: Column(
@@ -327,8 +327,6 @@ class _RescueListScreenState extends State<RescueListScreen> {
                         ],
                       ),
                     ],
-
-                    // Images
                   ],
                 ),
               ),

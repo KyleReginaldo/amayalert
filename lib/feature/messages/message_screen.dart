@@ -183,6 +183,7 @@ class _MessageScreenState extends State<MessageScreen> {
                         ChatRoute(
                           otherUserId: conversation.participantId,
                           otherUserName: conversation.participantName,
+                          otherUserPhone: conversation.phoneNumber,
                         ),
                       );
                     },

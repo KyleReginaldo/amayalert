@@ -5,6 +5,7 @@ import 'package:mailer/mailer.dart';
 import 'package:mailer/smtp_server.dart';
 
 final smtpServer = gmail("amayalert.site@gmail.com", "acrr iajm kafb gdqi");
+
 Future<Result<String>> sendEmailOtp(String email, String phone) async {
   final code = (100000 + (DateTime.now().microsecondsSinceEpoch % 900000))
       .toString();
@@ -42,14 +43,22 @@ Future<Result<String>> sendEmailOtp(String email, String phone) async {
   try {
     final sendReport = await send(message, smtpServer);
     debugPrint('Message sent: $sendReport');
+
+    // Store OTP in appropriate table based on whether phone is provided
     await supabase.from('phone_verifications').insert({
       'phone': phone,
       'code': code,
+      'email': email,
       'expires_at': DateTime.now().add(Duration(minutes: 10)).toIso8601String(),
       'user_id': userID,
     });
+
     return Result.success(code);
   } on MailerException catch (e) {
     return Result.error('Message not sent: ${e.toString()}');
   }
+}
+
+Future<Result<String>> sendForgotPasswordOtp(String email) async {
+  return sendEmailOtp(email, ''); // Empty phone string for forgot password flow
 }

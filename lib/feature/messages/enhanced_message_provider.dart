@@ -7,6 +7,8 @@ import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/services/push_notification_service.dart';
+
 /// Enhanced message provider with comprehensive messaging features
 class EnhancedMessageProvider {
   final SupabaseClient? _client;
@@ -56,12 +58,73 @@ class EnhancedMessageProvider {
         title: 'New message',
         content: request.content,
       );
+      try {
+        // If the message has an attachment but no textual content, provide a short
+        // placeholder so push notifications are meaningful (e.g., "Sent an image").
+        final pushContent = (request.content.trim().isNotEmpty)
+            ? request.content
+            : (attachmentFile != null ? 'Sent an image' : '');
+        debugPrint('response id: ${response['id']}');
+        _sendPushNotification(
+          senderId: senderId,
+          receiverId: request.receiver,
+          messageContent: pushContent,
+          attachmentUrl: attachmentUrl,
+          messageId: response['id'],
+        );
+      } catch (_) {}
       final message = MessageMapper.fromMap(response);
       return Result.success(message);
     } on PostgrestException catch (e) {
       return Result.error(e.message);
     } catch (e) {
       return Result.error('An unexpected error occurred: $e');
+    }
+  }
+
+  /// Send push notification when a message is sent
+  Future<void> _sendPushNotification({
+    required String senderId,
+    required String receiverId,
+    required String messageContent,
+    required String messageId,
+    String? attachmentUrl,
+  }) async {
+    try {
+      // Get sender's name from Supabase
+      final senderResponse = await Supabase.instance.client
+          .from('users')
+          .select('full_name')
+          .eq('id', senderId)
+          .single();
+      final senderName = senderResponse['full_name'] ?? 'Someone';
+
+      // Send push notification
+      final success = await PushNotificationService.sendMessageNotification(
+        receiverUserId: receiverId,
+        senderName: senderName,
+        messageContent: messageContent,
+        attachmentUrl: attachmentUrl,
+        additionalData: {
+          'sender_id': senderId,
+          'message_id': messageId,
+          'conversation_id': '${senderId}_$receiverId',
+          'timestamp': DateTime.now().toIso8601String(),
+        },
+      );
+
+      if (success) {
+        debugPrint(
+          '✅ Push notification sent successfully for message: $messageId',
+        );
+      } else {
+        debugPrint(
+          '❌ Failed to send push notification for message: $messageId',
+        );
+      }
+    } catch (e) {
+      debugPrint('❌ Error sending push notification: $e');
+      // Don't throw error as push notification failure shouldn't break message sending
     }
   }
 
@@ -146,6 +209,7 @@ class EnhancedMessageProvider {
           isOnline: participant?.isOnline ?? false,
           lastSeen: participant?.lastSeen,
           messages: entry.value,
+          phoneNumber: participant?.phoneNumber,
           currentUserId: userId,
         );
       }).toList();

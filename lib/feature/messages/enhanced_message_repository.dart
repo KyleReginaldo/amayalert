@@ -1,6 +1,5 @@
 import 'package:amayalert/core/result/result.dart';
 import 'package:amayalert/core/services/badge_service.dart';
-import 'package:amayalert/core/services/push_notification_service.dart';
 import 'package:amayalert/feature/messages/enhanced_message_provider.dart';
 import 'package:amayalert/feature/messages/message_model.dart';
 import 'package:flutter/material.dart';
@@ -91,20 +90,6 @@ class EnhancedMessageRepository extends ChangeNotifier {
       }
 
       // Send push notification to the receiver (fire-and-forget to avoid blocking UI/tests)
-      try {
-        // If the message has an attachment but no textual content, provide a short
-        // placeholder so push notifications are meaningful (e.g., "Sent an image").
-        final pushContent = (request.content.trim().isNotEmpty)
-            ? request.content
-            : (attachmentFile != null ? 'Sent an image' : '');
-
-        _sendPushNotification(
-          senderId: senderId,
-          receiverId: request.receiver,
-          messageContent: pushContent,
-          messageId: result.value.id.toString(),
-        );
-      } catch (_) {}
     } else {
       _setResultError(result, 'Failed to send message');
     }
@@ -206,50 +191,6 @@ class EnhancedMessageRepository extends ChangeNotifier {
       replacePlaceholderWithReal(tempId: tempId, realMessage: result.value);
     } else {
       markPlaceholderFailed(tempId);
-    }
-  }
-
-  /// Send push notification when a message is sent
-  Future<void> _sendPushNotification({
-    required String senderId,
-    required String receiverId,
-    required String messageContent,
-    required String messageId,
-  }) async {
-    try {
-      // Get sender's name from Supabase
-      final senderResponse = await Supabase.instance.client
-          .from('users')
-          .select('full_name')
-          .eq('id', senderId)
-          .single();
-      final senderName = senderResponse['full_name'] ?? 'Someone';
-
-      // Send push notification
-      final success = await PushNotificationService.sendMessageNotification(
-        receiverUserId: receiverId,
-        senderName: senderName,
-        messageContent: messageContent,
-        additionalData: {
-          'sender_id': senderId,
-          'message_id': messageId,
-          'conversation_id': '${senderId}_$receiverId',
-          'timestamp': DateTime.now().toIso8601String(),
-        },
-      );
-
-      if (success) {
-        debugPrint(
-          '✅ Push notification sent successfully for message: $messageId',
-        );
-      } else {
-        debugPrint(
-          '❌ Failed to send push notification for message: $messageId',
-        );
-      }
-    } catch (e) {
-      debugPrint('❌ Error sending push notification: $e');
-      // Don't throw error as push notification failure shouldn't break message sending
     }
   }
 
@@ -772,7 +713,12 @@ class EnhancedMessageRepository extends ChangeNotifier {
       // Refresh conversations to update badge count
       await loadConversations(userId);
     } else {
-      _setResultError(result, 'Failed to mark message as seen');
+      debugPrint(
+        '❌ Failed to mark individual message as seen, but continuing gracefully',
+      );
+      // Don't set error since this is not critical - message functionality should continue
+      // Still refresh conversations to update badge count
+      await loadConversations(userId);
     }
   }
 

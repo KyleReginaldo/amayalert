@@ -1,3 +1,4 @@
+import 'package:amayalert/core/services/auth_storage_service.dart';
 import 'package:amayalert/feature/activity/activity_repository.dart';
 import 'package:amayalert/feature/alerts/alert_provider.dart';
 import 'package:amayalert/feature/alerts/alert_repository.dart';
@@ -44,4 +45,5 @@ Future init() async {
   );
   final sharedPreferences = await SharedPreferences.getInstance();
   sl.registerLazySingleton(() => sharedPreferences);
+  sl.registerLazySingleton(() => AuthStorageService(sl()));
 }

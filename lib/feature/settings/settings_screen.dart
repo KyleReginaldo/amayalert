@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:onesignal_flutter/onesignal_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 @RoutePage()
 class SettingsScreen extends StatefulWidget {
@@ -145,6 +146,88 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  Future<void> _makePhoneCall(String phoneNumber) async {
+    final Uri phoneUri = Uri(scheme: 'tel', path: phoneNumber);
+    try {
+      if (await canLaunchUrl(phoneUri)) {
+        await launchUrl(phoneUri, mode: LaunchMode.externalApplication);
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Could not launch phone call to $phoneNumber'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error making phone call: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _sendEmail(String email) async {
+    final Uri emailUri = Uri(
+      scheme: 'mailto',
+      path: email,
+      queryParameters: {'subject': 'Amayalert App Inquiry', 'body': 'Hello'},
+    );
+    try {
+      if (await canLaunchUrl(emailUri)) {
+        await launchUrl(emailUri, mode: LaunchMode.externalApplication);
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Could not launch email to $email'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error opening email: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _openFacebookPage() async {
+    // Try multiple Facebook URL formats
+
+    try {
+      final Uri facebookUri = Uri.parse(
+        "https://www.facebook.com/amaya.singko",
+      );
+      if (await canLaunchUrl(facebookUri)) {
+        await launchUrl(facebookUri, mode: LaunchMode.externalApplication);
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Can\'t go to facebook'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('error: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -187,6 +270,90 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ]),
               const SizedBox(height: 16),
             ],
+
+            // Community Information Header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+              child: Row(
+                children: [
+                  Icon(
+                    LucideIcons.building,
+                    size: 18,
+                    color: AppColors.primary,
+                  ),
+                  const SizedBox(width: 8),
+                  CustomText(
+                    text: 'Barangay Information',
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.primary,
+                  ),
+                ],
+              ),
+            ),
+
+            // Community Information Section
+            _buildSection([
+              _buildSimpleTile(
+                icon: LucideIcons.mapPin,
+                title: 'Barangay Amaya V',
+                subtitle: 'Tanza, Cavite',
+                onTap: null,
+              ),
+              _buildSimpleTile(
+                icon: LucideIcons.users,
+                title: 'Population',
+                subtitle: '2,983 residents',
+                onTap: null,
+              ),
+              _buildSimpleTile(
+                icon: LucideIcons.phone,
+                title: 'Contact Number',
+                subtitle: '0938-619-5287',
+                onTap: () => _makePhoneCall('09386195287'),
+              ),
+              _buildSimpleTile(
+                icon: LucideIcons.mail,
+                title: 'Email',
+                subtitle: 'amayavtanzacavite@gmail.com',
+                onTap: () => _sendEmail('amayavtanzacavite@gmail.com'),
+              ),
+              _buildSimpleTile(
+                icon: LucideIcons.facebook,
+                title: 'Facebook Page',
+                subtitle: 'Amaya Singko',
+                onTap: () => _openFacebookPage(),
+              ),
+              _buildSimpleTile(
+                icon: LucideIcons.user,
+                title: 'Barangay Captain',
+                subtitle: 'Mark Christiann A. Gumale',
+                onTap: null,
+              ),
+            ]),
+
+            const SizedBox(height: 16),
+
+            // App Information Header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+              child: Row(
+                children: [
+                  Icon(
+                    LucideIcons.smartphone,
+                    size: 18,
+                    color: AppColors.gray600,
+                  ),
+                  const SizedBox(width: 8),
+                  CustomText(
+                    text: 'App Information',
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.gray600,
+                  ),
+                ],
+              ),
+            ),
 
             // About Section
             _buildSection([

@@ -1,11 +1,14 @@
+import 'dart:convert';
+
+import 'package:amayalert/core/constant/constant.dart';
 import 'package:amayalert/core/theme/theme.dart';
 import 'package:amayalert/core/widgets/buttons/custom_buttons.dart';
 import 'package:amayalert/core/widgets/input/custom_text_field.dart';
 import 'package:amayalert/core/widgets/text/custom_text.dart';
-import 'package:amayalert/feature/auth/auth_provider.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
+import 'package:http/http.dart' as http;
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 @RoutePage()
@@ -44,23 +47,82 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     EasyLoading.show(status: 'Updating password...');
 
     try {
-      final result = await AuthProvider().updatePassword(
-        newPassword: _newPasswordController.text,
+      // Get the email and user_id from the most recent valid verification
+      final verification = await supabase
+          .from('phone_verifications')
+          .select('email, user_id')
+          .gte('expires_at', DateTime.now().toIso8601String())
+          .order('created_at', ascending: false)
+          .limit(1)
+          .maybeSingle();
+
+      if (verification == null) {
+        EasyLoading.showError(
+          'Verification session expired. Please restart the process.',
+        );
+        return;
+      }
+
+      final email = verification['email'] as String;
+      final userId = verification['user_id'] as String?;
+
+      debugPrint('Found verification for email: $email');
+      debugPrint('User ID from verification: $userId');
+
+      // Get the user ID if not available in verification
+      String? actualUserId = userId;
+      if (actualUserId == null || actualUserId.isEmpty) {
+        // Try to get user by email from your user/profile table
+        final userProfile = await supabase
+            .from('users') // Change this to your actual user table name
+            .select('id')
+            .eq('email', email)
+            .single();
+
+        actualUserId = userProfile['id'] as String;
+        debugPrint('Found user ID from profiles: $actualUserId');
+      }
+
+      debugPrint('Using user ID: $actualUserId');
+
+      // Since you don't have RPC or password_resets table,
+      // let's use Supabase's built-in password update
+      final response = await http.post(
+        Uri.parse('https://amayalert.site/api/reset-password'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'User-Agent': 'PostmanRuntime/7.39.0',
+        },
+        body: jsonEncode({
+          'userId': actualUserId,
+          'newPassword': _newPasswordController.text,
+        }),
+      );
+      debugPrint('API response data: ${response.body}');
+      if (response.statusCode == 200) {
+        debugPrint('Password reset successful via API');
+      } else {
+        debugPrint(
+          'Failed to reset password via API: ${response.statusCode} - ${response.body}',
+        );
+        EasyLoading.showError('Failed to reset password. Please try again.');
+        return;
+      }
+
+      // Clean up the verification record
+      await supabase.from('phone_verifications').delete().eq('email', email);
+
+      EasyLoading.showSuccess(
+        'Password reset completed! You can now sign in with your new password.',
       );
 
-      if (result.isSuccess) {
-        EasyLoading.showSuccess('Password updated successfully!');
-        if (mounted) {
-          // Navigate back to sign in screen after successful password reset
-          context.router.popUntilRoot();
-          // Optionally show a success dialog
-          _showSuccessDialog();
-        }
-      } else {
-        EasyLoading.showError(result.error);
+      if (mounted) {
+        context.router.popUntilRoot();
       }
     } catch (e) {
-      EasyLoading.showError('An error occurred: $e');
+      debugPrint('General error: $e');
+      EasyLoading.showError('An error occurred. Please try again.');
     } finally {
       setState(() {
         _isLoading = false;
@@ -69,70 +131,37 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     }
   }
 
-  void _showSuccessDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 60,
-              height: 60,
-              decoration: BoxDecoration(
-                color: Colors.green.shade100,
-                borderRadius: BorderRadius.circular(30),
-              ),
-              child: Icon(
-                LucideIcons.check,
-                size: 30,
-                color: Colors.green.shade600,
-              ),
-            ),
-            const SizedBox(height: 16),
-            const CustomText(
-              text: 'Password Updated!',
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            const CustomText(
-              text:
-                  'Your password has been successfully updated. You can now sign in with your new password.',
-              fontSize: 14,
-              color: Colors.black54,
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-        actions: [
-          SizedBox(
-            width: double.infinity,
-            child: CustomElevatedButton(
-              label: 'Sign In Now',
-              onPressed: () {
-                Navigator.of(context).pop();
-                // Navigate to sign in
-              },
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   String? _validateNewPassword(String? value) {
     if (value == null || value.isEmpty) {
-      return 'Password is required';
+      return 'Please enter a password';
     }
-    if (value.length < 6) {
-      return 'Password must be at least 6 characters';
+
+    List<String> errors = [];
+
+    if (value.length < 8) {
+      errors.add('At least 8 characters');
     }
+
+    if (!RegExp(r'[A-Z]').hasMatch(value)) {
+      errors.add('One uppercase letter');
+    }
+
+    if (!RegExp(r'[a-z]').hasMatch(value)) {
+      errors.add('One lowercase letter');
+    }
+
+    if (!RegExp(r'[0-9]').hasMatch(value)) {
+      errors.add('One number');
+    }
+
+    if (!RegExp(r'[!@#$%^&*(),.?":{}|<>]').hasMatch(value)) {
+      errors.add('One special character');
+    }
+
+    if (errors.isNotEmpty) {
+      return 'Password must contain: ${errors.join(', ')}';
+    }
+
     return null;
   }
 
@@ -160,59 +189,36 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         centerTitle: false,
-        automaticallyImplyLeading:
-            false, // Remove back button since this is from email link
+        automaticallyImplyLeading: false,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(24),
         child: Form(
           key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Header
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.gray200),
-                ),
-                child: Column(
-                  children: [
-                    Container(
-                      width: 80,
-                      height: 80,
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(40),
-                      ),
-                      child: Icon(
-                        LucideIcons.key,
-                        size: 40,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    const CustomText(
-                      text: 'Set New Password',
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 8),
-                    const CustomText(
-                      text:
-                          'Enter your new password below. Make sure it\'s strong and secure.',
-                      fontSize: 16,
-                      color: Colors.black54,
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
+              const SizedBox(height: 32),
+
+              // Title
+              const CustomText(
+                text: 'Set New Password',
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                textAlign: TextAlign.center,
               ),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: 8),
+
+              // Subtitle
+              const CustomText(
+                text: 'Create a strong password for your account',
+                fontSize: 16,
+                color: AppColors.gray600,
+                textAlign: TextAlign.center,
+              ),
+
+              const SizedBox(height: 48),
 
               // New Password Field
               const CustomText(
@@ -243,7 +249,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
 
               // Confirm Password Field
               const CustomText(
-                text: 'Confirm New Password',
+                text: 'Confirm Password',
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
               ),
@@ -277,69 +283,10 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
                 size: ButtonSize.lg,
-                icon: _isLoading ? null : LucideIcons.check,
-              ),
-
-              const SizedBox(height: 16),
-
-              // Security tips
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.gray200),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Icon(
-                          LucideIcons.shield,
-                          size: 18,
-                          color: AppColors.gray600,
-                        ),
-                        const SizedBox(width: 8),
-                        const CustomText(
-                          text: 'Password Security Tips',
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    _buildSecurityTip('Use at least 8 characters'),
-                    _buildSecurityTip(
-                      'Include uppercase and lowercase letters',
-                    ),
-                    _buildSecurityTip('Add numbers and special characters'),
-                    _buildSecurityTip('Avoid personal information'),
-                  ],
-                ),
               ),
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildSecurityTip(String text) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        children: [
-          Icon(LucideIcons.check, size: 14, color: Colors.green.shade600),
-          const SizedBox(width: 8),
-          Expanded(
-            child: CustomText(
-              text: text,
-              fontSize: 14,
-              color: AppColors.gray600,
-            ),
-          ),
-        ],
       ),
     );
   }

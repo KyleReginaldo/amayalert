@@ -65,6 +65,10 @@ class AppRouter extends RootStackRouter {
       transitionsBuilder: TransitionsBuilders.slideLeft,
     ),
     CustomRoute(
+      page: ForgotPasswordOtpRoute.page,
+      transitionsBuilder: TransitionsBuilders.slideLeft,
+    ),
+    CustomRoute(
       page: ResetPasswordRoute.page,
       transitionsBuilder: TransitionsBuilders.slideLeft,
     ),

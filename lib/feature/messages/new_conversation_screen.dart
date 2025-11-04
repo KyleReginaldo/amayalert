@@ -78,6 +78,7 @@ class _NewConversationScreenState extends State<NewConversationScreen> {
       ChatRoute(
         otherUserId: user.id,
         otherUserName: user.fullName.isNotEmpty ? user.fullName : user.email,
+        otherUserPhone: user.phoneNumber,
       ),
     );
   }
