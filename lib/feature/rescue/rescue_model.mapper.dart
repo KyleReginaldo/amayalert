@@ -309,6 +309,12 @@ class RescueMapper extends ClassMapperBase<Rescue> {
     _$updatedAt,
     key: r'updated_at',
   );
+  static String? _$address(Rescue v) => v.address;
+  static const Field<Rescue, String> _f$address = Field(
+    'address',
+    _$address,
+    opt: true,
+  );
   static String _$priorityLabel(Rescue v) => v.priorityLabel;
   static const Field<Rescue, String> _f$priorityLabel = Field(
     'priorityLabel',
@@ -361,6 +367,7 @@ class RescueMapper extends ClassMapperBase<Rescue> {
     #metadata: _f$metadata,
     #createdAt: _f$createdAt,
     #updatedAt: _f$updatedAt,
+    #address: _f$address,
     #priorityLabel: _f$priorityLabel,
     #statusLabel: _f$statusLabel,
     #victimCount: _f$victimCount,
@@ -390,6 +397,7 @@ class RescueMapper extends ClassMapperBase<Rescue> {
       metadata: data.dec(_f$metadata),
       createdAt: data.dec(_f$createdAt),
       updatedAt: data.dec(_f$updatedAt),
+      address: data.dec(_f$address),
     );
   }
 
@@ -465,6 +473,7 @@ abstract class RescueCopyWith<$R, $In extends Rescue, $Out>
     Map<String, dynamic>? metadata,
     DateTime? createdAt,
     DateTime? updatedAt,
+    String? address,
   });
   RescueCopyWith<$R2, $In, $Out2> $chain<$R2, $Out2>(Then<$Out2, $R2> t);
 }
@@ -519,6 +528,7 @@ class _RescueCopyWithImpl<$R, $Out> extends ClassCopyWithBase<$R, Rescue, $Out>
     Object? metadata = $none,
     DateTime? createdAt,
     DateTime? updatedAt,
+    Object? address = $none,
   }) => $apply(
     FieldCopyWithData({
       if (id != null) #id: id,
@@ -543,6 +553,7 @@ class _RescueCopyWithImpl<$R, $Out> extends ClassCopyWithBase<$R, Rescue, $Out>
       if (metadata != $none) #metadata: metadata,
       if (createdAt != null) #createdAt: createdAt,
       if (updatedAt != null) #updatedAt: updatedAt,
+      if (address != $none) #address: address,
     }),
   );
   @override
@@ -571,6 +582,7 @@ class _RescueCopyWithImpl<$R, $Out> extends ClassCopyWithBase<$R, Rescue, $Out>
     metadata: data.get(#metadata, or: $value.metadata),
     createdAt: data.get(#createdAt, or: $value.createdAt),
     updatedAt: data.get(#updatedAt, or: $value.updatedAt),
+    address: data.get(#address, or: $value.address),
   );
 
   @override
@@ -686,6 +698,12 @@ class CreateRescueRequestMapper extends ClassMapperBase<CreateRescueRequest> {
   static Map<String, dynamic>? _$metadata(CreateRescueRequest v) => v.metadata;
   static const Field<CreateRescueRequest, Map<String, dynamic>> _f$metadata =
       Field('metadata', _$metadata, opt: true);
+  static String? _$address(CreateRescueRequest v) => v.address;
+  static const Field<CreateRescueRequest, String> _f$address = Field(
+    'address',
+    _$address,
+    opt: true,
+  );
 
   @override
   final MappableFields<CreateRescueRequest> fields = const {
@@ -704,6 +722,7 @@ class CreateRescueRequestMapper extends ClassMapperBase<CreateRescueRequest> {
     #email: _f$email,
     #attachmentFiles: _f$attachmentFiles,
     #metadata: _f$metadata,
+    #address: _f$address,
   };
 
   static CreateRescueRequest _instantiate(DecodingData data) {
@@ -723,6 +742,7 @@ class CreateRescueRequestMapper extends ClassMapperBase<CreateRescueRequest> {
       email: data.dec(_f$email),
       attachmentFiles: data.dec(_f$attachmentFiles),
       metadata: data.dec(_f$metadata),
+      address: data.dec(_f$address),
     );
   }
 
@@ -816,6 +836,7 @@ abstract class CreateRescueRequestCopyWith<
     String? email,
     List<XFile>? attachmentFiles,
     Map<String, dynamic>? metadata,
+    String? address,
   });
   CreateRescueRequestCopyWith<$R2, $In, $Out2> $chain<$R2, $Out2>(
     Then<$Out2, $R2> t,
@@ -865,6 +886,7 @@ class _CreateRescueRequestCopyWithImpl<$R, $Out>
     String? email,
     Object? attachmentFiles = $none,
     Object? metadata = $none,
+    Object? address = $none,
   }) => $apply(
     FieldCopyWithData({
       if (title != null) #title: title,
@@ -883,6 +905,7 @@ class _CreateRescueRequestCopyWithImpl<$R, $Out>
       if (email != null) #email: email,
       if (attachmentFiles != $none) #attachmentFiles: attachmentFiles,
       if (metadata != $none) #metadata: metadata,
+      if (address != $none) #address: address,
     }),
   );
   @override
@@ -905,6 +928,7 @@ class _CreateRescueRequestCopyWithImpl<$R, $Out>
     email: data.get(#email, or: $value.email),
     attachmentFiles: data.get(#attachmentFiles, or: $value.attachmentFiles),
     metadata: data.get(#metadata, or: $value.metadata),
+    address: data.get(#address, or: $value.address),
   );
 
   @override

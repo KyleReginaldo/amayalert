@@ -278,6 +278,7 @@ export type Database = {
       }
       rescues: {
         Row: {
+          address: string | null
           attachments: string[] | null
           completed_at: string | null
           contact_phone: string | null
@@ -301,6 +302,7 @@ export type Database = {
           user: string | null
         }
         Insert: {
+          address?: string | null
           attachments?: string[] | null
           completed_at?: string | null
           contact_phone?: string | null
@@ -324,6 +326,7 @@ export type Database = {
           user?: string | null
         }
         Update: {
+          address?: string | null
           attachments?: string[] | null
           completed_at?: string | null
           contact_phone?: string | null

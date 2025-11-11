@@ -55,6 +55,7 @@ class Rescue with RescueMappable {
   final Map<String, dynamic>? metadata;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final String? address;
 
   const Rescue({
     required this.id,
@@ -78,6 +79,7 @@ class Rescue with RescueMappable {
     this.metadata,
     required this.createdAt,
     required this.updatedAt,
+    this.address,
   });
 
   String get priorityLabel {
@@ -155,6 +157,7 @@ class CreateRescueRequest with CreateRescueRequestMappable {
   final List<XFile>? attachmentFiles;
   // Optional additional metadata provided by caller; merged with computed
   final Map<String, dynamic>? metadata;
+  final String? address;
 
   const CreateRescueRequest({
     required this.title,
@@ -172,6 +175,7 @@ class CreateRescueRequest with CreateRescueRequestMappable {
     required this.email,
     this.attachmentFiles,
     this.metadata,
+    this.address,
   });
 
   // Computed metadata based on fields, merged with any provided metadata
@@ -198,6 +202,7 @@ class CreateRescueRequest with CreateRescueRequestMappable {
     'contact_phone': contactPhone,
     'important_information': importantInformation,
     'email': email,
+    'address': address,
     // attachments will be handled separately in the provider
   };
 }

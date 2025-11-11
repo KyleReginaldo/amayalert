@@ -204,30 +204,41 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
 
                 SliverPadding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  padding: EdgeInsets.zero,
                   sliver: SliverList(
                     delegate: SliverChildListDelegate([
-                      _buildAlertSection(),
-                      const SizedBox(height: 24),
-
-                      _buildSearchSection(),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: _buildAlertSection(),
+                      ),
+                      const SizedBox(height: 16),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: _buildSearchSection(),
+                      ),
 
                       if (!_showSearchResults) ...[
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 16),
 
                         _buildWeatherSection(weather, isLoading, errorMessage),
-                        const SizedBox(height: 32),
+                        const SizedBox(height: 16),
 
-                        _buildEmergencyActionsSection(context),
-                        const SizedBox(height: 32),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: _buildEmergencyActionsSection(context),
+                        ),
+                        const SizedBox(height: 16),
 
-                        _buildQuickActionsSection(context),
-                        const SizedBox(height: 32),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: _buildQuickActionsSection(context),
+                        ),
+                        const SizedBox(height: 16),
 
                         _buildPostsSection(),
                       ],
 
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 16),
                     ]),
                   ),
                 ),
@@ -325,26 +336,10 @@ class _HomeScreenState extends State<HomeScreen> {
     bool isLoading,
     String? errorMessage,
   ) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 24,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: WeatherContainer(
-          isLoading: isLoading,
-          errorMessage: errorMessage,
-          weather: weather,
-        ),
-      ),
+    return WeatherContainer(
+      isLoading: isLoading,
+      errorMessage: errorMessage,
+      weather: weather,
     );
   }
 
@@ -354,9 +349,8 @@ class _HomeScreenState extends State<HomeScreen> {
       children: [
         CustomText(
           text: 'Emergency Services',
-          fontSize: 20,
-          fontWeight: FontWeight.w600,
-          color: AppColors.textPrimaryLight,
+          fontSize: 15,
+          color: Colors.black87,
         ),
         const SizedBox(height: 16),
         Row(
@@ -369,6 +363,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
+
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
@@ -387,17 +382,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       padding: const EdgeInsets.all(20),
                       child: Column(
                         children: [
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              LucideIcons.shield,
-                              color: Colors.white,
-                              size: 28,
-                            ),
+                          Image.asset(
+                            'assets/images/emergency_report.png',
+                            height: 64,
                           ),
                           const SizedBox(height: 12),
                           const CustomText(
@@ -442,17 +429,9 @@ class _HomeScreenState extends State<HomeScreen> {
                       padding: const EdgeInsets.all(20),
                       child: Column(
                         children: [
-                          Container(
-                            padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              LucideIcons.list,
-                              color: Colors.white,
-                              size: 28,
-                            ),
+                          Image.asset(
+                            'assets/images/emergency_list.png',
+                            height: 64,
                           ),
                           const SizedBox(height: 12),
                           const CustomText(
@@ -481,9 +460,8 @@ class _HomeScreenState extends State<HomeScreen> {
       children: [
         CustomText(
           text: 'Share Your Thoughts',
-          fontSize: 20,
-          fontWeight: FontWeight.w600,
-          color: AppColors.textPrimaryLight,
+          fontSize: 15,
+          color: Colors.black87,
         ),
         const SizedBox(height: 16),
         Container(
@@ -579,17 +557,17 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildPostsSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: 8,
       children: [
-        CustomText(
-          text: 'Community Updates',
-          fontSize: 20,
-          fontWeight: FontWeight.w600,
-          color: AppColors.textPrimaryLight,
+        Padding(
+          padding: const EdgeInsets.only(left: 16),
+          child: CustomText(
+            text: 'Community Updates',
+            fontSize: 15,
+            color: Colors.black87,
+          ),
         ),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(20),
-          child: const PostsListWidget(),
-        ),
+        PostsListWidget(),
       ],
     );
   }

@@ -8,6 +8,7 @@ import 'package:amayalert/feature/rescue/rescue_provider.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
+import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -30,12 +31,14 @@ class _CreateRescueScreenState extends State<CreateRescueScreen> {
   final _additionalInfoController = TextEditingController();
   final _maleCountController = TextEditingController();
   final _femaleCountController = TextEditingController();
+  final _addressController = TextEditingController();
   final _rescueProvider = RescueProvider();
   final _imagePicker = ImagePicker();
 
   EmergencyType _selectedEmergencyType = EmergencyType.other;
   RescuePriority _selectedPriority = RescuePriority.medium;
   Position? _currentLocation;
+  String? _currentAddress;
   bool _isLoading = false;
   bool _isLoadingLocation = false;
   final List<XFile> _selectedImages = [];
@@ -49,6 +52,7 @@ class _CreateRescueScreenState extends State<CreateRescueScreen> {
     _additionalInfoController.dispose();
     _femaleCountController.dispose();
     _maleCountController.dispose();
+    _addressController.dispose();
     super.dispose();
   }
 
@@ -60,7 +64,11 @@ class _CreateRescueScreenState extends State<CreateRescueScreen> {
 
   Future<void> _getCurrentLocation() async {
     if (!mounted) return;
-    setState(() => _isLoadingLocation = true);
+    setState(() {
+      _isLoadingLocation = true;
+      _currentAddress = null;
+      _addressController.clear();
+    });
 
     try {
       final permission = await Permission.location.request();
@@ -70,6 +78,7 @@ class _CreateRescueScreenState extends State<CreateRescueScreen> {
         );
         if (mounted) {
           setState(() => _currentLocation = position);
+          _getAddressFromCoordinates(position.latitude, position.longitude);
         }
       }
     } catch (e) {
@@ -77,6 +86,55 @@ class _CreateRescueScreenState extends State<CreateRescueScreen> {
     } finally {
       if (mounted) {
         setState(() => _isLoadingLocation = false);
+      }
+    }
+  }
+
+  Future<void> _getAddressFromCoordinates(
+    double latitude,
+    double longitude,
+  ) async {
+    try {
+      List<Placemark> placemarks = await placemarkFromCoordinates(
+        latitude,
+        longitude,
+      );
+      if (placemarks.isNotEmpty) {
+        final placemark = placemarks[0];
+        final addressComponents = <String>[];
+
+        if (placemark.street != null && placemark.street!.isNotEmpty) {
+          addressComponents.add(placemark.street!);
+        }
+        if (placemark.subLocality != null &&
+            placemark.subLocality!.isNotEmpty) {
+          addressComponents.add(placemark.subLocality!);
+        }
+        if (placemark.locality != null && placemark.locality!.isNotEmpty) {
+          addressComponents.add(placemark.locality!);
+        }
+        if (placemark.administrativeArea != null &&
+            placemark.administrativeArea!.isNotEmpty) {
+          addressComponents.add(placemark.administrativeArea!);
+        }
+
+        final address = addressComponents.join(', ');
+        if (mounted) {
+          setState(() {
+            _currentAddress = address.isNotEmpty
+                ? address
+                : 'Address not available';
+            _addressController.text = _currentAddress!;
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error getting address: $e');
+      if (mounted) {
+        setState(() {
+          _currentAddress = 'Address not available';
+          _addressController.text = _currentAddress!;
+        });
       }
     }
   }
@@ -167,6 +225,17 @@ class _CreateRescueScreenState extends State<CreateRescueScreen> {
       return;
     }
 
+    if (_currentLocation == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Please allow location access or wait for location to be detected',
+          ),
+        ),
+      );
+      return;
+    }
+
     final userId = Supabase.instance.client.auth.currentUser?.id;
     if (userId == null) {
       ScaffoldMessenger.of(
@@ -200,6 +269,7 @@ class _CreateRescueScreenState extends State<CreateRescueScreen> {
         );
         return;
       }
+
       final request = CreateRescueRequest(
         title: _titleController.text.trim(),
         description: _descriptionController.text.trim().isEmpty
@@ -223,6 +293,9 @@ class _CreateRescueScreenState extends State<CreateRescueScreen> {
             : _additionalInfoController.text.trim(),
         email: _emailController.text.trim(),
         attachmentFiles: _selectedImages.isNotEmpty ? _selectedImages : null,
+        address: _addressController.text.trim().isEmpty
+            ? null
+            : _addressController.text.trim(),
       );
 
       final result = await _rescueProvider.createRescue(
@@ -315,14 +388,12 @@ class _CreateRescueScreenState extends State<CreateRescueScreen> {
               controller: _titleController,
               hint: 'Brief description of the emergency',
               label: 'Description',
-              maxLines: 2,
             ),
             const SizedBox(height: 12),
             CustomTextField(
               controller: _descriptionController,
               label: 'Additional details',
               hint: 'Additional details about the situation...',
-              maxLines: 4,
             ),
 
             const SizedBox(height: 24),
@@ -538,47 +609,102 @@ class _CreateRescueScreenState extends State<CreateRescueScreen> {
           ),
         ],
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            LucideIcons.mapPin,
-            color: _currentLocation != null ? Colors.green : AppColors.gray400,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                CustomText(
-                  text: _currentLocation != null
-                      ? 'Current Location Detected'
-                      : 'Getting location...',
-                  fontWeight: FontWeight.w500,
+          // Location status header
+          Row(
+            children: [
+              Icon(
+                LucideIcons.mapPin,
+                color: _currentLocation != null
+                    ? Colors.green
+                    : AppColors.gray400,
+              ),
+              const SizedBox(width: 8),
+              CustomText(
+                text: _currentLocation != null
+                    ? 'Current Location'
+                    : 'Getting location...',
+                fontWeight: FontWeight.w500,
+              ),
+              const Spacer(),
+              if (_isLoadingLocation)
+                const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              else
+                IconButton(
+                  onPressed: _getCurrentLocation,
+                  icon: const Icon(LucideIcons.refreshCw, size: 20),
+                  tooltip: 'Refresh location',
                 ),
-                if (_currentLocation != null) ...[
-                  const SizedBox(height: 4),
-                  CustomText(
-                    text:
-                        'Lat: ${_currentLocation!.latitude.toStringAsFixed(6)}, '
-                        'Lng: ${_currentLocation!.longitude.toStringAsFixed(6)}',
-                    fontSize: 12,
+            ],
+          ),
+
+          if (_currentLocation != null) ...[
+            const SizedBox(height: 12),
+
+            // Editable address field
+            CustomTextField(
+              controller: _addressController,
+              label: 'Address',
+              hint: 'Enter or edit your address...',
+              prefixIcon: const Icon(LucideIcons.mapPin, size: 18),
+            ),
+
+            const SizedBox(height: 8),
+
+            // Coordinates display
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.gray100,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    LucideIcons.crosshair,
+                    size: 14,
                     color: AppColors.gray600,
                   ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: CustomText(
+                      text:
+                          'Lat: ${_currentLocation!.latitude.toStringAsFixed(6)}, '
+                          'Lng: ${_currentLocation!.longitude.toStringAsFixed(6)}',
+                      fontSize: 11,
+                      color: AppColors.gray600,
+                    ),
+                  ),
                 ],
+              ),
+            ),
+
+            const SizedBox(height: 8),
+
+            // Accuracy note
+            Row(
+              children: [
+                Icon(LucideIcons.info, size: 14, color: AppColors.gray500),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    'You can edit the address above if it\'s not accurate',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.gray500,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ),
               ],
             ),
-          ),
-          if (_isLoadingLocation)
-            const SizedBox(
-              width: 20,
-              height: 20,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
-          else
-            IconButton(
-              onPressed: _getCurrentLocation,
-              icon: const Icon(LucideIcons.refreshCw, size: 20),
-            ),
+          ],
         ],
       ),
     );

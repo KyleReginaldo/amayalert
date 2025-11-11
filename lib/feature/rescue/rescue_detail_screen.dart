@@ -154,7 +154,8 @@ class _RescueDetailScreenState extends State<RescueDetailScreen> {
           const SizedBox(height: 24),
 
           // Location
-          if (rescue.lat != null && rescue.lng != null) ...[
+          if (rescue.lat != null && rescue.lng != null ||
+              rescue.address != null) ...[
             _buildLocationSection(rescue),
             const SizedBox(height: 24),
           ],
@@ -184,8 +185,19 @@ class _RescueDetailScreenState extends State<RescueDetailScreen> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        gradient: LinearGradient(
+          colors: [
+            Colors.white,
+            _getStatusColor(rescue.status).withValues(alpha: 0.02),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: _getStatusColor(rescue.status).withValues(alpha: 0.1),
+          width: 1,
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.05),
@@ -194,73 +206,225 @@ class _RescueDetailScreenState extends State<RescueDetailScreen> {
           ),
         ],
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: _getStatusColor(rescue.status),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: CustomText(
-                    text: rescue.statusLabel,
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: _getPriorityColor(rescue.priority),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(LucideIcons.zap, size: 14, color: Colors.white),
-                      const SizedBox(width: 4),
-                      CustomText(
-                        text: '${rescue.priorityLabel} Priority',
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
+          // Status and Priority Row
+          Row(
             children: [
-              CustomText(
-                text: 'Reported',
-                fontSize: 12,
-                color: AppColors.gray600,
-              ),
-              CustomText(
-                text: timeago.format(rescue.reportedAt),
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
+              Expanded(
+                child: Row(
+                  children: [
+                    // Status Badge
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _getStatusColor(rescue.status),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: _getStatusColor(
+                              rescue.status,
+                            ).withValues(alpha: 0.3),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            _getStatusIcon(rescue.status),
+                            size: 14,
+                            color: Colors.white,
+                          ),
+                          const SizedBox(width: 4),
+                          CustomText(
+                            text: rescue.statusLabel,
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+
+                    // Priority Badge
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: _getPriorityColor(rescue.priority),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: _getPriorityColor(
+                              rescue.priority,
+                            ).withValues(alpha: 0.3),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(LucideIcons.zap, size: 14, color: Colors.white),
+                          const SizedBox(width: 4),
+                          CustomText(
+                            text: rescue.priorityLabel,
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
+          ),
+
+          const SizedBox(height: 8),
+          if (rescue.emergencyType != null) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppColors.gray100,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: AppColors.gray300, width: 1),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    _getEmergencyTypeIcon(rescue.emergencyType!),
+                    size: 12,
+                    color: AppColors.gray600,
+                  ),
+                  const SizedBox(width: 4),
+                  CustomText(
+                    text: rescue.emergencyTypeLabel,
+                    fontSize: 11,
+                    color: AppColors.gray700,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ],
+              ),
+            ),
+          ],
+          const SizedBox(height: 8),
+
+          // Timeline and Stats Row
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: AppColors.gray50,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _buildInfoColumn(
+                    'Reported',
+                    timeago.format(rescue.reportedAt),
+                    LucideIcons.clock,
+                    AppColors.gray600,
+                  ),
+                ),
+                Container(width: 1, height: 30, color: AppColors.gray300),
+                Expanded(
+                  child: _buildInfoColumn(
+                    'ID',
+                    '#${rescue.id.substring(0, 8)}',
+                    LucideIcons.hash,
+                    AppColors.gray600,
+                  ),
+                ),
+                if (rescue.victimCount != null) ...[
+                  Container(width: 1, height: 30, color: AppColors.gray300),
+                  Expanded(
+                    child: _buildInfoColumn(
+                      'Affected',
+                      '${rescue.victimCount} people',
+                      LucideIcons.users,
+                      AppColors.gray600,
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ),
         ],
       ),
     );
+  }
+
+  Widget _buildInfoColumn(
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
+    return Column(
+      children: [
+        Icon(icon, size: 16, color: color),
+        const SizedBox(height: 4),
+        CustomText(
+          text: label,
+          fontSize: 10,
+          color: color,
+          fontWeight: FontWeight.w500,
+        ),
+        const SizedBox(height: 2),
+        CustomText(
+          text: value,
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: AppColors.gray800,
+        ),
+      ],
+    );
+  }
+
+  IconData _getStatusIcon(RescueStatus status) {
+    switch (status) {
+      case RescueStatus.pending:
+        return LucideIcons.clock;
+      case RescueStatus.inProgress:
+        return LucideIcons.loader;
+      case RescueStatus.completed:
+        return LucideIcons.check;
+      case RescueStatus.cancelled:
+        return LucideIcons.x;
+    }
+  }
+
+  IconData _getEmergencyTypeIcon(String emergencyType) {
+    switch (emergencyType.toLowerCase()) {
+      case 'medical':
+        return LucideIcons.heart;
+      case 'fire':
+        return LucideIcons.flame;
+      case 'flood':
+        return LucideIcons.waves;
+      case 'accident':
+        return LucideIcons.car;
+      case 'violence':
+        return LucideIcons.shield;
+      case 'natural_disaster':
+        return LucideIcons.zap;
+      default:
+        return LucideIcons.info;
+    }
   }
 
   Widget _buildTitleSection(Rescue rescue) {
@@ -417,12 +581,97 @@ class _RescueDetailScreenState extends State<RescueDetailScreen> {
             ],
           ),
           const SizedBox(height: 12),
-          CustomText(
-            text:
-                'Lat: ${rescue.lat!.toStringAsFixed(6)}\nLng: ${rescue.lng!.toStringAsFixed(6)}',
-            fontSize: 14,
-            color: AppColors.gray600,
-          ),
+
+          // Address (if available)
+          if (rescue.address != null && rescue.address!.isNotEmpty) ...[
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.05),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                spacing: 8,
+                children: [
+                  Icon(LucideIcons.mapPin, color: AppColors.primary, size: 18),
+                  Expanded(
+                    child: CustomText(
+                      text: rescue.address!,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (rescue.lat != null && rescue.lng != null)
+              const SizedBox(height: 12),
+          ],
+
+          // GPS Coordinates (if available)
+          if (rescue.lat != null && rescue.lng != null) ...[
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.gray100,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    LucideIcons.crosshair,
+                    color: AppColors.gray600,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        CustomText(
+                          text: 'GPS Coordinates',
+                          fontSize: 12,
+                          color: AppColors.gray600,
+                        ),
+                        const SizedBox(height: 2),
+                        CustomText(
+                          text:
+                              'Lat: ${rescue.lat!.toStringAsFixed(6)}, Lng: ${rescue.lng!.toStringAsFixed(6)}',
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.gray700,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+
+          // No location info available
+          if ((rescue.address == null || rescue.address!.isEmpty) &&
+              (rescue.lat == null || rescue.lng == null)) ...[
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.gray100,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(LucideIcons.mapPin, color: AppColors.gray500, size: 18),
+                  const SizedBox(width: 8),
+                  CustomText(
+                    text: 'Location information not available',
+                    fontSize: 14,
+                    color: AppColors.gray600,
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );

@@ -1,3 +1,4 @@
+import 'package:amayalert/core/constant/constant.dart';
 import 'package:amayalert/core/router/app_route.gr.dart';
 import 'package:amayalert/core/services/smtp_mailer.dart';
 import 'package:amayalert/core/theme/theme.dart';
@@ -40,6 +41,16 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     EasyLoading.show(status: 'Sending verification code...');
 
     try {
+      final user = await supabase
+          .from('users')
+          .select()
+          .eq('email', _emailController.text)
+          .single();
+      debugPrint('users; $user');
+      if (user.isEmpty) {
+        EasyLoading.showError('No user found with this email.');
+        return;
+      }
       final result = await sendForgotPasswordOtp(_emailController.text.trim());
 
       if (result.isSuccess) {
@@ -56,7 +67,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       }
     } catch (e) {
       debugPrint('An error occured: $e');
-      EasyLoading.showError('An error occurred: $e');
+      EasyLoading.showError('No user found with this email.');
     } finally {
       setState(() {
         _isLoading = false;
