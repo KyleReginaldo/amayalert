@@ -3,6 +3,7 @@ import 'package:amayalert/core/widgets/text/custom_text.dart';
 import 'package:amayalert/feature/rescue/rescue_model.dart';
 import 'package:amayalert/feature/rescue/rescue_provider.dart';
 import 'package:auto_route/auto_route.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:timeago/timeago.dart' as timeago;
@@ -161,6 +162,12 @@ class _RescueDetailScreenState extends State<RescueDetailScreen> {
           // Contact Information
           _buildContactSection(rescue),
           const SizedBox(height: 24),
+
+          // Attachments
+          if (rescue.attachments != null && rescue.attachments!.isNotEmpty) ...[
+            _buildAttachmentsSection(rescue),
+            const SizedBox(height: 24),
+          ],
 
           // Timestamps
           _buildTimestampSection(rescue),
@@ -333,44 +340,49 @@ class _RescueDetailScreenState extends State<RescueDetailScreen> {
             ],
           ),
           const SizedBox(height: 16),
-          if (rescue.emergencyType != null)
-            _buildDetailRow(
-              'Emergency Type',
-              _getEmergencyTypeLabel(rescue.emergencyType!),
-            ),
-          if (rescue.victimCount != null)
-            _buildDetailRow('People Affected', '${rescue.victimCount} people'),
-          if (rescue.metadata?['additional_info'] != null)
-            _buildDetailRow(
-              'Additional Info',
-              rescue.metadata!['additional_info'],
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDetailRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 120,
-            child: CustomText(
-              text: label,
+          if (rescue.emergencyType != null) ...[
+            CustomText(
+              text: "Emergency Type",
               fontSize: 14,
               color: AppColors.gray600,
             ),
-          ),
-          Expanded(
-            child: CustomText(
-              text: value,
+            CustomText(text: rescue.emergencyTypeLabel),
+            SizedBox(height: 8),
+          ],
+          if (rescue.victimCount != null) ...[
+            CustomText(
+              text: "People affected includes",
+              fontSize: 14,
+              color: AppColors.gray600,
+            ),
+            CustomText(text: _buildVictimCountText(rescue)),
+            SizedBox(height: 8),
+          ],
+          if (rescue.importantInformation != null) ...[
+            CustomText(
+              text: "Important Information",
+              fontSize: 14,
+              color: AppColors.gray600,
+            ),
+            CustomText(
+              text: rescue.importantInformation!,
               fontSize: 14,
               fontWeight: FontWeight.w500,
             ),
-          ),
+            SizedBox(height: 8),
+          ],
+          if (rescue.user != null) ...[
+            CustomText(
+              text: "Reported By",
+              fontSize: 14,
+              color: AppColors.gray600,
+            ),
+            CustomText(
+              text: rescue.user!.fullName,
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
+          ],
         ],
       ),
     );
@@ -417,9 +429,12 @@ class _RescueDetailScreenState extends State<RescueDetailScreen> {
   }
 
   Widget _buildContactSection(Rescue rescue) {
-    final contactPhone = rescue.metadata?['contact_phone'] as String?;
+    // Check if there's any contact information to display
+    final hasContactPhone =
+        rescue.contactPhone != null && rescue.contactPhone!.isNotEmpty;
+    final hasEmail = rescue.email != null && rescue.email!.isNotEmpty;
 
-    if (contactPhone == null) return const SizedBox.shrink();
+    if (!hasContactPhone && !hasEmail) return const SizedBox.shrink();
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -449,28 +464,58 @@ class _RescueDetailScreenState extends State<RescueDetailScreen> {
             ],
           ),
           const SizedBox(height: 12),
-          InkWell(
-            onTap: () => _makePhoneCall(contactPhone),
-            child: Container(
+
+          // Phone contact
+          if (hasContactPhone) ...[
+            InkWell(
+              onTap: () => _makePhoneCall(rescue.contactPhone!),
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    Icon(LucideIcons.phone, color: AppColors.primary, size: 18),
+                    const SizedBox(width: 8),
+                    CustomText(
+                      text: rescue.contactPhone!,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.primary,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            if (hasEmail) const SizedBox(height: 8),
+          ],
+
+          // Email contact
+          if (hasEmail) ...[
+            Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.1),
+                color: AppColors.gray100,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
                 children: [
-                  Icon(LucideIcons.phone, color: AppColors.primary, size: 18),
+                  Icon(LucideIcons.mail, color: AppColors.gray600, size: 18),
                   const SizedBox(width: 8),
-                  CustomText(
-                    text: contactPhone,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.primary,
+                  Expanded(
+                    child: CustomText(
+                      text: rescue.email!,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: AppColors.gray700,
+                    ),
                   ),
                 ],
               ),
             ),
-          ),
+          ],
         ],
       ),
     );
@@ -505,6 +550,7 @@ class _RescueDetailScreenState extends State<RescueDetailScreen> {
             ],
           ),
           const SizedBox(height: 16),
+          _buildTimestampRow('Created', rescue.createdAt),
           _buildTimestampRow('Reported', rescue.reportedAt),
           if (rescue.scheduledFor != null)
             _buildTimestampRow('Scheduled', rescue.scheduledFor!),
@@ -578,6 +624,177 @@ class _RescueDetailScreenState extends State<RescueDetailScreen> {
     );
   }
 
+  Widget _buildAttachmentsSection(Rescue rescue) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(LucideIcons.image, color: AppColors.primary, size: 20),
+              const SizedBox(width: 8),
+              const CustomText(
+                text: 'Attachments',
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          CustomText(
+            text: '${rescue.attachments!.length} photo(s) attached',
+            fontSize: 14,
+            color: AppColors.gray600,
+          ),
+          const SizedBox(height: 12),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+              childAspectRatio: 1.2,
+            ),
+            itemCount: rescue.attachments!.length,
+            itemBuilder: (context, index) {
+              final imageUrl = rescue.attachments![index];
+              return GestureDetector(
+                onTap: () => _showImageDialog(imageUrl),
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.gray300),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: CachedNetworkImage(
+                      imageUrl: imageUrl,
+                      fit: BoxFit.cover,
+                      placeholder: (context, url) => Container(
+                        color: AppColors.gray100,
+                        child: Center(
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              AppColors.primary,
+                            ),
+                          ),
+                        ),
+                      ),
+                      errorWidget: (context, url, error) => Container(
+                        color: AppColors.gray100,
+                        child: Center(
+                          child: Icon(
+                            LucideIcons.imageOff,
+                            color: AppColors.gray400,
+                            size: 32,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showImageDialog(String imageUrl) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Stack(
+          children: [
+            Center(
+              child: InteractiveViewer(
+                child: CachedNetworkImage(
+                  imageUrl: imageUrl,
+                  fit: BoxFit.contain,
+                  placeholder: (context, url) => Container(
+                    width: 200,
+                    height: 200,
+                    color: Colors.black26,
+                    child: const Center(
+                      child: CircularProgressIndicator(color: Colors.white),
+                    ),
+                  ),
+                  errorWidget: (context, url, error) => Container(
+                    width: 200,
+                    height: 200,
+                    color: Colors.black26,
+                    child: const Center(
+                      child: Icon(
+                        LucideIcons.imageOff,
+                        color: Colors.white,
+                        size: 48,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              top: 40,
+              right: 20,
+              child: GestureDetector(
+                onTap: () => Navigator.of(context).pop(),
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.black54,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    LucideIcons.x,
+                    color: Colors.white,
+                    size: 24,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _buildVictimCountText(Rescue rescue) {
+    final femaleCount = rescue.femaleCount;
+    final maleCount = rescue.maleCount;
+
+    if (femaleCount == null && maleCount == null) return 'Not specified';
+
+    final parts = <String>[];
+    if (femaleCount != null && femaleCount > 0) {
+      parts.add('$femaleCount female${femaleCount > 1 ? 's' : ''}');
+    }
+    if (maleCount != null && maleCount > 0) {
+      parts.add('$maleCount male${maleCount > 1 ? 's' : ''}');
+    }
+
+    if (parts.isEmpty) return 'Not specified';
+    if (parts.length == 1) return parts.first;
+    return '${parts.join(', ')} (Total: ${(femaleCount ?? 0) + (maleCount ?? 0)})';
+  }
+
   Color _getStatusColor(RescueStatus status) {
     switch (status) {
       case RescueStatus.pending:
@@ -596,25 +813,5 @@ class _RescueDetailScreenState extends State<RescueDetailScreen> {
     if (priority == 2) return Colors.orange;
     if (priority == 3) return Colors.red;
     return const Color(0xFF8B0000); // Critical
-  }
-
-  String _getEmergencyTypeLabel(String type) {
-    switch (type) {
-      case 'medical':
-        return 'Medical Emergency';
-      case 'fire':
-        return 'Fire';
-      case 'flood':
-        return 'Flood';
-      case 'accident':
-        return 'Accident';
-      case 'violence':
-        return 'Violence/Crime';
-      case 'naturalDisaster':
-        return 'Natural Disaster';
-      case 'other':
-      default:
-        return 'Other Emergency';
-    }
   }
 }

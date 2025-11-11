@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:amayalert/core/result/result.dart';
-import 'package:amayalert/core/utils/onesignal.helper.dart';
 import 'package:amayalert/feature/messages/message_model.dart';
 import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
@@ -53,11 +52,6 @@ class EnhancedMessageProvider {
           .insert(messageData)
           .select()
           .single();
-      await sendNotif(
-        users: [request.receiver],
-        title: 'New message',
-        content: request.content,
-      );
       try {
         // If the message has an attachment but no textual content, provide a short
         // placeholder so push notifications are meaningful (e.g., "Sent an image").
@@ -72,7 +66,9 @@ class EnhancedMessageProvider {
           attachmentUrl: attachmentUrl,
           messageId: response['id'],
         );
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('Failed to send push notification for message: $e');
+      }
       final message = MessageMapper.fromMap(response);
       return Result.success(message);
     } on PostgrestException catch (e) {
@@ -87,7 +83,7 @@ class EnhancedMessageProvider {
     required String senderId,
     required String receiverId,
     required String messageContent,
-    required String messageId,
+    required int messageId,
     String? attachmentUrl,
   }) async {
     try {
@@ -98,7 +94,7 @@ class EnhancedMessageProvider {
           .eq('id', senderId)
           .single();
       final senderName = senderResponse['full_name'] ?? 'Someone';
-
+      debugPrint('attachment url: $attachmentUrl');
       // Send push notification
       final success = await PushNotificationService.sendMessageNotification(
         receiverUserId: receiverId,

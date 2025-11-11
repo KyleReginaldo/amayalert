@@ -1,3 +1,4 @@
+import 'package:amayalert/core/constant/constant.dart';
 import 'package:amayalert/core/router/app_route.gr.dart';
 import 'package:amayalert/core/theme/theme.dart';
 import 'package:amayalert/core/widgets/text/custom_text.dart';
@@ -34,7 +35,7 @@ class _RescueListScreenState extends State<RescueListScreen> {
       _error = null;
     });
 
-    final result = await _rescueProvider.getRescues();
+    final result = await _rescueProvider.getRescues(userId: userID ?? "");
 
     setState(() {
       _isLoading = false;

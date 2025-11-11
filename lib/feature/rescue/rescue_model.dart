@@ -1,5 +1,7 @@
 // ignore_for_file: public_member_api_docs, sort_constructors_first
+import 'package:amayalert/feature/profile/profile_model.dart';
 import 'package:dart_mappable/dart_mappable.dart';
+import 'package:image_picker/image_picker.dart';
 
 part 'rescue_model.mapper.dart';
 
@@ -42,7 +44,14 @@ class Rescue with RescueMappable {
   final DateTime reportedAt;
   final DateTime? scheduledFor;
   final DateTime? completedAt;
-  final String? user;
+  final String? emergencyType;
+  final int? femaleCount;
+  final int? maleCount;
+  final String? contactPhone;
+  final String? email;
+  final String? importantInformation;
+  final Profile? user;
+  final List<String>? attachments;
   final Map<String, dynamic>? metadata;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -58,7 +67,14 @@ class Rescue with RescueMappable {
     required this.reportedAt,
     this.scheduledFor,
     this.completedAt,
+    this.emergencyType,
+    this.femaleCount,
+    this.maleCount,
+    this.contactPhone,
+    this.email,
+    this.importantInformation,
     this.user,
+    this.attachments,
     this.metadata,
     required this.createdAt,
     required this.updatedAt,
@@ -86,12 +102,36 @@ class Rescue with RescueMappable {
     }
   }
 
-  String? get emergencyType {
-    return metadata?['emergency_type'] as String?;
+  // Total victim count from male and female counts
+  int? get victimCount {
+    if (femaleCount == null && maleCount == null) return null;
+    return (femaleCount ?? 0) + (maleCount ?? 0);
   }
 
-  int? get victimCount {
-    return metadata?['victim_count'] as int?;
+  // Get emergency type label for display
+  String get emergencyTypeLabel {
+    if (emergencyType == null) return 'Other Emergency';
+    return _getEmergencyTypeLabel(emergencyType!);
+  }
+
+  static String _getEmergencyTypeLabel(String type) {
+    switch (type) {
+      case 'medical':
+        return 'Medical Emergency';
+      case 'fire':
+        return 'Fire';
+      case 'flood':
+        return 'Flood';
+      case 'accident':
+        return 'Accident';
+      case 'violence':
+        return 'Violence/Crime';
+      case 'naturalDisaster':
+        return 'Natural Disaster';
+      case 'other':
+      default:
+        return 'Other Emergency';
+    }
   }
 }
 
@@ -104,12 +144,15 @@ class CreateRescueRequest with CreateRescueRequestMappable {
   // Use enum for input; map to int (value) when sending to DB
   final RescuePriority priority;
   final EmergencyType emergencyType;
-  final int? numberOfPeople;
+  final int? femaleCount;
+  final int? maleCount;
   final String? contactPhone;
   final String? importantInformation;
   final DateTime? scheduledFor;
   final String? user;
   final String email;
+  // Image files to upload as attachments
+  final List<XFile>? attachmentFiles;
   // Optional additional metadata provided by caller; merged with computed
   final Map<String, dynamic>? metadata;
 
@@ -120,12 +163,14 @@ class CreateRescueRequest with CreateRescueRequestMappable {
     this.lng,
     required this.priority,
     required this.emergencyType,
-    this.numberOfPeople,
+    this.femaleCount,
+    this.maleCount,
     this.contactPhone,
     this.importantInformation,
     this.scheduledFor,
     this.user,
     required this.email,
+    this.attachmentFiles,
     this.metadata,
   });
 
@@ -148,9 +193,11 @@ class CreateRescueRequest with CreateRescueRequestMappable {
     'user': user,
     // New top-level fields per schema
     'emergency_type': emergencyType.name,
-    'number_of_people': numberOfPeople,
+    'female_count': femaleCount,
+    'male_count': maleCount,
     'contact_phone': contactPhone,
     'important_information': importantInformation,
     'email': email,
+    // attachments will be handled separately in the provider
   };
 }

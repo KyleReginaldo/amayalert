@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:amayalert/core/result/result.dart';
 import 'package:amayalert/feature/rescue/rescue_model.dart';
 import 'package:flutter/foundation.dart';
@@ -11,9 +13,29 @@ class RescueProvider {
     required CreateRescueRequest request,
   }) async {
     try {
+      // Upload attachments if provided
+      List<String>? attachmentUrls;
+      if (request.attachmentFiles != null &&
+          request.attachmentFiles!.isNotEmpty) {
+        attachmentUrls = [];
+        for (final file in request.attachmentFiles!) {
+          final fileName =
+              'rescues/${DateTime.now().microsecondsSinceEpoch}_${file.name}';
+          await supabase.storage
+              .from('files')
+              .upload(fileName, File(file.path));
+          final url = supabase.storage.from('files').getPublicUrl(fileName);
+          attachmentUrls.add(url);
+        }
+      }
+
       // Build insert map from request, overriding user and adding server-managed fields
       final insertMap = request.toMap();
       insertMap['user'] = userId;
+      if (attachmentUrls != null) {
+        insertMap['attachments'] = attachmentUrls;
+      }
+
       debugPrint('Final metadata: ${insertMap['metadata']}');
       final response = await supabase
           .from('rescues')
@@ -35,42 +57,23 @@ class RescueProvider {
   }
 
   Future<Result<List<Rescue>>> getRescues({
+    required String userId,
     int limit = 20,
     int offset = 0,
   }) async {
     try {
       final response = await supabase
           .from('rescues')
-          .select('*')
+          .select('*, user:users(*)')
+          .eq('user', userId)
           .order('created_at', ascending: false)
           .range(offset, offset + limit - 1);
 
-      final rescues = (response as List).map((item) {
-        return Rescue(
-          id: item['id'],
-          title: item['title'],
-          description: item['description'],
-          lat: item['lat']?.toDouble(),
-          lng: item['lng']?.toDouble(),
-          status: RescueStatus.values.firstWhere(
-            (s) => s.name == item['status'],
-            orElse: () => RescueStatus.pending,
-          ),
-          priority: item['priority'] ?? 1,
-          reportedAt: DateTime.parse(item['reported_at']),
-          scheduledFor: item['scheduled_for'] != null
-              ? DateTime.parse(item['scheduled_for'])
-              : null,
-          completedAt: item['completed_at'] != null
-              ? DateTime.parse(item['completed_at'])
-              : null,
-          user: item['user'],
-          metadata: item['metadata'],
-          createdAt: DateTime.parse(item['created_at']),
-          updatedAt: DateTime.parse(item['updated_at']),
-        );
-      }).toList();
-
+      List<Rescue> rescues = [];
+      for (final item in response) {
+        final result = RescueMapper.fromMap(item);
+        rescues.add(result);
+      }
       return Result.success(rescues);
     } catch (e) {
       debugPrint('Error fetching rescues: $e');
@@ -82,35 +85,12 @@ class RescueProvider {
     try {
       final response = await supabase
           .from('rescues')
-          .select('*')
+          .select('*, user:users(*)')
           .eq('id', id)
           .single();
 
-      final rescue = Rescue(
-        id: response['id'],
-        title: response['title'],
-        description: response['description'],
-        lat: response['lat']?.toDouble(),
-        lng: response['lng']?.toDouble(),
-        status: RescueStatus.values.firstWhere(
-          (s) => s.name == response['status'],
-          orElse: () => RescueStatus.pending,
-        ),
-        priority: response['priority'] ?? 1,
-        reportedAt: DateTime.parse(response['reported_at']),
-        scheduledFor: response['scheduled_for'] != null
-            ? DateTime.parse(response['scheduled_for'])
-            : null,
-        completedAt: response['completed_at'] != null
-            ? DateTime.parse(response['completed_at'])
-            : null,
-        user: response['user'],
-        metadata: response['metadata'],
-        createdAt: DateTime.parse(response['created_at']),
-        updatedAt: DateTime.parse(response['updated_at']),
-      );
-
-      return Result.success(rescue);
+      final result = RescueMapper.fromMap(response);
+      return Result.success(result);
     } catch (e) {
       debugPrint('Error fetching rescue: $e');
       return Result.error('Failed to fetch rescue: ${e.toString()}');

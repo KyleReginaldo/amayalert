@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
 class PushNotificationService {
@@ -8,8 +9,7 @@ class PushNotificationService {
   static const String _baseUrl = 'https://api.onesignal.com';
 
   // Get OneSignal REST API Key from environment or fallback to hardcoded value
-  static String get _restApiKey =>
-      'os_v2_app_daiscdpew5bqjdgvhxt2dwuoezejniwvkbqew7n3qi4mmdpk4rw3vzdevzbfb5vvcsqxeht3kwdrzpqgwoojeocveyluuj3aipdgabi';
+  static String get _restApiKey => dotenv.get('ONESIGNAL_REST_API_KEY');
 
   /// Send a push notification to a specific user
   static Future<bool> sendMessageNotification({
@@ -24,8 +24,7 @@ class PushNotificationService {
         Uri.parse('https://api.onesignal.com/notifications?c=push'),
         headers: {
           'Content-Type': 'application/json; charset=utf-8',
-          'Authorization':
-              'Bearer Key os_v2_app_daiscdpew5bqjdgvhxt2dwuoezejniwvkbqew7n3qi4mmdpk4rw3vzdevzbfb5vvcsqxeht3kwdrzpqgwoojeocveyluuj3aipdgabi',
+          'Authorization': 'Bearer Key ${dotenv.get('ONESIGNAL_REST_API_KEY')}',
         },
         body: jsonEncode({
           'app_id': _oneSignalAppId,
@@ -144,7 +143,7 @@ class PushNotificationService {
         Uri.parse('$_baseUrl/notifications?c=push'),
         headers: {
           'Content-Type': 'application/json; charset=utf-8',
-          'Authorization': 'Basic $_restApiKey',
+          'Authorization': 'Bearer Key $_restApiKey',
         },
         body: jsonEncode({
           'app_id': _oneSignalAppId,
@@ -228,7 +227,7 @@ class PushNotificationService {
         Uri.parse('$_baseUrl/notifications?c=push'),
         headers: {
           'Content-Type': 'application/json; charset=utf-8',
-          'Authorization': 'Basic $_restApiKey',
+          'Authorization': 'Bearer Key $_restApiKey',
         },
         body: jsonEncode(notificationBody),
       );

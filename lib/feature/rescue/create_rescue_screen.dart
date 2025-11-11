@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:amayalert/core/theme/theme.dart';
 import 'package:amayalert/core/widgets/input/custom_text_field.dart';
 import 'package:amayalert/core/widgets/text/custom_text.dart';
@@ -7,6 +9,7 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -25,14 +28,17 @@ class _CreateRescueScreenState extends State<CreateRescueScreen> {
   final _contactController = TextEditingController();
   final _emailController = TextEditingController();
   final _additionalInfoController = TextEditingController();
-  final _victimCountController = TextEditingController();
+  final _maleCountController = TextEditingController();
+  final _femaleCountController = TextEditingController();
   final _rescueProvider = RescueProvider();
+  final _imagePicker = ImagePicker();
 
   EmergencyType _selectedEmergencyType = EmergencyType.other;
   RescuePriority _selectedPriority = RescuePriority.medium;
   Position? _currentLocation;
   bool _isLoading = false;
   bool _isLoadingLocation = false;
+  final List<XFile> _selectedImages = [];
 
   @override
   void dispose() {
@@ -41,7 +47,8 @@ class _CreateRescueScreenState extends State<CreateRescueScreen> {
     _contactController.dispose();
     _emailController.dispose();
     _additionalInfoController.dispose();
-    _victimCountController.dispose();
+    _femaleCountController.dispose();
+    _maleCountController.dispose();
     super.dispose();
   }
 
@@ -72,6 +79,84 @@ class _CreateRescueScreenState extends State<CreateRescueScreen> {
         setState(() => _isLoadingLocation = false);
       }
     }
+  }
+
+  Future<void> _showImageSourceDialog() async {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (BuildContext context) {
+        return SafeArea(
+          child: Wrap(
+            children: [
+              ListTile(
+                leading: const Icon(LucideIcons.camera),
+                title: const Text('Camera'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _getImages(ImageSource.camera);
+                },
+              ),
+              ListTile(
+                leading: const Icon(LucideIcons.image),
+                title: const Text('Gallery'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _getImages(ImageSource.gallery);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _getImages(ImageSource source) async {
+    try {
+      if (source == ImageSource.camera) {
+        // Single image from camera
+        final XFile? image = await _imagePicker.pickImage(
+          source: source,
+          maxWidth: 1080,
+          maxHeight: 1080,
+          imageQuality: 85,
+        );
+
+        if (image != null) {
+          setState(() {
+            _selectedImages.add(image);
+          });
+        }
+      } else {
+        // Multiple images from gallery
+        final List<XFile> images = await _imagePicker.pickMultiImage(
+          maxWidth: 1080,
+          maxHeight: 1080,
+          imageQuality: 85,
+        );
+
+        if (images.isNotEmpty) {
+          setState(() {
+            _selectedImages.addAll(images);
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error picking images: $e')));
+      }
+    }
+  }
+
+  void _removeImage(int index) {
+    setState(() {
+      _selectedImages.removeAt(index);
+    });
   }
 
   Future<void> _submitRescueRequest() async {
@@ -124,9 +209,12 @@ class _CreateRescueScreenState extends State<CreateRescueScreen> {
         lng: _currentLocation?.longitude,
         priority: _selectedPriority,
         emergencyType: _selectedEmergencyType,
-        numberOfPeople: _victimCountController.text.isEmpty
+        femaleCount: _femaleCountController.text.isEmpty
             ? null
-            : int.tryParse(_victimCountController.text),
+            : int.tryParse(_femaleCountController.text),
+        maleCount: _maleCountController.text.isEmpty
+            ? null
+            : int.tryParse(_maleCountController.text),
         contactPhone: _contactController.text.trim().isEmpty
             ? null
             : '+63${_contactController.text.trim()}',
@@ -134,6 +222,7 @@ class _CreateRescueScreenState extends State<CreateRescueScreen> {
             ? null
             : _additionalInfoController.text.trim(),
         email: _emailController.text.trim(),
+        attachmentFiles: _selectedImages.isNotEmpty ? _selectedImages : null,
       );
 
       final result = await _rescueProvider.createRescue(
@@ -241,35 +330,36 @@ class _CreateRescueScreenState extends State<CreateRescueScreen> {
             // Additional Information
             _buildSectionHeader('Additional Information', LucideIcons.info),
             const SizedBox(height: 12),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: CustomTextField(
-                    controller: _victimCountController,
-                    hint: 'e.g. 10',
-                    label: 'Number of people affected',
-                    keyboardType: TextInputType.number,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: CustomTextField(
-                    controller: _contactController,
-                    hint: 'e.g. 9923189664',
-                    label: 'Contact phone',
-                    prefixIcon: IconButton(
-                      onPressed: null,
-                      icon: CustomText(text: '+63'),
-                    ),
-                    maxLength: 10,
 
-                    keyboardType: TextInputType.phone,
-                  ),
-                ),
-              ],
+            CustomTextField(
+              controller: _femaleCountController,
+              hint: 'e.g. 10',
+              label: 'Number of females affected',
+              keyboardType: TextInputType.number,
             ),
             const SizedBox(height: 12),
+
+            CustomTextField(
+              controller: _maleCountController,
+              hint: 'e.g. 10',
+              label: 'Number of males affected',
+              keyboardType: TextInputType.number,
+            ),
+            const SizedBox(height: 12),
+            CustomTextField(
+              controller: _contactController,
+              hint: 'e.g. 9923189664',
+              label: 'Contact phone',
+              prefixIcon: IconButton(
+                onPressed: null,
+                icon: CustomText(text: '+63'),
+              ),
+              maxLength: 10,
+
+              keyboardType: TextInputType.phone,
+            ),
+            const SizedBox(height: 12),
+
             CustomTextField(
               controller: _emailController,
               hint: 'e.g. juandelacruz@example.com',
@@ -290,6 +380,13 @@ class _CreateRescueScreenState extends State<CreateRescueScreen> {
             _buildSectionHeader('Location', LucideIcons.mapPin),
             const SizedBox(height: 12),
             _buildLocationCard(),
+
+            const SizedBox(height: 24),
+
+            // Attachments
+            _buildSectionHeader('Attachments', LucideIcons.paperclip),
+            const SizedBox(height: 12),
+            _buildAttachmentsSection(),
 
             const SizedBox(height: 32),
 
@@ -536,5 +633,114 @@ class _CreateRescueScreenState extends State<CreateRescueScreen> {
       case RescuePriority.critical:
         return const Color(0xFF8B0000);
     }
+  }
+
+  Widget _buildAttachmentsSection() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Add photos button
+          InkWell(
+            onTap: _showImageSourceDialog,
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+              decoration: BoxDecoration(
+                border: Border.all(color: AppColors.gray300),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(LucideIcons.camera, color: AppColors.gray600),
+                  const SizedBox(width: 8),
+                  CustomText(text: 'Add photos', color: AppColors.gray600),
+                  const Spacer(),
+                  Icon(
+                    LucideIcons.chevronRight,
+                    color: AppColors.gray400,
+                    size: 18,
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // Selected images grid
+          if (_selectedImages.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            CustomText(
+              text: '${_selectedImages.length} photo(s) selected',
+              fontSize: 14,
+              color: AppColors.gray600,
+            ),
+            const SizedBox(height: 8),
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 3,
+                crossAxisSpacing: 8,
+                mainAxisSpacing: 8,
+              ),
+              itemCount: _selectedImages.length,
+              itemBuilder: (context, index) {
+                return Stack(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.file(
+                        File(_selectedImages[index].path),
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                        height: double.infinity,
+                      ),
+                    ),
+                    Positioned(
+                      top: 4,
+                      right: 4,
+                      child: GestureDetector(
+                        onTap: () => _removeImage(index),
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.2),
+                                blurRadius: 4,
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            LucideIcons.x,
+                            color: Colors.white,
+                            size: 16,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            ),
+          ],
+        ],
+      ),
+    );
   }
 }

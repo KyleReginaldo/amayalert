@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 
 Future sendNotif({
@@ -24,8 +25,7 @@ Future sendNotif({
     }),
     headers: {
       'Content-Type': 'application/json; charset=utf-8',
-      'Authorization':
-          'Bearer Key os_v2_app_daiscdpew5bqjdgvhxt2dwuoezejniwvkbqew7n3qi4mmdpk4rw3vzdevzbfb5vvcsqxeht3kwdrzpqgwoojeocveyluuj3aipdgabi',
+      'Authorization': 'Bearer Key ${dotenv.get('ONESIGNAL_REST_API_KEY')}',
     },
   );
 }
