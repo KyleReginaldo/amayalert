@@ -10,6 +10,8 @@ import 'package:amayalert/feature/posts/post_provider.dart';
 import 'package:amayalert/feature/posts/post_repository.dart';
 import 'package:amayalert/feature/profile/profile_provider.dart';
 import 'package:amayalert/feature/profile/profile_repository.dart';
+import 'package:amayalert/feature/reports/report_provider.dart';
+import 'package:amayalert/feature/reports/report_repository.dart';
 import 'package:amayalert/feature/search/search_repository.dart';
 import 'package:amayalert/feature/weather/weather_provider.dart';
 import 'package:amayalert/feature/weather/weather_repository.dart';
@@ -35,6 +37,8 @@ Future init() async {
   sl.registerLazySingleton(() => EvacuationRepository(provider: sl()));
   sl.registerLazySingleton(() => EvacuationProvider());
   sl.registerLazySingleton(() => ActivityRepository());
+  sl.registerLazySingleton(() => ReportProvider());
+  sl.registerLazySingleton(() => ReportRepository(provider: sl()));
   sl.registerLazySingleton(
     () => SearchRepository(
       postRepository: sl(),

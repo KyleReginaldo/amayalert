@@ -3,11 +3,13 @@ import 'package:amayalert/core/theme/theme.dart';
 import 'package:amayalert/core/widgets/text/custom_text.dart';
 import 'package:amayalert/feature/posts/post_model.dart';
 import 'package:amayalert/feature/posts/post_repository.dart';
+import 'package:amayalert/feature/reports/report_repository.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
 class PostsListWidget extends StatefulWidget {
@@ -132,23 +134,66 @@ class PostCard extends StatelessWidget {
 
   const PostCard({super.key, required this.post});
 
+  // Simple function to show report dialog and submit report
+  Future<void> _showReportDialog(BuildContext context) async {
+    final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+    if (currentUserId == null) return;
+
+    // Show simple report dialog
+    final reason = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Report Post'),
+        content: const Text('Why are you reporting this post?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, 'Spam'),
+            child: const Text('Spam'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, 'Inappropriate Content'),
+            child: const Text('Inappropriate'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, 'Other'),
+            child: const Text('Other'),
+          ),
+        ],
+      ),
+    );
+
+    if (reason != null) {
+      // Submit report
+      final reportRepository = context.read<ReportRepository>();
+      final result = await reportRepository.reportPost(
+        postId: post.id,
+        reason: reason,
+        reportedBy: currentUserId,
+      );
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              result.isSuccess ? 'Post reported successfully' : result.error,
+            ),
+            backgroundColor: result.isSuccess ? Colors.green : Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        // borderRadius: BorderRadius.circular(16),
-        // boxShadow: [
-        //   BoxShadow(
-        //     color: Colors.black.withValues(alpha: 0.05),
-        //     blurRadius: 20,
-        //     offset: const Offset(0, 4),
-        //   ),
-        // ],
-        // border: Border.all(color: Colors.grey.withValues(alpha: 0.1), width: 1),
-      ),
+      decoration: BoxDecoration(color: Colors.white),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -225,36 +270,12 @@ class PostCard extends StatelessWidget {
                 ),
               ),
               // Visibility indicator
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: post.visibility == PostVisibility.public
-                      ? Colors.green.withValues(alpha: 0.1)
-                      : Colors.orange.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      post.visibility == PostVisibility.public
-                          ? LucideIcons.globe
-                          : LucideIcons.lock,
-                      size: 12,
-                      color: post.visibility == PostVisibility.public
-                          ? Colors.green
-                          : Colors.orange,
-                    ),
-                    const SizedBox(width: 4),
-                    CustomText(
-                      text: post.visibility.value.toUpperCase(),
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                      color: post.visibility == PostVisibility.public
-                          ? Colors.green
-                          : Colors.orange,
-                    ),
-                  ],
+              InkWell(
+                onTap: () => _showReportDialog(context),
+                child: Icon(
+                  Icons.more_vert,
+                  color: AppColors.gray600,
+                  size: 20,
                 ),
               ),
             ],

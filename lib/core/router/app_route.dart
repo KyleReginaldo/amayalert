@@ -116,5 +116,9 @@ class AppRouter extends RootStackRouter {
       page: UserProfileRoute.page,
       transitionsBuilder: TransitionsBuilders.slideLeft,
     ),
+    CustomRoute(
+      page: ReportPostRoute.page,
+      transitionsBuilder: TransitionsBuilders.slideLeft,
+    ),
   ];
 }

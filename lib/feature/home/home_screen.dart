@@ -6,6 +6,7 @@ import 'package:amayalert/feature/alerts/alert_repository.dart';
 import 'package:amayalert/feature/evacuation/evacuation_repository.dart';
 import 'package:amayalert/feature/posts/post_repository.dart';
 import 'package:amayalert/feature/posts/posts_list_widget.dart';
+import 'package:amayalert/feature/reports/report_repository.dart';
 import 'package:amayalert/feature/search/search_repository.dart';
 import 'package:amayalert/feature/search/search_results_widget.dart';
 import 'package:amayalert/feature/weather/weather_container.dart';
@@ -39,6 +40,7 @@ class HomeScreen extends StatefulWidget implements AutoRouteWrapper {
         ChangeNotifierProvider.value(value: sl<AlertRepository>()),
         ChangeNotifierProvider.value(value: sl<EvacuationRepository>()),
         ChangeNotifierProvider.value(value: sl<SearchRepository>()),
+        ChangeNotifierProvider.value(value: sl<ReportRepository>()),
       ],
       child: this,
     );

@@ -1,7 +1,9 @@
 // ignore_for_file: public_member_api_docs, sort_constructors_first
 import 'package:amayalert/feature/profile/profile_model.dart';
 import 'package:dart_mappable/dart_mappable.dart';
+import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 part 'rescue_model.mapper.dart';
 
@@ -17,6 +19,46 @@ enum EmergencyType {
   violence,
   naturalDisaster,
   other,
+}
+
+extension EmergencyTypeExtension on EmergencyType {
+  String get name {
+    switch (this) {
+      case EmergencyType.medical:
+        return 'medical';
+      case EmergencyType.fire:
+        return 'fire';
+      case EmergencyType.flood:
+        return 'flood';
+      case EmergencyType.accident:
+        return 'accident';
+      case EmergencyType.violence:
+        return 'violence';
+      case EmergencyType.naturalDisaster:
+        return 'natural_disaster';
+      case EmergencyType.other:
+        return 'other';
+    }
+  }
+
+  IconData get icon {
+    switch (this) {
+      case EmergencyType.medical:
+        return LucideIcons.heartPulse;
+      case EmergencyType.fire:
+        return LucideIcons.flame;
+      case EmergencyType.flood:
+        return LucideIcons.waves;
+      case EmergencyType.accident:
+        return LucideIcons.car;
+      case EmergencyType.violence:
+        return LucideIcons.handFist;
+      case EmergencyType.naturalDisaster:
+        return LucideIcons.shrub;
+      case EmergencyType.other:
+        return LucideIcons.lifeBuoy;
+    }
+  }
 }
 
 @MappableEnum(caseStyle: CaseStyle.snakeCase)

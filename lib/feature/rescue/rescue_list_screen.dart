@@ -7,6 +7,7 @@ import 'package:amayalert/feature/rescue/rescue_provider.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
 @RoutePage()
@@ -22,11 +23,34 @@ class _RescueListScreenState extends State<RescueListScreen> {
   List<Rescue> _rescues = [];
   bool _isLoading = false;
   String? _error;
+  late RealtimeChannel _rescueChannel;
 
   @override
   void initState() {
     super.initState();
     _loadRescues();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      listenToChannels();
+    });
+  }
+
+  void listenToChannels() async {
+    _rescueChannel = supabase.channel('public:rescues:user=eq.$userID');
+    _rescueChannel
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'rescues',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'user',
+            value: userID,
+          ),
+          callback: (payload) {
+            _loadRescues();
+          },
+        )
+        .subscribe();
   }
 
   Future<void> _loadRescues() async {

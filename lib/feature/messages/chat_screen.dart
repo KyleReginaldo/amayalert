@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:amayalert/core/services/chat_filter_service.dart';
 import 'package:amayalert/core/widgets/text/custom_text.dart';
 import 'package:amayalert/dependency.dart';
 import 'package:amayalert/feature/messages/enhanced_message_repository.dart';
@@ -46,6 +47,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   final ScrollController _scrollController = ScrollController();
   bool _isComposing = false;
   bool _isUploading = false;
+  bool _hasInappropriateContent = false;
   double _uploadProgress = 0.0;
 
   @override
@@ -87,8 +89,14 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   }
 
   void _onTextChanged() {
+    final text = _messageController.text.trim();
+    final isComposing = text.isNotEmpty;
+    final hasInappropriate =
+        text.isNotEmpty && !ChatFilterService.isAppropriateMessage(text);
+
     setState(() {
-      _isComposing = _messageController.text.trim().isNotEmpty;
+      _isComposing = isComposing;
+      _hasInappropriateContent = hasInappropriate;
     });
   }
 
@@ -138,6 +146,31 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   Future<void> _sendMessage() async {
     final content = _messageController.text.trim();
     if (content.isEmpty) return;
+
+    // Check for inappropriate content before sending
+    if (!ChatFilterService.isAppropriateMessage(content)) {
+      // Show warning dialog instead of just a snackbar for better user experience
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.warning, color: Colors.orange),
+              SizedBox(width: 8),
+              Text('Message Blocked'),
+            ],
+          ),
+          content: Text(ChatFilterService.getDetailedBlockReason(content)),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Okay'),
+            ),
+          ],
+        ),
+      );
+      return; // Don't send the message
+    }
 
     final messageRepository = context.read<EnhancedMessageRepository>();
     final currentUserId = messageRepository.currentUserId;
@@ -398,6 +431,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
               MessageInput(
                 controller: _messageController,
                 isComposing: _isComposing,
+                hasInappropriateContent: _hasInappropriateContent,
                 onSend: _sendMessage,
                 receiverId: widget.otherUserId,
                 onUploadStart: () => setState(() => _isUploading = true),
@@ -645,6 +679,7 @@ class MessageBubble extends StatelessWidget {
 class MessageInput extends StatefulWidget {
   final TextEditingController controller;
   final bool isComposing;
+  final bool hasInappropriateContent;
   final VoidCallback onSend;
   final String receiverId;
   final VoidCallback? onUploadStart;
@@ -656,6 +691,7 @@ class MessageInput extends StatefulWidget {
     super.key,
     required this.controller,
     required this.isComposing,
+    this.hasInappropriateContent = false,
     required this.onSend,
     required this.receiverId,
     this.onUploadStart,
@@ -751,10 +787,11 @@ class _MessageInputState extends State<MessageInput> {
       );
 
       if (!result.isSuccess) {
-        if (mounted)
+        if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Failed to send image: ${result.error}')),
           );
+        }
       } else {
         if (mounted)
           ScaffoldMessenger.of(
@@ -817,15 +854,25 @@ class _MessageInputState extends State<MessageInput> {
             AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               child: IconButton(
-                onPressed: (widget.isComposing && !_sendingImage)
+                onPressed:
+                    (widget.isComposing &&
+                        !_sendingImage &&
+                        !widget.hasInappropriateContent)
                     ? widget.onSend
                     : null,
                 icon: Icon(
-                  LucideIcons.send,
-                  color: (widget.isComposing && !_sendingImage)
+                  widget.hasInappropriateContent
+                      ? Icons.warning
+                      : LucideIcons.send,
+                  color: widget.hasInappropriateContent
+                      ? Colors.red
+                      : (widget.isComposing && !_sendingImage)
                       ? Colors.blue
                       : Colors.grey,
                 ),
+                tooltip: widget.hasInappropriateContent
+                    ? 'Message contains inappropriate content'
+                    : null,
               ),
             ),
           ],

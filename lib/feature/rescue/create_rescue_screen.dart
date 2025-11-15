@@ -15,6 +15,8 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/widgets/buttons/custom_buttons.dart';
+
 @RoutePage()
 class CreateRescueScreen extends StatefulWidget {
   const CreateRescueScreen({super.key});
@@ -336,165 +338,191 @@ class _CreateRescueScreenState extends State<CreateRescueScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.scaffoldLight,
-      appBar: AppBar(
+    return SafeArea(
+      top: false,
+      child: Scaffold(
         backgroundColor: AppColors.scaffoldLight,
-        elevation: 0,
-        leading: IconButton(
-          onPressed: () => context.router.pop(),
-          icon: const Icon(LucideIcons.arrowLeft),
-        ),
-        title: const CustomText(
-          text: 'Request Rescue',
-          fontSize: 18,
-          fontWeight: FontWeight.w600,
-        ),
-        actions: [
-          if (_isLoading)
-            const Padding(
-              padding: EdgeInsets.all(16.0),
-              child: SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-            ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Emergency Type Selection
-            _buildSectionHeader('Emergency Type', LucideIcons.shield),
-            const SizedBox(height: 12),
-            _buildEmergencyTypeSelector(),
-
-            const SizedBox(height: 24),
-
-            // Priority Selection
-            _buildSectionHeader('Priority Level', LucideIcons.zap),
-            const SizedBox(height: 12),
-            _buildPrioritySelector(),
-
-            const SizedBox(height: 24),
-
-            // Basic Information
-            _buildSectionHeader('Emergency Details', LucideIcons.fileText),
-            const SizedBox(height: 12),
-            CustomTextField(
-              controller: _titleController,
-              hint: 'Brief description of the emergency',
-              label: 'Description',
-            ),
-            const SizedBox(height: 12),
-            CustomTextField(
-              controller: _descriptionController,
-              label: 'Additional details',
-              hint: 'Additional details about the situation...',
-            ),
-
-            const SizedBox(height: 24),
-
-            // Additional Information
-            _buildSectionHeader('Additional Information', LucideIcons.info),
-            const SizedBox(height: 12),
-
-            CustomTextField(
-              controller: _femaleCountController,
-              hint: 'e.g. 10',
-              label: 'Number of females affected',
-              keyboardType: TextInputType.number,
-            ),
-            const SizedBox(height: 12),
-
-            CustomTextField(
-              controller: _maleCountController,
-              hint: 'e.g. 10',
-              label: 'Number of males affected',
-              keyboardType: TextInputType.number,
-            ),
-            const SizedBox(height: 12),
-            CustomTextField(
-              controller: _contactController,
-              hint: 'e.g. 9923189664',
-              label: 'Contact phone',
-              prefixIcon: IconButton(
-                onPressed: null,
-                icon: CustomText(text: '+63'),
-              ),
-              maxLength: 10,
-
-              keyboardType: TextInputType.phone,
-            ),
-            const SizedBox(height: 12),
-
-            CustomTextField(
-              controller: _emailController,
-              hint: 'e.g. juandelacruz@example.com',
-              label: 'Contact email',
-              keyboardType: TextInputType.emailAddress,
-            ),
-            const SizedBox(height: 12),
-            CustomTextField(
-              controller: _additionalInfoController,
-              hint: 'e.g. Wala na yung bubong nilipad na',
-              label: 'Important information',
-              maxLines: 3,
-            ),
-
-            const SizedBox(height: 24),
-
-            // Location
-            _buildSectionHeader('Location', LucideIcons.mapPin),
-            const SizedBox(height: 12),
-            _buildLocationCard(),
-
-            const SizedBox(height: 24),
-
-            // Attachments
-            _buildSectionHeader('Attachments', LucideIcons.paperclip),
-            const SizedBox(height: 12),
-            _buildAttachmentsSection(),
-
-            const SizedBox(height: 32),
-
-            // Submit Button
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _isLoading ? null : _submitRescueRequest,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+        appBar: AppBar(
+          backgroundColor: AppColors.scaffoldLight,
+          elevation: 0,
+          leading: IconButton(
+            onPressed: () => context.router.pop(),
+            icon: const Icon(LucideIcons.arrowLeft),
+          ),
+          title: const CustomText(
+            text: 'Request Rescue',
+            fontSize: 18,
+            fontWeight: FontWeight.w600,
+          ),
+          actions: [
+            if (_isLoading)
+              const Padding(
+                padding: EdgeInsets.all(16.0),
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
                 ),
-                child: _isLoading
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            Colors.white,
-                          ),
-                        ),
-                      )
-                    : const Text(
-                        'Submit Rescue Request',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
               ),
-            ),
           ],
+        ),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Emergency Type Selection
+              _buildSectionHeader('Emergency Type', LucideIcons.shield),
+              const SizedBox(height: 12),
+              Container(
+                padding: EdgeInsets.all(16),
+                width: MediaQuery.sizeOf(context).width,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 10,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Wrap(
+                  spacing: 5,
+                  runSpacing: 5,
+                  children: EmergencyType.values.map((e) {
+                    return ChoiceChip(
+                      selectedColor: AppColors.primary,
+                      label: Row(
+                        spacing: 6,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            e.icon,
+                            size: 16,
+                            color: e == _selectedEmergencyType
+                                ? Colors.white
+                                : Colors.black,
+                          ),
+                          CustomText(
+                            text: e.name,
+                            fontSize: 14,
+                            color: e == _selectedEmergencyType
+                                ? Colors.white
+                                : Colors.black,
+                          ),
+                        ],
+                      ),
+                      selected: _selectedEmergencyType == e,
+                      onSelected: (selected) {
+                        setState(() {
+                          _selectedEmergencyType = e;
+                        });
+                      },
+                    );
+                  }).toList(),
+                ),
+              ),
+              const SizedBox(height: 24),
+
+              // Priority Selection
+              _buildSectionHeader('Priority Level', LucideIcons.zap),
+              const SizedBox(height: 12),
+              _buildPrioritySelector(),
+
+              const SizedBox(height: 24),
+
+              // Basic Information
+              _buildSectionHeader('Emergency Details', LucideIcons.fileText),
+              const SizedBox(height: 12),
+              CustomTextField(
+                controller: _titleController,
+                hint: 'Brief description of the emergency',
+                label: 'Description',
+              ),
+              const SizedBox(height: 12),
+              CustomTextField(
+                controller: _descriptionController,
+                label: 'Additional details',
+                hint: 'Additional details about the situation...',
+              ),
+
+              const SizedBox(height: 24),
+
+              // Additional Information
+              _buildSectionHeader('Additional Information', LucideIcons.info),
+              const SizedBox(height: 12),
+
+              CustomTextField(
+                controller: _femaleCountController,
+                hint: 'e.g. 10',
+                label: 'Number of females affected',
+                keyboardType: TextInputType.number,
+              ),
+              const SizedBox(height: 12),
+
+              CustomTextField(
+                controller: _maleCountController,
+                hint: 'e.g. 10',
+                label: 'Number of males affected',
+                keyboardType: TextInputType.number,
+              ),
+              const SizedBox(height: 12),
+              CustomTextField(
+                controller: _contactController,
+                hint: 'e.g. 9923189664',
+                label: 'Contact phone',
+                prefixIcon: IconButton(
+                  onPressed: null,
+                  icon: CustomText(text: '+63'),
+                ),
+                maxLength: 10,
+
+                keyboardType: TextInputType.phone,
+              ),
+              const SizedBox(height: 12),
+
+              CustomTextField(
+                controller: _emailController,
+                hint: 'e.g. juandelacruz@example.com',
+                label: 'Contact email',
+                keyboardType: TextInputType.emailAddress,
+              ),
+              const SizedBox(height: 12),
+              CustomTextField(
+                controller: _additionalInfoController,
+                hint: 'e.g. Wala na yung bubong nilipad na',
+                label: 'Important information',
+                maxLines: 3,
+              ),
+
+              const SizedBox(height: 24),
+
+              // Location
+              _buildSectionHeader('Location', LucideIcons.mapPin),
+              const SizedBox(height: 12),
+              _buildLocationCard(),
+
+              const SizedBox(height: 24),
+
+              // Attachments
+              _buildSectionHeader('Attachments', LucideIcons.paperclip),
+              const SizedBox(height: 12),
+              _buildAttachmentsSection(),
+
+              // Submit Button
+            ],
+          ),
+        ),
+        bottomNavigationBar: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: CustomElevatedButton(
+            label: 'Submit Request',
+            size: ButtonSize.lg,
+            isFullWidth: true,
+            onPressed: _isLoading ? null : _submitRescueRequest,
+          ),
         ),
       ),
     );
@@ -512,38 +540,6 @@ class _CreateRescueScreenState extends State<CreateRescueScreen> {
           color: AppColors.textPrimaryLight,
         ),
       ],
-    );
-  }
-
-  Widget _buildEmergencyTypeSelector() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        children: EmergencyType.values.map((type) {
-          return RadioListTile<EmergencyType>(
-            value: type,
-            groupValue: _selectedEmergencyType,
-            onChanged: (value) {
-              setState(() => _selectedEmergencyType = value!);
-            },
-            title: Text(_getEmergencyTypeLabel(type)),
-            subtitle: Text(_getEmergencyTypeDescription(type)),
-            contentPadding: EdgeInsets.zero,
-            visualDensity: VisualDensity.compact,
-          );
-        }).toList(),
-      ),
     );
   }
 
@@ -710,43 +706,43 @@ class _CreateRescueScreenState extends State<CreateRescueScreen> {
     );
   }
 
-  String _getEmergencyTypeLabel(EmergencyType type) {
-    switch (type) {
-      case EmergencyType.medical:
-        return 'Medical Emergency';
-      case EmergencyType.fire:
-        return 'Fire';
-      case EmergencyType.flood:
-        return 'Flood';
-      case EmergencyType.accident:
-        return 'Accident';
-      case EmergencyType.violence:
-        return 'Violence/Crime';
-      case EmergencyType.naturalDisaster:
-        return 'Natural Disaster';
-      case EmergencyType.other:
-        return 'Other Emergency';
-    }
-  }
+  // String _getEmergencyTypeLabel(EmergencyType type) {
+  //   switch (type) {
+  //     case EmergencyType.medical:
+  //       return 'Medical Emergency';
+  //     case EmergencyType.fire:
+  //       return 'Fire';
+  //     case EmergencyType.flood:
+  //       return 'Flood';
+  //     case EmergencyType.accident:
+  //       return 'Accident';
+  //     case EmergencyType.violence:
+  //       return 'Violence/Crime';
+  //     case EmergencyType.naturalDisaster:
+  //       return 'Natural Disaster';
+  //     case EmergencyType.other:
+  //       return 'Other Emergency';
+  //   }
+  // }
 
-  String _getEmergencyTypeDescription(EmergencyType type) {
-    switch (type) {
-      case EmergencyType.medical:
-        return 'Medical assistance needed';
-      case EmergencyType.fire:
-        return 'Fire-related emergency';
-      case EmergencyType.flood:
-        return 'Flood or water-related emergency';
-      case EmergencyType.accident:
-        return 'Vehicle or other accident';
-      case EmergencyType.violence:
-        return 'Safety threat or crime in progress';
-      case EmergencyType.naturalDisaster:
-        return 'Earthquake, typhoon, etc.';
-      case EmergencyType.other:
-        return 'Other type of emergency';
-    }
-  }
+  // String _getEmergencyTypeDescription(EmergencyType type) {
+  //   switch (type) {
+  //     case EmergencyType.medical:
+  //       return 'Medical assistance needed';
+  //     case EmergencyType.fire:
+  //       return 'Fire-related emergency';
+  //     case EmergencyType.flood:
+  //       return 'Flood or water-related emergency';
+  //     case EmergencyType.accident:
+  //       return 'Vehicle or other accident';
+  //     case EmergencyType.violence:
+  //       return 'Safety threat or crime in progress';
+  //     case EmergencyType.naturalDisaster:
+  //       return 'Earthquake, typhoon, etc.';
+  //     case EmergencyType.other:
+  //       return 'Other type of emergency';
+  //   }
+  // }
 
   Color _getPriorityColor(RescuePriority priority) {
     switch (priority) {
