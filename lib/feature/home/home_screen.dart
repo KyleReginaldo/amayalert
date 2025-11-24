@@ -4,6 +4,7 @@ import 'package:amayalert/core/widgets/text/custom_text.dart';
 import 'package:amayalert/feature/alerts/alert_banner_widget.dart';
 import 'package:amayalert/feature/alerts/alert_repository.dart';
 import 'package:amayalert/feature/evacuation/evacuation_repository.dart';
+import 'package:amayalert/feature/home/widgets/hotline_container.dart';
 import 'package:amayalert/feature/posts/post_repository.dart';
 import 'package:amayalert/feature/posts/posts_list_widget.dart';
 import 'package:amayalert/feature/reports/report_repository.dart';
@@ -221,6 +222,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
                       if (!_showSearchResults) ...[
                         const SizedBox(height: 16),
+                        HotlineContainer(),
+                        const SizedBox(height: 16),
 
                         _buildWeatherSection(weather, isLoading, errorMessage),
                         const SizedBox(height: 16),
@@ -350,7 +353,7 @@ class _HomeScreenState extends State<HomeScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         CustomText(
-          text: 'Emergency Services',
+          text: 'Emergency Hotline Services',
           fontSize: 15,
           color: Colors.black87,
         ),

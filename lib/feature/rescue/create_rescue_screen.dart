@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:amayalert/core/ext/extension.dart';
 import 'package:amayalert/core/theme/theme.dart';
 import 'package:amayalert/core/widgets/input/custom_text_field.dart';
 import 'package:amayalert/core/widgets/text/custom_text.dart';
@@ -44,6 +45,9 @@ class _CreateRescueScreenState extends State<CreateRescueScreen> {
   bool _isLoading = false;
   bool _isLoadingLocation = false;
   final List<XFile> _selectedImages = [];
+  // Whether user signed in with Google (kept for future logic, not required for UI)
+  bool _isGuestUser = false;
+  String? _userEmail;
 
   @override
   void dispose() {
@@ -62,6 +66,16 @@ class _CreateRescueScreenState extends State<CreateRescueScreen> {
   void initState() {
     super.initState();
     _getCurrentLocation();
+    _loadAuthContext();
+  }
+
+  void _loadAuthContext() {
+    final user = Supabase.instance.client.auth.currentUser;
+    final provider = user?.appMetadata['provider']?.toString();
+    setState(() {
+      _userEmail = user?.email;
+      _isGuestUser = provider == 'anonymous' || user == null;
+    });
   }
 
   Future<void> _getCurrentLocation() async {
@@ -250,27 +264,8 @@ class _CreateRescueScreenState extends State<CreateRescueScreen> {
     EasyLoading.show(status: 'Submitting rescue request...');
 
     try {
-      // Validate required contact email
-      final emailText = _emailController.text.trim();
-      if (emailText.isEmpty) {
-        EasyLoading.dismiss();
-        setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please enter a contact email.')),
-        );
-        return;
-      }
-
-      // Basic email format check
-      final emailRegex = RegExp(r"^[^@\s]+@[^@\s]+\.[^@\s]+$");
-      if (!emailRegex.hasMatch(emailText)) {
-        EasyLoading.dismiss();
-        setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please enter a valid email address.')),
-        );
-        return;
-      }
+      // Determine contact email from signed-in user (none for guest)
+      final String? emailToUse = _isGuestUser ? null : _userEmail;
 
       final request = CreateRescueRequest(
         title: _titleController.text.trim(),
@@ -293,7 +288,7 @@ class _CreateRescueScreenState extends State<CreateRescueScreen> {
         importantInformation: _additionalInfoController.text.trim().isEmpty
             ? null
             : _additionalInfoController.text.trim(),
-        email: _emailController.text.trim(),
+        email: emailToUse ?? '',
         attachmentFiles: _selectedImages.isNotEmpty ? _selectedImages : null,
         address: _addressController.text.trim().isEmpty
             ? null
@@ -406,7 +401,7 @@ class _CreateRescueScreenState extends State<CreateRescueScreen> {
                                 : Colors.black,
                           ),
                           CustomText(
-                            text: e.name,
+                            text: e.name.capitalize(),
                             fontSize: 14,
                             color: e == _selectedEmergencyType
                                 ? Colors.white
@@ -481,23 +476,8 @@ class _CreateRescueScreenState extends State<CreateRescueScreen> {
 
                 keyboardType: TextInputType.phone,
               ),
-              const SizedBox(height: 12),
 
-              CustomTextField(
-                controller: _emailController,
-                hint: 'e.g. juandelacruz@example.com',
-                label: 'Contact email',
-                keyboardType: TextInputType.emailAddress,
-              ),
               const SizedBox(height: 12),
-              CustomTextField(
-                controller: _additionalInfoController,
-                hint: 'e.g. Wala na yung bubong nilipad na',
-                label: 'Important information',
-                maxLines: 3,
-              ),
-
-              const SizedBox(height: 24),
 
               // Location
               _buildSectionHeader('Location', LucideIcons.mapPin),
@@ -542,6 +522,8 @@ class _CreateRescueScreenState extends State<CreateRescueScreen> {
       ],
     );
   }
+
+  // Email input removed: email is auto-populated from signed-in user or omitted for guest
 
   Widget _buildPrioritySelector() {
     return Container(

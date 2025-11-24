@@ -1,3 +1,4 @@
+import 'package:amayalert/core/constant/constant.dart';
 import 'package:amayalert/core/router/app_route.gr.dart';
 import 'package:amayalert/core/theme/theme.dart';
 import 'package:amayalert/core/widgets/text/custom_text.dart';
@@ -270,13 +271,28 @@ class PostCard extends StatelessWidget {
                 ),
               ),
               // Visibility indicator
-              InkWell(
-                onTap: () => _showReportDialog(context),
-                child: Icon(
-                  Icons.more_vert,
-                  color: AppColors.gray600,
-                  size: 20,
-                ),
+              PopupMenuButton<String>(
+                icon: Icon(Icons.more_vert, color: AppColors.gray600, size: 20),
+                itemBuilder: (context) => [
+                  PopupMenuItem<String>(
+                    value: 'visibility',
+                    onTap: () {
+                      _showReportDialog(context);
+                    },
+                    child: Row(
+                      children: [
+                        Icon(
+                          LucideIcons.flagTriangleLeft,
+                          size: 16,
+                          color: AppColors.gray600,
+                        ),
+                        const SizedBox(width: 8),
+                        Text('Report Post'),
+                      ],
+                    ),
+                  ),
+                  if (post.user.id == userID) _buildDeletePostMenuItem(),
+                ],
               ),
             ],
           ),
@@ -505,6 +521,22 @@ class PostCard extends StatelessWidget {
               ),
             ],
           ),
+        ],
+      ),
+    );
+  }
+
+  PopupMenuItem<String> _buildDeletePostMenuItem() {
+    return PopupMenuItem<String>(
+      value: 'delete',
+      onTap: () async {
+        await supabase.from('posts').delete().eq('id', post.id);
+      },
+      child: Row(
+        children: [
+          Icon(LucideIcons.trash, size: 16, color: AppColors.error),
+          const SizedBox(width: 8),
+          CustomText(text: 'Delete Post', color: AppColors.error),
         ],
       ),
     );

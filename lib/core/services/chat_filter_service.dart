@@ -1,3 +1,4 @@
+import 'package:amayalert/core/constant/constant.dart';
 import 'package:flutter/foundation.dart';
 
 /// Service to filter inappropriate content from chat messages
@@ -326,6 +327,23 @@ class ChatFilterService {
     return isMessageClean(message) &&
         !containsThreats(message) &&
         !containsHarassment(message);
+  }
+
+  Future<bool> filterMessage(String message) async {
+    final data = await supabase.from('word_filters').select();
+    debugPrint(
+      'Chat Filter: Loaded ${data.length} custom blocked words from database.: $data',
+    );
+    final List<String> customWords = data
+        .map((e) => e['word'] as String)
+        .toList();
+    for (final word in customWords) {
+      if (message.toLowerCase().contains(word.toLowerCase())) {
+        debugPrint('Chat Filter: Custom blocked word detected: $word');
+        return false;
+      }
+    }
+    return true;
   }
 
   /// Get detailed feedback for blocked messages

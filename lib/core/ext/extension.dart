@@ -36,3 +36,10 @@ class PostHook extends MappingHook {
     return value;
   }
 }
+
+extension StringExt on String {
+  String capitalize() {
+    if (isEmpty) return this;
+    return this[0].toUpperCase() + substring(1).split('_').join(' ');
+  }
+}

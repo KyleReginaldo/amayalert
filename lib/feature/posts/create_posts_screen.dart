@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:amayalert/core/constant/constant.dart';
 import 'package:amayalert/core/dto/post.dto.dart';
+import 'package:amayalert/core/services/chat_filter_service.dart';
 import 'package:amayalert/core/theme/theme.dart';
 import 'package:amayalert/core/widgets/text/custom_text.dart';
 import 'package:amayalert/feature/posts/post_model.dart';
@@ -124,6 +125,17 @@ class _CreatePostsScreenState extends State<CreatePostsScreen> {
           content: Text('Please enter some content for your post'),
         ),
       );
+      return;
+    }
+
+    // Profanity and harassment filter
+    final text = _contentController.text.trim();
+    final isClean = ChatFilterService.isAppropriateMessage(text);
+    if (!isClean) {
+      final reason = ChatFilterService.getDetailedBlockReason(text);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(reason)));
       return;
     }
 

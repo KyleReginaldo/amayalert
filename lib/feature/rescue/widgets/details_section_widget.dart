@@ -57,19 +57,7 @@ class DetailsSectionWidget extends StatelessWidget {
             CustomText(text: _buildVictimCountText(rescue)),
             SizedBox(height: 8),
           ],
-          if (rescue.importantInformation != null) ...[
-            CustomText(
-              text: "Important Information",
-              fontSize: 14,
-              color: AppColors.gray600,
-            ),
-            CustomText(
-              text: rescue.importantInformation!,
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-            ),
-            SizedBox(height: 8),
-          ],
+
           if (rescue.user != null) ...[
             CustomText(
               text: "Reported By",

@@ -88,11 +88,11 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     }
   }
 
-  void _onTextChanged() {
+  Future<void> _onTextChanged() async {
     final text = _messageController.text.trim();
     final isComposing = text.isNotEmpty;
     final hasInappropriate =
-        text.isNotEmpty && !ChatFilterService.isAppropriateMessage(text);
+        text.isNotEmpty && !await ChatFilterService().filterMessage(text);
 
     setState(() {
       _isComposing = isComposing;
@@ -146,9 +146,9 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   Future<void> _sendMessage() async {
     final content = _messageController.text.trim();
     if (content.isEmpty) return;
-
+    bool isFiltered = await ChatFilterService().filterMessage(content);
     // Check for inappropriate content before sending
-    if (!ChatFilterService.isAppropriateMessage(content)) {
+    if (!isFiltered) {
       // Show warning dialog instead of just a snackbar for better user experience
       showDialog(
         context: context,
