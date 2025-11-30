@@ -282,7 +282,8 @@ class EnhancedMessageProvider {
           .select(
             'id, full_name, email, profile_picture, phone_number, created_at',
           )
-          .neq('id', currentUserId);
+          .neq('id', currentUserId)
+          .neq('full_name', 'Guest User');
 
       if (searchQuery != null && searchQuery.isNotEmpty) {
         query = query.or(

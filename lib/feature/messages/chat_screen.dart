@@ -1,10 +1,12 @@
 import 'dart:io';
 
+import 'package:amayalert/core/constant/constant.dart';
 import 'package:amayalert/core/services/chat_filter_service.dart';
 import 'package:amayalert/core/widgets/text/custom_text.dart';
 import 'package:amayalert/dependency.dart';
 import 'package:amayalert/feature/messages/enhanced_message_repository.dart';
 import 'package:amayalert/feature/messages/message_model.dart';
+import 'package:amayalert/feature/profile/profile_repository.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -35,8 +37,10 @@ class ChatScreen extends StatefulWidget implements AutoRouteWrapper {
 
   @override
   Widget wrappedRoute(BuildContext context) {
-    return ChangeNotifierProvider.value(
-      value: sl<EnhancedMessageRepository>(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider.value(value: sl<EnhancedMessageRepository>()),
+      ],
       child: this,
     );
   }
@@ -57,6 +61,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     _loadMessages();
     _messageController.addListener(_onTextChanged);
     WidgetsBinding.instance.addObserver(this);
+    context.read<ProfileRepository>().getUserProfile(userID ?? "");
   }
 
   @override
@@ -793,10 +798,11 @@ class _MessageInputState extends State<MessageInput> {
           );
         }
       } else {
-        if (mounted)
+        if (mounted) {
           ScaffoldMessenger.of(
             context,
           ).showSnackBar(const SnackBar(content: Text('Image sent')));
+        }
         WidgetsBinding.instance.addPostFrameCallback((_) {
           final state = context.findAncestorStateOfType<_ChatScreenState>();
           state?._scrollToBottom();

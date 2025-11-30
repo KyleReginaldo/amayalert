@@ -82,6 +82,7 @@ class _SignInScreenState extends State<SignInScreen> {
       if (mounted) {
         context.read<ProfileRepository>().clear();
         userID = supabase.auth.currentUser?.id;
+        context.read<ProfileRepository>().getUserProfile(userID ?? "");
       }
       EasyLoading.showSuccess(result.value);
 

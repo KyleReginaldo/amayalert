@@ -3,6 +3,7 @@ import 'package:amayalert/core/widgets/text/custom_text.dart';
 import 'package:amayalert/dependency.dart';
 import 'package:amayalert/feature/messages/enhanced_message_repository.dart';
 import 'package:amayalert/feature/messages/message_model.dart';
+import 'package:amayalert/feature/profile/profile_repository.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -10,6 +11,7 @@ import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
+import '../../core/constant/constant.dart';
 import '../../core/router/app_route.gr.dart';
 
 @RoutePage()
@@ -21,8 +23,11 @@ class MessageScreen extends StatefulWidget implements AutoRouteWrapper {
 
   @override
   Widget wrappedRoute(BuildContext context) {
-    return ChangeNotifierProvider.value(
-      value: sl<EnhancedMessageRepository>(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider.value(value: sl<EnhancedMessageRepository>()),
+        ChangeNotifierProvider.value(value: sl<ProfileRepository>()),
+      ],
       child: this,
     );
   }
@@ -35,6 +40,9 @@ class _MessageScreenState extends State<MessageScreen> {
     _loadConversations();
     // Clear badge when messages screen is opened
     BadgeService().clearUnreadCount();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<ProfileRepository>().getUserProfile(userID ?? "");
+    });
   }
 
   void _loadConversations() {
@@ -53,6 +61,7 @@ class _MessageScreenState extends State<MessageScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final user = context.watch<ProfileRepository>().profile;
     return ChangeNotifierProvider.value(
       value: sl<EnhancedMessageRepository>(),
       child: Scaffold(
@@ -60,13 +69,14 @@ class _MessageScreenState extends State<MessageScreen> {
           title: const CustomText(text: 'Messages'),
           centerTitle: true,
           actions: [
-            IconButton(
-              onPressed: () {
-                // Navigate to new conversation screen
-                context.router.push(NewConversationRoute());
-              },
-              icon: const Icon(LucideIcons.plus),
-            ),
+            if (user != null && user.fullName != 'Guest User')
+              IconButton(
+                onPressed: () {
+                  // Navigate to new conversation screen
+                  context.router.push(NewConversationRoute());
+                },
+                icon: const Icon(LucideIcons.plus),
+              ),
           ],
         ),
         body: Consumer<EnhancedMessageRepository>(
@@ -138,8 +148,66 @@ class _MessageScreenState extends State<MessageScreen> {
                 ),
               );
             }
-
-            if (messageRepository.conversations.isEmpty) {
+            if (user != null && user.fullName == 'Guest User') {
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(32.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        LucideIcons.messageCircle,
+                        size: 64,
+                        color: Colors.grey.shade400,
+                      ),
+                      const SizedBox(height: 16),
+                      CustomText(
+                        text: 'Guest user can\'t have conversations',
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      const SizedBox(height: 8),
+                      CustomText(
+                        text:
+                            'Guest users can\'t have conversations. Please log in to start chatting!',
+                        fontSize: 14,
+                        color: Colors.grey.shade600,
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 24),
+                      Container(
+                        width: double.infinity,
+                        constraints: const BoxConstraints(maxWidth: 140),
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            bool? reload = await context.router.push(
+                              SignInRoute(),
+                            );
+                            if (reload == true) {
+                              _loadConversations();
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blue.shade600,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: const CustomText(
+                            text: 'Log In',
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            } else if (messageRepository.conversations.isEmpty) {
               return Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
