@@ -22,7 +22,9 @@ class _MainScreenState extends State<MainScreen> {
   @override
   void initState() {
     onesignalLogin();
-    updateCurretLocation();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      listenToLocationChanges();
+    });
     super.initState();
   }
 
@@ -32,25 +34,26 @@ class _MainScreenState extends State<MainScreen> {
     }
   }
 
-  void updateCurretLocation() async {
-    if (userID != null) {
-      Geolocator.getCurrentPosition()
-          .then((Position position) async {
-            debugPrint(
-              'Current Location: Lat: ${position.latitude}, Lng: ${position.longitude}',
-            );
-            await supabase
-                .from('users')
-                .update({
-                  'latitude': position.latitude,
-                  'longitude': position.longitude,
-                })
-                .eq('id', userID!);
-          })
-          .catchError((e) {
-            debugPrint('Error getting location: $e');
-          });
-    }
+  void listenToLocationChanges() {
+    Geolocator.getPositionStream(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 10,
+      ),
+    ).listen((Position position) async {
+      debugPrint(
+        'Location Update: Lat: ${position.latitude}, Lng: ${position.longitude}',
+      );
+      if (userID != null) {
+        await supabase
+            .from('users')
+            .update({
+              'latitude': position.latitude,
+              'longitude': position.longitude,
+            })
+            .eq('id', userID!);
+      }
+    });
   }
 
   @override

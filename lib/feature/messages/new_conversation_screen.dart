@@ -3,6 +3,7 @@ import 'package:amayalert/core/widgets/text/custom_text.dart';
 import 'package:amayalert/dependency.dart';
 import 'package:amayalert/feature/messages/enhanced_message_repository.dart';
 import 'package:amayalert/feature/messages/message_model.dart';
+import 'package:amayalert/feature/profile/profile_repository.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -18,8 +19,11 @@ class NewConversationScreen extends StatefulWidget implements AutoRouteWrapper {
 
   @override
   Widget wrappedRoute(BuildContext context) {
-    return ChangeNotifierProvider.value(
-      value: sl<EnhancedMessageRepository>(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider.value(value: sl<EnhancedMessageRepository>()),
+        ChangeNotifierProvider.value(value: sl<ProfileRepository>()),
+      ],
       child: this,
     );
   }

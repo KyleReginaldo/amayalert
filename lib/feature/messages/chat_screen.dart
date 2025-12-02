@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:amayalert/core/constant/constant.dart';
@@ -40,6 +41,7 @@ class ChatScreen extends StatefulWidget implements AutoRouteWrapper {
     return MultiProvider(
       providers: [
         ChangeNotifierProvider.value(value: sl<EnhancedMessageRepository>()),
+        ChangeNotifierProvider.value(value: sl<ProfileRepository>()),
       ],
       child: this,
     );
@@ -53,20 +55,29 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
   bool _isUploading = false;
   bool _hasInappropriateContent = false;
   double _uploadProgress = 0.0;
+  Timer? _filterDebounce;
+  String _lastFilterText = '';
+  // Throttle for mark-as-seen operations
+  bool _markSeenCooldown = false;
 
   @override
   void initState() {
     super.initState();
     debugPrint('ChatScreen initialized with phone: ${widget.otherUserPhone}');
-    _loadMessages();
-    _messageController.addListener(_onTextChanged);
     WidgetsBinding.instance.addObserver(this);
-    context.read<ProfileRepository>().getUserProfile(userID ?? "");
+
+    // Defer all Provider operations that call notifyListeners to after build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<ProfileRepository>().getUserProfile(userID ?? "");
+      _loadMessages();
+    });
   }
 
   @override
   void dispose() {
-    _messageController.removeListener(_onTextChanged);
+    _filterDebounce?.cancel();
+    // Listener removed
     _messageController.dispose();
     _scrollController.dispose();
     WidgetsBinding.instance.removeObserver(this);
@@ -86,55 +97,87 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     final repo = context.read<EnhancedMessageRepository>();
     final currentUserId = repo.currentUserId;
     if (currentUserId != null && mounted) {
+      if (_markSeenCooldown) return;
+      _markSeenCooldown = true;
       repo.markMessagesAsSeen(
         userId: currentUserId,
         otherUserId: widget.otherUserId,
       );
+      Timer(const Duration(seconds: 1), () {
+        _markSeenCooldown = false;
+      });
     }
   }
 
-  Future<void> _onTextChanged() async {
-    final text = _messageController.text.trim();
-    final isComposing = text.isNotEmpty;
-    final hasInappropriate =
-        text.isNotEmpty && !await ChatFilterService().filterMessage(text);
+  void _onTextChanged(String text) {
+    final trimmed = text.trim();
+    final isComposing = trimmed.isNotEmpty;
 
-    setState(() {
-      _isComposing = isComposing;
-      _hasInappropriateContent = hasInappropriate;
+    // Cancel any pending filter evaluation
+    _filterDebounce?.cancel();
+
+    // Safe: onChanged callbacks are always outside build phase
+    if (_isComposing != isComposing) {
+      if (mounted) {
+        setState(() {
+          _isComposing = isComposing;
+        });
+      }
+    }
+
+    if (trimmed.isEmpty) {
+      if (_hasInappropriateContent && mounted) {
+        setState(() {
+          _hasInappropriateContent = false;
+        });
+      }
+      return;
+    }
+
+    _lastFilterText = trimmed;
+    // Debounce async filter check
+    _filterDebounce = Timer(const Duration(milliseconds: 300), () async {
+      final current = _lastFilterText;
+      bool ok = true;
+      try {
+        ok = await ChatFilterService().filterMessage(current);
+      } catch (_) {
+        ok = true; // Fail-open to avoid blocking typing on transient errors
+      }
+      if (!mounted) return;
+      // Ignore stale results if text changed since debounce started
+      if (current != text.trim()) return;
+      setState(() {
+        _hasInappropriateContent = !ok;
+      });
     });
   }
 
   void _loadMessages() {
+    if (!mounted) return;
     final repo = context.read<EnhancedMessageRepository>();
     final currentUser = repo.currentUserId;
     if (currentUser != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        final repository = context.read<EnhancedMessageRepository>();
+      try {
+        repo.loadConversation(
+          userId1: currentUser,
+          userId2: widget.otherUserId,
+        );
 
-        // Load conversation messages
+        // Mark messages as seen from this user
+        repo.markMessagesAsSeen(
+          userId: currentUser,
+          otherUserId: widget.otherUserId,
+        );
 
+        // Subscribe to real-time updates (best-effort in test environments)
         try {
-          repository.loadConversation(
+          repo.subscribeToConversation(
             userId1: currentUser,
             userId2: widget.otherUserId,
           );
-
-          // Mark messages as seen from this user
-          repository.markMessagesAsSeen(
-            userId: currentUser,
-            otherUserId: widget.otherUserId,
-          );
-
-          // Subscribe to real-time updates (best-effort in test environments)
-          try {
-            repository.subscribeToConversation(
-              userId1: currentUser,
-              userId2: widget.otherUserId,
-            );
-          } catch (_) {}
         } catch (_) {}
-      });
+      } catch (_) {}
     }
   }
 
@@ -438,6 +481,7 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                 isComposing: _isComposing,
                 hasInappropriateContent: _hasInappropriateContent,
                 onSend: _sendMessage,
+                onTextChanged: _onTextChanged,
                 receiverId: widget.otherUserId,
                 onUploadStart: () => setState(() => _isUploading = true),
                 onUploadProgress: (p) => setState(() => _uploadProgress = p),
@@ -686,6 +730,7 @@ class MessageInput extends StatefulWidget {
   final bool isComposing;
   final bool hasInappropriateContent;
   final VoidCallback onSend;
+  final ValueChanged<String>? onTextChanged;
   final String receiverId;
   final VoidCallback? onUploadStart;
   final void Function(double progress)? onUploadProgress;
@@ -698,6 +743,7 @@ class MessageInput extends StatefulWidget {
     required this.isComposing,
     this.hasInappropriateContent = false,
     required this.onSend,
+    this.onTextChanged,
     required this.receiverId,
     this.onUploadStart,
     this.onUploadProgress,
@@ -842,6 +888,7 @@ class _MessageInputState extends State<MessageInput> {
                 ),
                 child: TextField(
                   controller: widget.controller,
+                  onChanged: widget.onTextChanged,
                   decoration: const InputDecoration(
                     hintText: 'Type a message...',
                     border: InputBorder.none,
