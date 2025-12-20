@@ -87,8 +87,20 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
     if (value == null || value.isEmpty) {
       return 'New password is required';
     }
-    if (value.length < 6) {
-      return 'Password must be at least 6 characters';
+    if (value.length < 8) {
+      return 'Password must be at least 8 characters';
+    }
+    if (!value.contains(RegExp(r'[A-Z]'))) {
+      return 'Password must contain at least one uppercase letter';
+    }
+    if (!value.contains(RegExp(r'[a-z]'))) {
+      return 'Password must contain at least one lowercase letter';
+    }
+    if (!value.contains(RegExp(r'[0-9]'))) {
+      return 'Password must contain at least one number';
+    }
+    if (!value.contains(RegExp(r'[!@#$%^&*(),.?":{}|<>]'))) {
+      return 'Password must contain at least one symbol (!@#\$%^&*...)';
     }
     if (value == _currentPasswordController.text &&
         _currentPasswordController.text.isNotEmpty) {
@@ -148,7 +160,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                     Expanded(
                       child: CustomText(
                         text:
-                            'Your password must be at least 6 characters long and different from your current password.',
+                            'Your password must be at least 8 characters long, contain uppercase and lowercase letters, numbers, and symbols.',
                         fontSize: 14,
                         color: Colors.blue.shade700,
                       ),

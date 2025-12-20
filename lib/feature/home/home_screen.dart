@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:amayalert/core/router/app_route.gr.dart';
 import 'package:amayalert/core/widgets/input/search_field.dart';
 import 'package:amayalert/core/widgets/text/custom_text.dart';
@@ -7,6 +9,7 @@ import 'package:amayalert/feature/evacuation/evacuation_repository.dart';
 import 'package:amayalert/feature/home/widgets/hotline_container.dart';
 import 'package:amayalert/feature/posts/post_repository.dart';
 import 'package:amayalert/feature/posts/posts_list_widget.dart';
+import 'package:amayalert/feature/profile/profile_repository.dart';
 import 'package:amayalert/feature/reports/report_repository.dart';
 import 'package:amayalert/feature/search/search_repository.dart';
 import 'package:amayalert/feature/search/search_results_widget.dart';
@@ -15,8 +18,10 @@ import 'package:amayalert/feature/weather/weather_model.dart';
 import 'package:amayalert/feature/weather/weather_repository.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:http/http.dart' as http;
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -42,6 +47,7 @@ class HomeScreen extends StatefulWidget implements AutoRouteWrapper {
         ChangeNotifierProvider.value(value: sl<EvacuationRepository>()),
         ChangeNotifierProvider.value(value: sl<SearchRepository>()),
         ChangeNotifierProvider.value(value: sl<ReportRepository>()),
+        ChangeNotifierProvider.value(value: sl<ProfileRepository>()),
       ],
       child: this,
     );
@@ -117,6 +123,7 @@ class _HomeScreenState extends State<HomeScreen> {
       context.read<PostRepository>().loadPosts();
       context.read<AlertRepository>().loadAlerts();
       context.read<EvacuationRepository>().getEvacuationCenters();
+      context.read<ProfileRepository>().getUserProfile(userID ?? '');
     });
     super.initState();
   }
@@ -141,9 +148,114 @@ class _HomeScreenState extends State<HomeScreen> {
     context.read<SearchRepository>().clearSearch();
   }
 
+  void sendFeedBack(String to, String text, String from) async {
+    final response = await http.post(
+      Uri.parse('https://amayalert.site/api/email'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'to': to,
+        'subject': 'Feedback',
+        'html':
+            """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Feedback</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f5f5f5; padding: 20px;">
+        <tr>
+            <td align="center">
+                <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+                    <!-- Header -->
+                    <tr>
+                        <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center;">
+                            <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 600;">New Feedback Received</h1>
+                        </td>
+                    </tr>
+                    
+                    <!-- Content -->
+                    <tr>
+                        <td style="padding: 30px;">
+                            <p style="margin: 0 0 20px 0; color: #666666; font-size: 14px;">You have received new feedback from a user:</p>
+                            
+                            <!-- Feedback Box -->
+                            <div style="background-color: #f8f9fa; border-left: 4px solid #667eea; padding: 20px; margin: 20px 0; border-radius: 4px;">
+                                <p style="margin: 0; color: #333333; font-size: 15px; line-height: 1.6; white-space: pre-wrap;">$text</p>
+                            </div>
+                            
+                            <!-- User Info -->
+                            <table width="100%" cellpadding="0" cellspacing="0" style="margin-top: 30px; border-top: 1px solid #e0e0e0; padding-top: 20px;">
+                                <tr>
+                                    <td style="padding: 8px 0;">
+                                        <span style="color: #999999; font-size: 13px; font-weight: 500;">From:</span>
+                                        <span style="color: #333333; font-size: 14px; margin-left: 8px;">$from</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 8px 0;">
+                                        <span style="color: #999999; font-size: 13px; font-weight: 500;">Date:</span>
+                                        <span style="color: #333333; font-size: 14px; margin-left: 8px;">${DateTime.now().toString().split('.')[0]}</span>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>
+                    </tr>
+                    
+                    <!-- Footer -->
+                    <tr>
+                        <td style="background-color: #f8f9fa; padding: 20px; text-align: center; border-top: 1px solid #e0e0e0;">
+                            <p style="margin: 0; color: #999999; font-size: 12px;">
+                                This is an automated message from Amayalert<br>
+                                © ${DateTime.now().year} Amayalert. All rights reserved.
+                            </p>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
+""",
+        'type': 'single-email',
+      }),
+    );
+    debugPrint('Feedback response body: ${response.body}');
+    if (response.statusCode == 200) {
+      EasyLoading.showSuccess('Feedback sent successfully!');
+      // Feedback sent successfully
+    } else {
+      // Handle error
+      EasyLoading.showError('Failed to send feedback. Please try again.');
+    }
+  }
+
+  void _showFeedbackDialog(String from) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => _FeedbackDialog(
+        onSend: (feedback) {
+          sendFeedBack('amayalert.site@gmail.com', feedback, from);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Feedback sent successfully!'),
+                backgroundColor: Colors.green,
+              ),
+            );
+          }
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final weather = context.select((WeatherRepository bloc) => bloc.weather);
+    final profile = context.select((ProfileRepository bloc) => bloc.profile);
     final isLoading = context.select(
       (WeatherRepository bloc) => bloc.isLoading,
     );
@@ -154,6 +266,14 @@ class _HomeScreenState extends State<HomeScreen> {
     return SafeArea(
       top: false,
       child: Scaffold(
+        floatingActionButton: profile != null
+            ? FloatingActionButton(
+                onPressed: () {
+                  _showFeedbackDialog(profile.email);
+                },
+                child: Icon(LucideIcons.messageCirclePlus, color: Colors.white),
+              )
+            : null,
         body: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -572,7 +692,97 @@ class _HomeScreenState extends State<HomeScreen> {
             color: Colors.black87,
           ),
         ),
-        PostsListWidget(),
+        const PostsListWidget(),
+      ],
+    );
+  }
+}
+
+class _FeedbackDialog extends StatefulWidget {
+  final Function(String feedback) onSend;
+
+  const _FeedbackDialog({required this.onSend});
+
+  @override
+  State<_FeedbackDialog> createState() => _FeedbackDialogState();
+}
+
+class _FeedbackDialogState extends State<_FeedbackDialog> {
+  final TextEditingController _feedbackController = TextEditingController();
+
+  @override
+  void dispose() {
+    _feedbackController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Row(
+        children: [
+          Icon(LucideIcons.messageCirclePlus, color: AppColors.primary),
+          const SizedBox(width: 12),
+          const CustomText(
+            text: 'Send Feedback',
+            fontSize: 20,
+            fontWeight: FontWeight.w500,
+          ),
+        ],
+      ),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const CustomText(
+              text: 'Message',
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _feedbackController,
+              maxLines: 5,
+              decoration: InputDecoration(
+                hintText: 'Tell us what you think...',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                contentPadding: const EdgeInsets.all(16),
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const CustomText(text: 'Cancel', color: AppColors.gray600),
+        ),
+        ElevatedButton.icon(
+          onPressed: () {
+            final feedback = _feedbackController.text.trim();
+
+            if (feedback.isNotEmpty) {
+              widget.onSend(feedback);
+              Navigator.pop(context);
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Please fill in all fields'),
+                  backgroundColor: Colors.orange,
+                ),
+              );
+            }
+          },
+          icon: const Icon(LucideIcons.send, size: 18),
+          label: const CustomText(text: 'Send', color: Colors.white),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.primary,
+            foregroundColor: Colors.white,
+          ),
+        ),
       ],
     );
   }

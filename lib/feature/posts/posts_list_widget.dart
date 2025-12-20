@@ -191,337 +191,357 @@ class PostCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: Colors.white),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Post header
-          Row(
-            children: [
-              GestureDetector(
-                onTap: () {
-                  context.router.push(
-                    UserProfileRoute(
-                      userId: post.user.id,
-                      userName: post.user.fullName,
-                    ),
-                  );
-                },
-                child: CircleAvatar(
-                  radius: 20,
-                  backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-                  child: post.user.profilePicture != null
-                      ? ClipOval(
-                          child: CachedNetworkImage(
-                            imageUrl: post.user.profilePicture!,
-                            width: 36,
-                            height: 36,
-                            fit: BoxFit.cover,
-                            placeholder: (context, url) => Container(
+    return GestureDetector(
+      onTap: () {
+        context.router.push(PostDetailRoute(postId: post.id));
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(16),
+        decoration: const BoxDecoration(color: Colors.white),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Post header
+            Row(
+              children: [
+                GestureDetector(
+                  onTap: () {
+                    context.router.push(
+                      UserProfileRoute(
+                        userId: post.user.id,
+                        userName: post.user.fullName,
+                      ),
+                    );
+                  },
+                  child: CircleAvatar(
+                    radius: 20,
+                    backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                    child: post.user.profilePicture != null
+                        ? ClipOval(
+                            child: CachedNetworkImage(
+                              imageUrl: post.user.profilePicture!,
                               width: 36,
                               height: 36,
-                              color: Colors.grey.shade200,
-                              child: const Center(
-                                child: CircularProgressIndicator(),
+                              fit: BoxFit.cover,
+                              placeholder: (context, url) => Container(
+                                width: 36,
+                                height: 36,
+                                color: Colors.grey.shade200,
+                                child: const Center(
+                                  child: CircularProgressIndicator(),
+                                ),
+                              ),
+                              errorWidget: (context, url, error) => Icon(
+                                LucideIcons.user,
+                                color: AppColors.primary,
+                                size: 20,
                               ),
                             ),
-                            errorWidget: (context, url, error) => Icon(
-                              LucideIcons.user,
-                              color: AppColors.primary,
-                              size: 20,
-                            ),
+                          )
+                        : Icon(
+                            LucideIcons.user,
+                            color: AppColors.primary,
+                            size: 20,
                           ),
-                        )
-                      : Icon(
-                          LucideIcons.user,
-                          color: AppColors.primary,
-                          size: 20,
-                        ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    GestureDetector(
-                      onTap: () {
-                        context.router.push(
-                          UserProfileRoute(
-                            userId: post.user.id,
-                            userName: post.user.fullName,
-                          ),
-                        );
-                      },
-                      child: CustomText(
-                        text: post.user.fullName, // Shortened user ID
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
-                      ),
-                    ),
-                    CustomText(
-                      text: timeago.format(post.createdAt),
-                      fontSize: 12,
-                      color: AppColors.textSecondaryLight,
-                    ),
-                  ],
-                ),
-              ),
-              // Visibility indicator
-              PopupMenuButton<String>(
-                icon: Icon(Icons.more_vert, color: AppColors.gray600, size: 20),
-                itemBuilder: (context) => [
-                  PopupMenuItem<String>(
-                    value: 'visibility',
-                    onTap: () {
-                      _showReportDialog(context);
-                    },
-                    child: Row(
-                      children: [
-                        Icon(
-                          LucideIcons.flagTriangleLeft,
-                          size: 16,
-                          color: AppColors.gray600,
-                        ),
-                        const SizedBox(width: 8),
-                        Text('Report Post'),
-                      ],
-                    ),
                   ),
-                  if (post.user.id == userID) _buildDeletePostMenuItem(),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-
-          // Post content
-          CustomText(text: post.content, fontSize: 14),
-
-          // If this post is a share of another post, show the shared post
-          if (post.sharedPost != null) ...[
-            const SizedBox(height: 12),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade50,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.grey.withValues(alpha: 0.08)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       GestureDetector(
                         onTap: () {
                           context.router.push(
                             UserProfileRoute(
-                              userId: post.sharedPost!.user.id,
-                              userName: post.sharedPost!.user.fullName,
+                              userId: post.user.id,
+                              userName: post.user.fullName,
                             ),
                           );
                         },
-                        child: CircleAvatar(
-                          radius: 16,
-                          backgroundColor: AppColors.primary.withValues(
-                            alpha: 0.08,
-                          ),
-                          child: post.sharedPost!.user.profilePicture != null
-                              ? ClipOval(
-                                  child: CachedNetworkImage(
-                                    imageUrl:
-                                        post.sharedPost!.user.profilePicture!,
-                                    width: 28,
-                                    height: 28,
-                                    fit: BoxFit.cover,
-                                  ),
-                                )
-                              : Icon(
-                                  LucideIcons.user,
-                                  color: AppColors.primary,
-                                  size: 16,
-                                ),
+                        child: CustomText(
+                          text: post.user.fullName, // Shortened user ID
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            GestureDetector(
-                              onTap: () {
-                                context.router.push(
-                                  UserProfileRoute(
-                                    userId: post.sharedPost!.user.id,
-                                    userName: post.sharedPost!.user.fullName,
-                                  ),
-                                );
-                              },
-                              child: CustomText(
-                                text: post.sharedPost!.user.fullName,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            CustomText(
-                              text: timeago.format(post.sharedPost!.createdAt),
-                              fontSize: 11,
-                              color: AppColors.textSecondaryLight,
-                            ),
-                          ],
-                        ),
+                      CustomText(
+                        text: timeago.format(post.createdAt),
+                        fontSize: 12,
+                        color: AppColors.textSecondaryLight,
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  CustomText(
-                    text: post.sharedPost!.content,
-                    fontSize: 13,
-                    color: AppColors.textSecondaryLight,
-                  ),
-                  if (post.sharedPost!.mediaUrl != null) ...[
-                    const SizedBox(height: 8),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(6),
-                      child: CachedNetworkImage(
-                        imageUrl: post.sharedPost!.mediaUrl!,
-                        width: double.infinity,
-                        height: 120,
-                        fit: BoxFit.cover,
-                        placeholder: (context, url) =>
-                            Container(height: 120, color: Colors.grey.shade200),
-                        errorWidget: (context, url, error) => Container(
-                          height: 120,
-                          color: Colors.grey.shade200,
-                          child: const Icon(Icons.broken_image),
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ],
-
-          // Post image (if available)
-          if (post.mediaUrl != null) ...[
-            const SizedBox(height: 12),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: CachedNetworkImage(
-                imageUrl: post.mediaUrl!,
-                width: double.infinity,
-                height: 200,
-                fit: BoxFit.cover,
-                placeholder: (context, url) => Container(
-                  height: 200,
-                  color: Colors.grey.shade200,
-                  child: const Center(child: CircularProgressIndicator()),
                 ),
-                errorWidget: (context, url, error) => Container(
-                  height: 200,
-                  color: Colors.grey.shade200,
-                  child: const Icon(
-                    Icons.image_not_supported,
-                    size: 48,
-                    color: Colors.grey,
-                  ),
-                ),
-              ),
-            ),
-          ],
-
-          // Post footer
-          const SizedBox(height: 12),
-          Row(
-            spacing: 8,
-            children: [
-              if (post.updatedAt != null &&
-                  post.updatedAt != post.createdAt) ...[
-                Icon(Icons.edit, size: 12, color: AppColors.textSecondaryLight),
-                const SizedBox(width: 4),
-                CustomText(
-                  text: 'Edited ${timeago.format(post.updatedAt!)}',
-                  fontSize: 12,
-                  color: AppColors.textSecondaryLight,
-                ),
-              ],
-              // Comment icon with cached comment count badge — opens full screen comments
-              Consumer<PostRepository>(
-                builder: (context, repo, _) {
-                  // final count = repo.comments.length;
-                  return InkWell(
-                    onTap: () {
-                      context.router.push(CommentsRoute(postId: post.id));
-                    },
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: Icon(
-                            LucideIcons.messageCircle,
-                            size: 20,
-                            color: AppColors.gray600,
-                          ),
-                        ),
-                        if (post.comments != null && post.comments!.isNotEmpty)
-                          Positioned(
-                            right: 0,
-                            top: 0,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: AppColors.primary,
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: CustomText(
-                                text: post.comments!.length.toString(),
-                                fontSize: 10,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-              InkWell(
-                onTap: () async {
-                  // Open share screen and refresh when shared
-                  final didShare = await context.router.push<bool>(
-                    SharePostRoute(
-                      postId: post.sharedPost?.id ?? post.id,
-                      previewContent: post.sharedPost?.content ?? post.content,
-                    ),
-                  );
-                  if (didShare == true) {
-                    // reload posts to show the shared post
-                    context.read<PostRepository>().loadPosts();
-                  }
-                },
-
-                child: Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: Icon(
-                    LucideIcons.share,
+                // Visibility indicator
+                PopupMenuButton<String>(
+                  icon: Icon(
+                    Icons.more_vert,
                     color: AppColors.gray600,
                     size: 20,
+                  ),
+                  itemBuilder: (context) => [
+                    PopupMenuItem<String>(
+                      value: 'visibility',
+                      onTap: () {
+                        _showReportDialog(context);
+                      },
+                      child: Row(
+                        children: [
+                          Icon(
+                            LucideIcons.flagTriangleLeft,
+                            size: 16,
+                            color: AppColors.gray600,
+                          ),
+                          const SizedBox(width: 8),
+                          Text('Report Post'),
+                        ],
+                      ),
+                    ),
+                    if (post.user.id == userID) _buildDeletePostMenuItem(),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // Post content
+            CustomText(text: post.content, fontSize: 14),
+
+            // If this post is a share of another post, show the shared post
+            if (post.sharedPost != null) ...[
+              const SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: Colors.grey.withValues(alpha: 0.08),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        GestureDetector(
+                          onTap: () {
+                            context.router.push(
+                              UserProfileRoute(
+                                userId: post.sharedPost!.user.id,
+                                userName: post.sharedPost!.user.fullName,
+                              ),
+                            );
+                          },
+                          child: CircleAvatar(
+                            radius: 16,
+                            backgroundColor: AppColors.primary.withValues(
+                              alpha: 0.08,
+                            ),
+                            child: post.sharedPost!.user.profilePicture != null
+                                ? ClipOval(
+                                    child: CachedNetworkImage(
+                                      imageUrl:
+                                          post.sharedPost!.user.profilePicture!,
+                                      width: 28,
+                                      height: 28,
+                                      fit: BoxFit.cover,
+                                    ),
+                                  )
+                                : Icon(
+                                    LucideIcons.user,
+                                    color: AppColors.primary,
+                                    size: 16,
+                                  ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              GestureDetector(
+                                onTap: () {
+                                  context.router.push(
+                                    UserProfileRoute(
+                                      userId: post.sharedPost!.user.id,
+                                      userName: post.sharedPost!.user.fullName,
+                                    ),
+                                  );
+                                },
+                                child: CustomText(
+                                  text: post.sharedPost!.user.fullName,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              CustomText(
+                                text: timeago.format(
+                                  post.sharedPost!.createdAt,
+                                ),
+                                fontSize: 11,
+                                color: AppColors.textSecondaryLight,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    CustomText(
+                      text: post.sharedPost!.content,
+                      fontSize: 13,
+                      color: AppColors.textSecondaryLight,
+                    ),
+                    if (post.sharedPost!.mediaUrl != null) ...[
+                      const SizedBox(height: 8),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(6),
+                        child: CachedNetworkImage(
+                          imageUrl: post.sharedPost!.mediaUrl!,
+                          width: double.infinity,
+                          height: 120,
+                          fit: BoxFit.cover,
+                          placeholder: (context, url) => Container(
+                            height: 120,
+                            color: Colors.grey.shade200,
+                          ),
+                          errorWidget: (context, url, error) => Container(
+                            height: 120,
+                            color: Colors.grey.shade200,
+                            child: const Icon(Icons.broken_image),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+
+            // Post image (if available)
+            if (post.mediaUrl != null) ...[
+              const SizedBox(height: 12),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: CachedNetworkImage(
+                  imageUrl: post.mediaUrl!,
+                  width: double.infinity,
+                  height: 200,
+                  fit: BoxFit.cover,
+                  placeholder: (context, url) => Container(
+                    height: 200,
+                    color: Colors.grey.shade200,
+                    child: const Center(child: CircularProgressIndicator()),
+                  ),
+                  errorWidget: (context, url, error) => Container(
+                    height: 200,
+                    color: Colors.grey.shade200,
+                    child: const Icon(
+                      Icons.image_not_supported,
+                      size: 48,
+                      color: Colors.grey,
+                    ),
                   ),
                 ),
               ),
             ],
-          ),
-        ],
+
+            // Post footer
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                if (post.updatedAt != null &&
+                    post.updatedAt != post.createdAt) ...[
+                  Icon(
+                    Icons.edit,
+                    size: 12,
+                    color: AppColors.textSecondaryLight,
+                  ),
+                  const SizedBox(width: 4),
+                  CustomText(
+                    text: 'Edited ${timeago.format(post.updatedAt!)}',
+                    fontSize: 12,
+                    color: AppColors.textSecondaryLight,
+                  ),
+                ],
+                // Comment icon with cached comment count badge — opens full screen comments
+                Consumer<PostRepository>(
+                  builder: (context, repo, _) {
+                    // final count = repo.comments.length;
+                    return InkWell(
+                      onTap: () {
+                        context.router.push(CommentsRoute(postId: post.id));
+                      },
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Icon(
+                              LucideIcons.messageCircle,
+                              size: 20,
+                              color: AppColors.gray600,
+                            ),
+                          ),
+                          if (post.comments != null &&
+                              post.comments!.isNotEmpty)
+                            Positioned(
+                              right: 0,
+                              top: 0,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: CustomText(
+                                  text: post.comments!.length.toString(),
+                                  fontSize: 10,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+                InkWell(
+                  onTap: () async {
+                    // Open share screen and refresh when shared
+                    final didShare = await context.router.push<bool>(
+                      SharePostRoute(
+                        postId: post.sharedPost?.id ?? post.id,
+                        previewContent:
+                            post.sharedPost?.content ?? post.content,
+                      ),
+                    );
+                    if (didShare == true) {
+                      // reload posts to show the shared post
+                      context.read<PostRepository>().loadPosts();
+                    }
+                  },
+
+                  child: Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Icon(
+                      LucideIcons.share,
+                      color: AppColors.gray600,
+                      size: 20,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

@@ -254,7 +254,8 @@ class SearchResultsWidget extends StatelessWidget {
         context.router.push(const MapRoute());
         break;
       case SearchResultType.post:
-        // Stay on home screen - posts are shown there
+        // Navigate to post detail screen
+        context.router.push(PostDetailRoute(postId: int.parse(result.id)));
         break;
       case SearchResultType.activity:
         // Navigate to activity screen

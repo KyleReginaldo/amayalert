@@ -77,6 +77,10 @@ class AppRouter extends RootStackRouter {
       transitionsBuilder: TransitionsBuilders.slideBottom,
     ),
     CustomRoute(
+      page: PostDetailRoute.page,
+      transitionsBuilder: TransitionsBuilders.slideLeft,
+    ),
+    CustomRoute(
       page: CreateRescueRoute.page,
       transitionsBuilder: TransitionsBuilders.slideBottom,
     ),
