@@ -238,4 +238,17 @@ class ProfileProvider {
       return Result.error(e.message);
     }
   }
+
+  Future<Result<String>> changeEmail(String userId, String newEmail) async {
+    try {
+      await supabase.auth.admin.updateUserById(
+        userId,
+        attributes: AdminUserAttributes(email: newEmail),
+      );
+      await supabase.from('users').update({'email': newEmail}).eq('id', userId);
+      return Result.success('Email updated successfully');
+    } on AuthException catch (e) {
+      return Result.error(e.message);
+    }
+  }
 }

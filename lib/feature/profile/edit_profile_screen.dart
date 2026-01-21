@@ -68,14 +68,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
     selectedBirthDate = widget.profile.birthDate;
 
-    // Listen for changes (email is read-only)
+    // Listen for changes
     fullNameController.addListener(_onFieldChanged);
+    emailController.addListener(_onFieldChanged);
     phoneNumberController.addListener(_onFieldChanged);
   }
 
   void _onFieldChanged() {
     final hasChanges =
         fullNameController.text != _originalProfile?.fullName ||
+        emailController.text != _originalProfile?.email ||
         phoneNumberController.text != _originalProfile?.phoneNumber ||
         selectedGender != _originalProfile?.gender ||
         selectedBirthDate != _originalProfile?.birthDate ||
@@ -360,6 +362,84 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
   }
 
+  Future<void> _startEmailChangeFlow() async {
+    final profileRepository = GetIt.instance<ProfileRepository>();
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId == null) return;
+
+    String newEmail = '';
+
+    final confirmResult = await showDialog<bool?>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(),
+          title: const Text('Change email address'),
+          content: TextField(
+            keyboardType: TextInputType.emailAddress,
+            decoration: const InputDecoration(
+              hintText: 'Enter new email address',
+            ),
+            onChanged: (v) => newEmail = v.trim(),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            CustomElevatedButton(
+              label: 'Update',
+              isFullWidth: false,
+              onPressed: () {
+                if (newEmail.isEmpty || !newEmail.contains('@')) return;
+                Navigator.pop(context, true);
+              },
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmResult != true || newEmail.isEmpty) return;
+
+    // Show loading
+    if (mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Updating email...')));
+    }
+
+    // Call the changeEmail method
+    final result = await profileRepository.changeEmail(userId, newEmail);
+
+    if (result.isError) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to update email: ${result.error}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+
+    // Refresh profile and update UI
+    await profileRepository.getUserProfile(userId);
+    final updated = profileRepository.profile;
+    if (updated != null) {
+      setState(() {
+        emailController.text = updated.email;
+      });
+    }
+
+    if (mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Email address updated')));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -543,7 +623,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     ),
                     const SizedBox(height: 14),
 
-                    // Email (read-only)
+                    // Email
                     CustomText(
                       text: 'Email',
                       fontSize: 13,
@@ -563,6 +643,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           return 'Enter a valid email address';
                         return null;
                       },
+                      suffixIcon: IconButton(
+                        color: AppColors.primary,
+                        onPressed: _startEmailChangeFlow,
+                        icon: Icon(LucideIcons.pencil),
+                      ),
                     ),
                     const SizedBox(height: 14),
 

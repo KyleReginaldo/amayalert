@@ -72,6 +72,10 @@ class ProfileRepository extends ChangeNotifier {
     );
   }
 
+  Future<Result<String>> changeEmail(String userId, String newEmail) async {
+    return await provider.changeEmail(userId, newEmail);
+  }
+
   void clear() {
     _profile = null;
     _errorMessage = null;

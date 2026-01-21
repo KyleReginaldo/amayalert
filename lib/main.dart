@@ -49,7 +49,6 @@ class _MyAppState extends State<MyApp> {
   @override
   void initState() {
     super.initState();
-    // Initialize deep link handler for auth state changes
     DeepLinkHandler.initialize(appRouter);
   }
 
