@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 
-/// Service to manage unread message badge count
+/// Service to manage unread message and activity badge counts
 class BadgeService extends ChangeNotifier {
   static final BadgeService _instance = BadgeService._internal();
   factory BadgeService() => _instance;
@@ -9,10 +9,21 @@ class BadgeService extends ChangeNotifier {
   int _unreadMessageCount = 0;
   int get unreadMessageCount => _unreadMessageCount;
 
+  int _unreadActivityCount = 0;
+  int get unreadActivityCount => _unreadActivityCount;
+
   /// Update the unread message count
   void updateUnreadMessageCount(int count) {
     if (_unreadMessageCount != count) {
       _unreadMessageCount = count;
+      notifyListeners();
+    }
+  }
+
+  /// Update the unread activity count
+  void updateUnreadActivityCount(int count) {
+    if (_unreadActivityCount != count) {
+      _unreadActivityCount = count;
       notifyListeners();
     }
   }
@@ -27,6 +38,14 @@ class BadgeService extends ChangeNotifier {
   void clearUnreadCount() {
     if (_unreadMessageCount > 0) {
       _unreadMessageCount = 0;
+      notifyListeners();
+    }
+  }
+
+  /// Reset activity unread count
+  void clearActivityUnreadCount() {
+    if (_unreadActivityCount > 0) {
+      _unreadActivityCount = 0;
       notifyListeners();
     }
   }

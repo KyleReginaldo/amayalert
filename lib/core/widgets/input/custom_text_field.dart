@@ -14,8 +14,9 @@ class CustomTextField extends StatefulWidget {
   final Widget? prefixIcon;
   final Widget? suffixIcon;
   final int? maxLines;
+  final bool isRequired;
   final int? maxLength;
-  final Function()? onTap;
+  final VoidCallback? onTap;
 
   const CustomTextField({
     super.key,
@@ -31,6 +32,7 @@ class CustomTextField extends StatefulWidget {
     this.maxLines = 1,
     this.maxLength,
     this.onTap,
+    this.isRequired = false,
   });
 
   @override
@@ -81,7 +83,16 @@ class _CustomTextFieldState extends State<CustomTextField> {
         maxLength: widget.maxLength,
         style: const TextStyle(fontSize: 16),
         decoration: InputDecoration(
-          labelText: widget.label,
+          label: widget.label != null
+              ? Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(widget.label!),
+                    if (widget.isRequired)
+                      const Text(" *", style: TextStyle(color: Colors.red)),
+                  ],
+                )
+              : null,
           isDense: true,
           hintText: widget.hint,
           prefixIcon: widget.prefixIcon,

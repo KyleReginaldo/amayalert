@@ -1,3 +1,4 @@
+import 'package:amayalert/core/constant/constant.dart';
 import 'package:amayalert/core/theme/theme.dart';
 import 'package:amayalert/core/widgets/buttons/custom_buttons.dart';
 import 'package:amayalert/core/widgets/text/custom_text.dart';
@@ -53,25 +54,53 @@ class _RescueDetailScreenState extends State<RescueDetailScreen> {
     });
   }
 
-  Future<void> _updateStatus(RescueStatus newStatus) async {
-    final result = await _rescueProvider.updateRescueStatus(
-      widget.rescueId,
-      newStatus,
+  Future<void> _cancelRescue() async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Cancel Request'),
+        content: const Text(
+          'Are you sure you want to cancel and delete this emergency request? This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('No'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Yes, Cancel'),
+          ),
+        ],
+      ),
     );
 
+    if (confirm != true) return;
+
+    if (!mounted) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    final result = await _rescueProvider.deleteRescue(widget.rescueId);
+
+    if (!mounted) return;
+
+    setState(() {
+      _isLoading = false;
+    });
+
     if (result.isSuccess) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(result.value), backgroundColor: Colors.green),
-        );
-      }
-      _loadRescue(); // Reload to show updated status
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(result.value), backgroundColor: Colors.green),
+      );
+      context.router.pop(); // Go back to previous screen
     } else {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(result.error)));
-      }
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(result.error)));
     }
   }
 
@@ -94,29 +123,35 @@ class _RescueDetailScreenState extends State<RescueDetailScreen> {
             fontWeight: FontWeight.w600,
           ),
           actions: [
-            PopupMenuButton(
-              itemBuilder: (context) {
-                return [
-                  if (_rescue?.status != RescueStatus.cancelled)
-                    PopupMenuItem(
-                      value: 'Cancel',
-                      child: Row(
-                        children: const [
-                          Icon(LucideIcons.x, size: 16, color: AppColors.error),
-                          SizedBox(width: 8),
-                          CustomText(text: 'Cancel', color: AppColors.error),
-                        ],
-                      ),
-                      onTap: () {
-                        _updateStatus(RescueStatus.cancelled);
-                      },
-                    ),
-                ];
-              },
-            ),
+            (_rescue != null &&
+                    _rescue!.user?.id == userID &&
+                    _rescue!.status != RescueStatus.cancelled &&
+                    _rescue!.status != RescueStatus.completed)
+                ? CustomTextButton(
+                    label: 'Cancel',
+                    foregroundColor: Colors.red,
+                    onPressed: () {
+                      _cancelRescue();
+                    },
+                  )
+                : SizedBox.shrink(),
           ],
         ),
         body: _buildBody(),
+        // floatingActionButton:
+        //     _rescue != null &&
+        //         _rescue!.user?.id == userID &&
+        //         _rescue!.status != RescueStatus.cancelled &&
+        //         _rescue!.status != RescueStatus.completed
+        //     ? FloatingActionButton(
+        //         onPressed: _cancelRescue,
+        //         backgroundColor: AppColors.error,
+        //         // shape: const CircleBorder(),
+        //         elevation: 4,
+        //         tooltip: 'Cancel Request',
+        //         child: const Icon(LucideIcons.x, color: Colors.white, size: 20),
+        //       )
+        //     : null,
       ),
     );
   }

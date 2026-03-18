@@ -72,6 +72,8 @@ class _PostsListWidgetState extends State<PostsListWidget> {
         }
 
         if (postRepository.posts.isEmpty) {
+          final isGuestUser = Supabase.instance.client.auth.currentUser?.isAnonymous ?? false;
+          
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -93,18 +95,20 @@ class _PostsListWidgetState extends State<PostsListWidget> {
                   fontSize: 14,
                   color: AppColors.textSecondaryLight,
                 ),
-                const SizedBox(height: 16),
-                ElevatedButton.icon(
-                  onPressed: () {
-                    context.router.push(const CreatePostsRoute());
-                  },
-                  icon: const Icon(LucideIcons.plus),
-                  label: const CustomText(text: 'Create Post'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
+                if (!isGuestUser) ...[
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      context.router.push(const CreatePostsRoute());
+                    },
+                    icon: const Icon(LucideIcons.plus),
+                    label: const CustomText(text: 'Create Post'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                    ),
                   ),
-                ),
+                ],
               ],
             ),
           );
@@ -282,23 +286,24 @@ class PostCard extends StatelessWidget {
                     size: 20,
                   ),
                   itemBuilder: (context) => [
-                    PopupMenuItem<String>(
-                      value: 'visibility',
-                      onTap: () {
-                        _showReportDialog(context);
-                      },
-                      child: Row(
-                        children: [
-                          Icon(
-                            LucideIcons.flagTriangleLeft,
-                            size: 16,
-                            color: AppColors.gray600,
-                          ),
-                          const SizedBox(width: 8),
-                          Text('Report Post'),
-                        ],
+                    if (post.user.id != userID)
+                      PopupMenuItem<String>(
+                        value: 'visibility',
+                        onTap: () {
+                          _showReportDialog(context);
+                        },
+                        child: Row(
+                          children: [
+                            Icon(
+                              LucideIcons.flagTriangleLeft,
+                              size: 16,
+                              color: AppColors.gray600,
+                            ),
+                            const SizedBox(width: 8),
+                            Text('Report Post'),
+                          ],
+                        ),
                       ),
-                    ),
                     if (post.user.id == userID) _buildDeletePostMenuItem(),
                   ],
                 ),

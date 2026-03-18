@@ -92,9 +92,12 @@ class _RescueListScreenState extends State<RescueListScreen> {
       ),
       body: _buildBody(),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
+        onPressed: () async {
           // Navigate to create rescue screen
-          context.router.push(const CreateRescueRoute());
+          await context.router.push(const CreateRescueRoute());
+          if (mounted) {
+            _loadRescues(); // Refresh after returning
+          }
         },
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
@@ -188,9 +191,12 @@ class _RescueListScreenState extends State<RescueListScreen> {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () {
+          onTap: () async {
             // Navigate to rescue detail screen
-            context.router.push(RescueDetailRoute(rescueId: rescue.id));
+            await context.router.push(RescueDetailRoute(rescueId: rescue.id));
+            if (mounted) {
+              _loadRescues(); // Refresh after returning from detail view
+            }
           },
           borderRadius: BorderRadius.circular(16),
           child: Column(

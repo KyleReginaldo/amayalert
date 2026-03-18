@@ -2,6 +2,8 @@ import 'package:amayalert/core/constant/constant.dart';
 import 'package:amayalert/core/services/badge_service.dart';
 import 'package:amayalert/core/theme/theme.dart';
 import 'package:amayalert/core/widgets/notification_badge.dart';
+import 'package:amayalert/dependency.dart';
+import 'package:amayalert/feature/activity/activity_repository.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
@@ -24,6 +26,7 @@ class _MainScreenState extends State<MainScreen> {
     onesignalLogin();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       listenToLocationChanges();
+      sl<ActivityRepository>().loadActivities();
     });
     super.initState();
   }
@@ -78,9 +81,15 @@ class _MainScreenState extends State<MainScreen> {
               type: BottomNavigationBarType.fixed,
               showUnselectedLabels: false,
               showSelectedLabels: false,
-              onTap: tabsRouter.setActiveIndex,
+              onTap: (index) {
+                tabsRouter.setActiveIndex(index);
+                if (index == 3) {
+                  // Activity tab
+                  sl<ActivityRepository>().markActivitiesAsRead();
+                }
+              },
               items: [
-                const BottomNavigationBarItem(
+                BottomNavigationBarItem(
                   label: '',
                   icon: Icon(LucideIcons.house),
                 ),
@@ -91,15 +100,18 @@ class _MainScreenState extends State<MainScreen> {
                     child: const Icon(LucideIcons.messageCircle),
                   ),
                 ),
-                const BottomNavigationBarItem(
+                BottomNavigationBarItem(
                   label: '',
                   icon: Icon(LucideIcons.mapPin),
                 ),
-                const BottomNavigationBarItem(
+                BottomNavigationBarItem(
                   label: '',
-                  icon: Icon(LucideIcons.bell),
+                  icon: NotificationBadge(
+                    count: BadgeService().unreadActivityCount,
+                    child: Icon(LucideIcons.bell),
+                  ),
                 ),
-                const BottomNavigationBarItem(
+                BottomNavigationBarItem(
                   label: '',
                   icon: Icon(LucideIcons.circleUser),
                 ),

@@ -367,7 +367,7 @@ class _CreateRescueScreenState extends State<CreateRescueScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Emergency Type Selection
-              _buildSectionHeader('Emergency Type', LucideIcons.shield),
+              _buildSectionHeader('Emergency Type', LucideIcons.shield, true),
               const SizedBox(height: 12),
               Container(
                 padding: EdgeInsets.all(16),
@@ -429,12 +429,17 @@ class _CreateRescueScreenState extends State<CreateRescueScreen> {
               const SizedBox(height: 24),
 
               // Basic Information
-              _buildSectionHeader('Emergency Details', LucideIcons.fileText),
+              _buildSectionHeader(
+                'Emergency Details',
+                LucideIcons.fileText,
+                true,
+              ),
               const SizedBox(height: 12),
               CustomTextField(
                 controller: _titleController,
                 hint: 'Brief description of the emergency',
                 label: 'Description',
+                isRequired: true,
               ),
               const SizedBox(height: 12),
               CustomTextField(
@@ -467,7 +472,8 @@ class _CreateRescueScreenState extends State<CreateRescueScreen> {
               CustomTextField(
                 controller: _contactController,
                 hint: 'e.g. 9923189664',
-                label: 'Contact phone',
+                label: 'Emergency Phone Number',
+                isRequired: true,
                 prefixIcon: IconButton(
                   onPressed: null,
                   icon: CustomText(text: '+63'),
@@ -480,7 +486,7 @@ class _CreateRescueScreenState extends State<CreateRescueScreen> {
               const SizedBox(height: 12),
 
               // Location
-              _buildSectionHeader('Location', LucideIcons.mapPin),
+              _buildSectionHeader('Location', LucideIcons.mapPin, true),
               const SizedBox(height: 12),
               _buildLocationCard(),
 
@@ -508,7 +514,11 @@ class _CreateRescueScreenState extends State<CreateRescueScreen> {
     );
   }
 
-  Widget _buildSectionHeader(String title, IconData icon) {
+  Widget _buildSectionHeader(
+    String title,
+    IconData icon, [
+    bool isRequired = false,
+  ]) {
     return Row(
       children: [
         Icon(icon, size: 18, color: AppColors.primary),
@@ -519,6 +529,15 @@ class _CreateRescueScreenState extends State<CreateRescueScreen> {
           fontWeight: FontWeight.w600,
           color: AppColors.textPrimaryLight,
         ),
+        if (isRequired) ...[
+          const SizedBox(width: 4),
+          const CustomText(
+            text: '*',
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: Colors.red,
+          ),
+        ],
       ],
     );
   }

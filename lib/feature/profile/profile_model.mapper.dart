@@ -74,6 +74,11 @@ class ProfileMapper extends ClassMapperBase<Profile> {
     key: r'device_token',
     opt: true,
   );
+  static bool _$suspended(Profile v) => v.suspended;
+  static const Field<Profile, bool> _f$suspended = Field(
+    'suspended',
+    _$suspended,
+  );
 
   @override
   final MappableFields<Profile> fields = const {
@@ -87,6 +92,7 @@ class ProfileMapper extends ClassMapperBase<Profile> {
     #profilePicture: _f$profilePicture,
     #idPicture: _f$idPicture,
     #deviceToken: _f$deviceToken,
+    #suspended: _f$suspended,
   };
 
   static Profile _instantiate(DecodingData data) {
@@ -101,6 +107,7 @@ class ProfileMapper extends ClassMapperBase<Profile> {
       profilePicture: data.dec(_f$profilePicture),
       idPicture: data.dec(_f$idPicture),
       deviceToken: data.dec(_f$deviceToken),
+      suspended: data.dec(_f$suspended),
     );
   }
 
@@ -172,6 +179,7 @@ abstract class ProfileCopyWith<$R, $In extends Profile, $Out>
     String? profilePicture,
     String? idPicture,
     String? deviceToken,
+    bool? suspended,
   });
   ProfileCopyWith<$R2, $In, $Out2> $chain<$R2, $Out2>(Then<$Out2, $R2> t);
 }
@@ -196,6 +204,7 @@ class _ProfileCopyWithImpl<$R, $Out>
     Object? profilePicture = $none,
     Object? idPicture = $none,
     Object? deviceToken = $none,
+    bool? suspended,
   }) => $apply(
     FieldCopyWithData({
       if (id != null) #id: id,
@@ -208,6 +217,7 @@ class _ProfileCopyWithImpl<$R, $Out>
       if (profilePicture != $none) #profilePicture: profilePicture,
       if (idPicture != $none) #idPicture: idPicture,
       if (deviceToken != $none) #deviceToken: deviceToken,
+      if (suspended != null) #suspended: suspended,
     }),
   );
   @override
@@ -222,6 +232,7 @@ class _ProfileCopyWithImpl<$R, $Out>
     profilePicture: data.get(#profilePicture, or: $value.profilePicture),
     idPicture: data.get(#idPicture, or: $value.idPicture),
     deviceToken: data.get(#deviceToken, or: $value.deviceToken),
+    suspended: data.get(#suspended, or: $value.suspended),
   );
 
   @override

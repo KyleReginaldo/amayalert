@@ -1,10 +1,13 @@
 import 'package:amayalert/core/router/app_route.gr.dart';
 import 'package:amayalert/core/theme/theme.dart';
 import 'package:amayalert/core/widgets/text/custom_text.dart';
+import 'package:amayalert/feature/posts/post_repository.dart';
+import 'package:amayalert/feature/posts/posts_list_widget.dart';
 import 'package:amayalert/feature/search/search_model.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:provider/provider.dart';
 
 class SearchResultsWidget extends StatelessWidget {
   final List<SearchResult> results;
@@ -167,6 +170,17 @@ class SearchResultsWidget extends StatelessWidget {
   }
 
   Widget _buildResultItem(BuildContext context, SearchResult result) {
+    if (result.type == SearchResultType.post) {
+      final postRepo = context.read<PostRepository>();
+      final postId = int.tryParse(result.id);
+      if (postId != null) {
+        final post = postRepo.posts.where((p) => p.id == postId).firstOrNull;
+        if (post != null) {
+          return PostCard(post: post);
+        }
+      }
+    }
+
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       leading: _getResultIcon(result.type),

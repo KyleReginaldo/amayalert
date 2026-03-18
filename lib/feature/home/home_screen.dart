@@ -123,7 +123,26 @@ class _HomeScreenState extends State<HomeScreen> {
       context.read<PostRepository>().loadPosts();
       context.read<AlertRepository>().loadAlerts();
       context.read<EvacuationRepository>().getEvacuationCenters();
-      context.read<ProfileRepository>().getUserProfile(userID ?? '');
+      context.read<ProfileRepository>().getUserProfile(userID ?? '').then((
+        _,
+      ) async {
+        if (!mounted) return;
+        final profile = context.read<ProfileRepository>().profile;
+        debugPrint(
+          'User profile loaded: ${profile?.email}, suspended: ${profile?.suspended}',
+        );
+        if (profile?.suspended == true) {
+          // await sl<AuthProvider>().signOut();
+          // userID = null;
+          // if (mounted) {
+          //   context.router.replaceAll([SignInRoute()]);
+          //   EasyLoading.showError(
+          //     'Your account has been suspended.\nPlease contact support.',
+          //     duration: const Duration(seconds: 5),
+          //   );
+          // }
+        }
+      });
     });
     super.initState();
   }
@@ -301,8 +320,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   elevation: 0,
                   backgroundColor: Colors.transparent,
                   expandedHeight: 120,
-                  floating: true,
-                  pinned: false,
+                  floating: false,
+                  pinned: true,
                   flexibleSpace: FlexibleSpaceBar(
                     background: Container(
                       padding: const EdgeInsets.fromLTRB(20, 60, 20, 20),
@@ -468,6 +487,11 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  bool get _isGuestUser {
+    final user = Supabase.instance.client.auth.currentUser;
+    return user?.isAnonymous ?? false;
+  }
+
   Widget _buildEmergencyActionsSection(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -580,6 +604,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildQuickActionsSection(BuildContext context) {
+    if (_isGuestUser) return const SizedBox.shrink();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -621,7 +647,17 @@ class _HomeScreenState extends State<HomeScreen> {
 
               Expanded(
                 child: GestureDetector(
-                  onTap: () => context.router.push(const CreatePostsRoute()),
+                  onTap: () {
+                    final profile = context.read<ProfileRepository>().profile;
+                    if (profile?.suspended == true) {
+                      EasyLoading.showError(
+                        'Your account has been suspended.\nPlease contact support.',
+                        duration: const Duration(seconds: 5),
+                      );
+                      return;
+                    }
+                    context.router.push(const CreatePostsRoute());
+                  },
                   child: Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 16,
@@ -662,7 +698,17 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Material(
                   color: Colors.transparent,
                   child: InkWell(
-                    onTap: () => context.router.push(const CreatePostsRoute()),
+                    onTap: () {
+                      final profile = context.read<ProfileRepository>().profile;
+                      if (profile?.suspended == true) {
+                        EasyLoading.showError(
+                          'Your account has been suspended.\nPlease contact support.',
+                          duration: const Duration(seconds: 5),
+                        );
+                        return;
+                      }
+                      context.router.push(const CreatePostsRoute());
+                    },
                     borderRadius: BorderRadius.circular(22),
                     child: const Icon(
                       LucideIcons.camera,

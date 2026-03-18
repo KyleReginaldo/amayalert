@@ -17,6 +17,20 @@ class AuthProvider {
         password: password,
       );
       if (response.session != null) {
+        // Check if user is suspended
+        final userData = await Supabase.instance.client
+            .from('users')
+            .select('suspended')
+            .eq('id', response.user!.id)
+            .single();
+
+        if (userData['suspended'] == true) {
+          await signOut();
+          return Result.error(
+            'Your account is suspended. Please contact support.',
+          );
+        }
+
         await OneSignal.login(response.user!.id);
 
         return Result.success('Sign in successful');
@@ -25,6 +39,8 @@ class AuthProvider {
       }
     } on AuthException catch (e) {
       return Result.error(e.message);
+    } catch (e) {
+      return Result.error('An error occurred during sign in');
     }
   }
 

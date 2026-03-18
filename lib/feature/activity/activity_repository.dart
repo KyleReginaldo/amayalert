@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/services/badge_service.dart';
 import 'activity_model.dart';
 
 class ActivityRepository extends ChangeNotifier {
@@ -60,6 +62,43 @@ class ActivityRepository extends ChangeNotifier {
     } finally {
       _isLoading = false;
       notifyListeners();
+      await _updateBadgeCount();
+    }
+  }
+
+  Future<void> _updateBadgeCount() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final lastSeenIso = prefs.getString('last_activity_seen');
+
+      if (lastSeenIso == null) {
+        // If never seen, all are unread
+        BadgeService().updateUnreadActivityCount(_activities.length);
+        return;
+      }
+
+      final lastSeen = DateTime.parse(lastSeenIso);
+      final unreadCount = _activities
+          .where((a) => a.createdAt.isAfter(lastSeen))
+          .length;
+
+      BadgeService().updateUnreadActivityCount(unreadCount);
+    } catch (e) {
+      debugPrint('Error updating activity badge count: $e');
+    }
+  }
+
+  Future<void> markActivitiesAsRead() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(
+        'last_activity_seen',
+        DateTime.now().toIso8601String(),
+      );
+      BadgeService().clearActivityUnreadCount();
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error marking activities as read: $e');
     }
   }
 

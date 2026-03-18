@@ -15,6 +15,7 @@ class Profile with ProfileMappable {
   final String? profilePicture;
   final String? idPicture;
   final String? deviceToken;
+  final bool suspended;
 
   Profile({
     required this.id,
@@ -27,5 +28,6 @@ class Profile with ProfileMappable {
     this.profilePicture,
     this.idPicture,
     this.deviceToken,
+    required this.suspended,
   });
 }

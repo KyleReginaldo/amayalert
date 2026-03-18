@@ -119,4 +119,14 @@ class RescueProvider {
       return Result.error('Failed to update rescue status: ${e.toString()}');
     }
   }
+
+  Future<Result<String>> deleteRescue(String rescueId) async {
+    try {
+      await supabase.from('rescues').delete().eq('id', rescueId);
+      return Result.success('Rescue request deleted successfully');
+    } catch (e) {
+      debugPrint('Error deleting rescue: $e');
+      return Result.error('Failed to delete rescue request: ${e.toString()}');
+    }
+  }
 }
