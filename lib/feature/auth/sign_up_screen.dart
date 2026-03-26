@@ -5,7 +5,10 @@ import 'package:amayalert/core/widgets/text/custom_text.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
+import 'package:google_places_autocomplete_text_field/google_places_autocomplete_text_field.dart';
+import 'package:google_places_autocomplete_text_field/model/prediction.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/constant/constant.dart';
@@ -36,6 +39,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final passwordController = TextEditingController();
   final confirmPasswordController = TextEditingController();
   final phoneNumberController = TextEditingController();
+  final addressController = TextEditingController();
 
   int? gender; // 0 for male, 1 for female
   DateTime? birthDate;
@@ -61,6 +65,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     passwordController.dispose();
     confirmPasswordController.dispose();
     phoneNumberController.dispose();
+    addressController.dispose();
     super.dispose();
   }
 
@@ -358,6 +363,7 @@ Your Rights
     final String password = passwordController.text;
     final String confirmPassword = confirmPasswordController.text;
     final String phoneNumber = phoneNumberController.text;
+    final String address = addressController.text;
     final int? genderValue = gender;
     final DateTime? birthDateValue = birthDate;
 
@@ -399,6 +405,10 @@ Your Rights
       EasyLoading.showError('Please select your birth date');
       return;
     }
+    if (address.trim().isEmpty) {
+      EasyLoading.showError('Please enter your address');
+      return;
+    }
 
     debugPrint('Full Name: $fullName');
     debugPrint('Email: $email');
@@ -406,6 +416,7 @@ Your Rights
     debugPrint('Phone: $phoneNumber');
     debugPrint('Gender: $genderValue');
     debugPrint('Birth Date: $birthDateValue');
+    debugPrint('Address: $address');
     EasyLoading.show(status: 'Signing up...');
 
     final result = await AuthProvider().signUp(
@@ -416,6 +427,7 @@ Your Rights
         phoneNumber: '+63$phoneNumber',
         gender: (genderValue == 0) ? 'Male' : 'Female',
         birthDate: birthDateValue,
+        address: address,
       ),
     );
     if (result.isError) {
@@ -564,6 +576,44 @@ Your Rights
                   return 'Please enter your phone number';
                 }
                 return null;
+              },
+            ),
+            // Address Field
+            _buildRequiredLabel('Address'),
+            GooglePlacesAutoCompleteTextFormField(
+              textEditingController: addressController,
+              googleAPIKey: dotenv.get('GOOGLE_MAP'),
+              debounceTime: 400,
+              countries: const ['ph'],
+              inputDecoration: InputDecoration(
+                hintText: 'Enter your address',
+                hintStyle: TextStyle(color: AppColors.textSecondaryLight),
+                prefixIcon: Icon(
+                  Icons.location_on_outlined,
+                  color: AppColors.textSecondaryLight,
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 16,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: Colors.grey),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: Colors.grey),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: AppColors.primary, width: 2),
+                ),
+              ),
+              itmClick: (Prediction prediction) {
+                addressController.text = prediction.description ?? '';
+                addressController.selection = TextSelection.fromPosition(
+                  TextPosition(offset: addressController.text.length),
+                );
               },
             ),
             // Gender Selection

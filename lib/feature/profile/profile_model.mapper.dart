@@ -79,6 +79,12 @@ class ProfileMapper extends ClassMapperBase<Profile> {
     'suspended',
     _$suspended,
   );
+  static String? _$address(Profile v) => v.address;
+  static const Field<Profile, String> _f$address = Field(
+    'address',
+    _$address,
+    opt: true,
+  );
 
   @override
   final MappableFields<Profile> fields = const {
@@ -93,6 +99,7 @@ class ProfileMapper extends ClassMapperBase<Profile> {
     #idPicture: _f$idPicture,
     #deviceToken: _f$deviceToken,
     #suspended: _f$suspended,
+    #address: _f$address,
   };
 
   static Profile _instantiate(DecodingData data) {
@@ -108,6 +115,7 @@ class ProfileMapper extends ClassMapperBase<Profile> {
       idPicture: data.dec(_f$idPicture),
       deviceToken: data.dec(_f$deviceToken),
       suspended: data.dec(_f$suspended),
+      address: data.dec(_f$address),
     );
   }
 
@@ -180,6 +188,7 @@ abstract class ProfileCopyWith<$R, $In extends Profile, $Out>
     String? idPicture,
     String? deviceToken,
     bool? suspended,
+    String? address,
   });
   ProfileCopyWith<$R2, $In, $Out2> $chain<$R2, $Out2>(Then<$Out2, $R2> t);
 }
@@ -205,6 +214,7 @@ class _ProfileCopyWithImpl<$R, $Out>
     Object? idPicture = $none,
     Object? deviceToken = $none,
     bool? suspended,
+    Object? address = $none,
   }) => $apply(
     FieldCopyWithData({
       if (id != null) #id: id,
@@ -218,6 +228,7 @@ class _ProfileCopyWithImpl<$R, $Out>
       if (idPicture != $none) #idPicture: idPicture,
       if (deviceToken != $none) #deviceToken: deviceToken,
       if (suspended != null) #suspended: suspended,
+      if (address != $none) #address: address,
     }),
   );
   @override
@@ -233,6 +244,7 @@ class _ProfileCopyWithImpl<$R, $Out>
     idPicture: data.get(#idPicture, or: $value.idPicture),
     deviceToken: data.get(#deviceToken, or: $value.deviceToken),
     suspended: data.get(#suspended, or: $value.suspended),
+    address: data.get(#address, or: $value.address),
   );
 
   @override

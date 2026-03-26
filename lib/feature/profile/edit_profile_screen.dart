@@ -11,7 +11,10 @@ import 'package:amayalert/feature/profile/profile_repository.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:get_it/get_it.dart';
+import 'package:google_places_autocomplete_text_field/google_places_autocomplete_text_field.dart';
+import 'package:google_places_autocomplete_text_field/model/prediction.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -33,6 +36,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   final fullNameController = TextEditingController();
   final emailController = TextEditingController();
   final phoneNumberController = TextEditingController();
+  final addressController = TextEditingController();
 
   String? selectedGender;
   DateTime? selectedBirthDate;
@@ -67,11 +71,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     }
 
     selectedBirthDate = widget.profile.birthDate;
+    addressController.text = widget.profile.address ?? '';
 
     // Listen for changes
     fullNameController.addListener(_onFieldChanged);
     emailController.addListener(_onFieldChanged);
     phoneNumberController.addListener(_onFieldChanged);
+    addressController.addListener(_onFieldChanged);
   }
 
   void _onFieldChanged() {
@@ -81,6 +87,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         phoneNumberController.text != _originalProfile?.phoneNumber ||
         selectedGender != _originalProfile?.gender ||
         selectedBirthDate != _originalProfile?.birthDate ||
+        addressController.text != (_originalProfile?.address ?? '') ||
         selectedProfileImage != null;
 
     if (hasChanges != _hasChanges) {
@@ -95,6 +102,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     fullNameController.dispose();
     emailController.dispose();
     phoneNumberController.dispose();
+    addressController.dispose();
     super.dispose();
   }
 
@@ -225,6 +233,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             ? selectedBirthDate
             : null,
         imageFile: imageFile,
+        address: addressController.text.trim() != (widget.profile.address ?? '')
+            ? addressController.text.trim()
+            : null,
       );
 
       // Call the repository method
@@ -799,6 +810,59 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                           ),
                         ),
                       ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Address
+                    CustomText(
+                      text: 'Address',
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textSecondaryLight,
+                    ),
+                    const SizedBox(height: 10),
+                    GooglePlacesAutoCompleteTextFormField(
+                      textEditingController: addressController,
+                      googleAPIKey: dotenv.get('GOOGLE_MAP'),
+                      debounceTime: 400,
+                      countries: const ['ph'],
+                      inputDecoration: InputDecoration(
+                        hintText: 'Enter your address',
+                        hintStyle: TextStyle(
+                          color: AppColors.textSecondaryLight,
+                        ),
+                        prefixIcon: Icon(
+                          Icons.location_on_outlined,
+                          color: AppColors.textSecondaryLight,
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 14,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: Colors.grey.shade200),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(color: Colors.grey.shade200),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: BorderSide(
+                            color: AppColors.primary,
+                            width: 2,
+                          ),
+                        ),
+                      ),
+                      itmClick: (Prediction prediction) {
+                        addressController.text = prediction.description ?? '';
+                        addressController
+                            .selection = TextSelection.fromPosition(
+                          TextPosition(offset: addressController.text.length),
+                        );
+                        _onFieldChanged();
+                      },
                     ),
                   ],
                 ),
