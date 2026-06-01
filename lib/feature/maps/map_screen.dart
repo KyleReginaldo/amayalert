@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:amayalert/core/theme/theme.dart';
 import 'package:amayalert/core/widgets/text/custom_text.dart';
 import 'package:amayalert/feature/evacuation/evacuation_center_model.dart';
 import 'package:amayalert/feature/evacuation/evacuation_repository.dart';
@@ -8,7 +9,6 @@ import 'package:amayalert/feature/maps/custom_google_places_field.dart';
 import 'package:amayalert/feature/maps/directions_service.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:google_places_autocomplete_text_field/model/prediction.dart';
@@ -56,15 +56,6 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
 
   void _onMapCreated(GoogleMapController controller) {
     _controllerCompleter.complete(controller);
-  }
-
-  Future<String> _getMapStyle() async {
-    try {
-      return await rootBundle.loadString('assets/json/map_style.json');
-    } catch (e) {
-      debugPrint('Map style not found: $e');
-      return '[]'; // Return empty style if file not found
-    }
   }
 
   void getCurrentLocation() async {
@@ -220,17 +211,26 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
 
           if (routePoints != null && routePoints.isNotEmpty) {
             setState(() {
-              _polylines.add(
-                Polyline(
-                  polylineId: const PolylineId('route_to_search'),
-                  points: routePoints,
-                  color: Colors.blue,
-                  width: 5,
-                  startCap: Cap.roundCap,
-                  endCap: Cap.roundCap,
-                  jointType: JointType.round,
-                ),
-              );
+              // White border (drawn first so it appears underneath)
+              _polylines.add(Polyline(
+                polylineId: const PolylineId('route_to_search_border'),
+                points: routePoints,
+                color: Colors.white,
+                width: 10,
+                startCap: Cap.roundCap,
+                endCap: Cap.roundCap,
+                jointType: JointType.round,
+              ));
+              // Primary colored line on top
+              _polylines.add(Polyline(
+                polylineId: const PolylineId('route_to_search'),
+                points: routePoints,
+                color: const Color(0xFF1D6BF3),
+                width: 6,
+                startCap: Cap.roundCap,
+                endCap: Cap.roundCap,
+                jointType: JointType.round,
+              ));
             });
 
             // Adjust camera to show the entire route
@@ -342,48 +342,19 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
     super.dispose();
   }
 
-  Color _getGradientTopColor() {
-    final hour = DateTime.now().hour;
-    if (hour < 12) {
-      // Morning - soft blue/purple gradient
-      return const Color(0xFF64B5F6);
-    } else if (hour < 17) {
-      // Afternoon - warm golden/orange gradient
-      return const Color(0xFFFFB74D);
-    } else {
-      // Evening - deep purple/pink gradient
-      return const Color(0xFF7986CB);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey.shade100,
-      appBar: AppBar(
-        title: const CustomText(
-          text: 'Amayalert Map',
-          fontSize: 20,
-          fontWeight: FontWeight.w600,
-          color: Colors.white,
-        ),
-        backgroundColor: _getGradientTopColor(),
-        elevation: 0,
-        surfaceTintColor: Colors.white,
-        systemOverlayStyle: SystemUiOverlayStyle.dark,
-        iconTheme: const IconThemeData(color: Colors.black87),
-      ),
-      body: Stack(
-        children: [
-          // Map Widget
-          if (_latlng != null)
-            FutureBuilder<String>(
-              future: _getMapStyle(),
-              builder: (context, snapshot) {
-                return GoogleMap(
+    return SafeArea(
+      top: false,
+      child: Scaffold(
+        body: Stack(
+          children: [
+            // ── Full-screen map ──────────────────────────────────────────
+            if (_latlng != null)
+              Positioned.fill(
+                child: GoogleMap(
                   onMapCreated: _onMapCreated,
                   onCameraMove: _onCameraMove,
-                  // style: snapshot.data,
                   initialCameraPosition: CameraPosition(
                     target: _latlng!,
                     zoom: _currentZoom,
@@ -392,259 +363,163 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                   markers: _markers,
                   polylines: _polylines,
                   myLocationEnabled: true,
-                  myLocationButtonEnabled: false, // We'll use custom button
-                  zoomControlsEnabled: false, // Custom zoom controls
-                  compassEnabled: true,
+                  myLocationButtonEnabled: false,
+                  zoomControlsEnabled: false,
+                  compassEnabled: false,
                   mapToolbarEnabled: false,
-                );
-              },
-            )
-          else if (_isLoading)
-            const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  CustomText(
-                    text: 'Getting your location...',
-                    fontSize: 16,
-                    color: Colors.grey,
-                  ),
-                ],
-              ),
-            )
-          else if (_errorMessage != null)
-            Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(LucideIcons.mapPin, size: 48, color: Colors.grey),
-                  const SizedBox(height: 16),
-                  CustomText(
-                    text: _errorMessage!,
-                    fontSize: 16,
-                    color: Colors.red,
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: getCurrentLocation,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blue,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 12,
-                      ),
-                    ),
-                    child: const CustomText(
-                      text: 'Retry',
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-          // Search Bar
-          Positioned(
-            top: 16,
-            left: 16,
-            right: 16,
-            child: CustomGooglePlacesTextField(
-              controller: _searchController,
-              hintText: 'Search location...',
-              onPlaceDetailsWithCoordinatesReceived: (prediction) {
-                // This gets called when place is selected and coordinates are available
-                debugPrint(
-                  'Place selected with coordinates: ${prediction.description}',
-                );
-                _navigateToPlace(prediction);
-              },
-              onSuggestionClicked: (prediction) {
-                // This gets called when user clicks on a suggestion in the dropdown
-                debugPrint(
-                  'User clicked on suggestion: ${prediction.description}',
-                );
-                // Just close the search and populate the text field
-                if (prediction.description != null) {
-                  _searchController.text = prediction.description!;
-                }
-                // Navigate to the place
-                _navigateToPlace(prediction);
-              },
-            ),
-          ),
-
-          // Map Type Toggle
-          Positioned(
-            top: 80,
-            right: 16,
-            child: Column(
-              spacing: 8,
-              children: [
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.1),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: _toggleMapType,
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        child: Icon(
-                          _currentMapType == MapType.normal
-                              ? LucideIcons.satellite
-                              : LucideIcons.map,
-                          color: Colors.grey.shade700,
-                          size: 20,
-                        ),
-                      ),
-                    ),
-                  ),
                 ),
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.1),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: _zoomIn,
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        child: Icon(
-                          LucideIcons.plus,
-                          color: Colors.grey.shade700,
-                          size: 20,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.1),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: _zoomOut,
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        child: Icon(
-                          LucideIcons.minus,
-                          color: Colors.grey.shade700,
-                          size: 20,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.1),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: _goToCurrentLocation,
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        child: Icon(
-                          LucideIcons.navigation,
-                          color: Colors.blue,
-                          size: 20,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                // Clear Route Button (only show when there are polylines)
-                if (_polylines.isNotEmpty)
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.1),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: _clearRoute,
-                        child: Container(
-                          padding: const EdgeInsets.all(12),
-                          child: Icon(
-                            LucideIcons.x,
-                            color: Colors.red,
-                            size: 20,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
+              )
+            else
+              _buildMapPlaceholder(),
 
-          // Zoom Controls
-
-          // Current Location Button
-
-          // Evacuation Centers List
-          if (_isEvacuationListVisible)
+            // ── Top bar: back + search ───────────────────────────────────
             Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              child: _buildEvacuationCentersList(),
+              top: MediaQuery.of(context).padding.top + 12,
+              left: 12,
+              right: 12,
+              child: Row(
+                children: [
+                  _MapBtn(
+                    icon: LucideIcons.arrowLeft,
+                    onTap: () => context.router.maybePop(),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(child: _searchCard()),
+                ],
+              ),
             ),
 
-          // Toggle Button for Evacuation Centers List
-          if (!_isEvacuationListVisible)
-            Positioned(bottom: 20, right: 16, child: _buildShowListButton()),
+            // ── Right controls ───────────────────────────────────────────
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 68,
+              right: 12,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _MapBtn(
+                    icon: _currentMapType == MapType.normal
+                        ? LucideIcons.satellite
+                        : LucideIcons.map,
+                    onTap: _toggleMapType,
+                  ),
+                  const SizedBox(height: 6),
+                  _MapBtn(icon: LucideIcons.plus, onTap: _zoomIn),
+                  const SizedBox(height: 6),
+                  _MapBtn(icon: LucideIcons.minus, onTap: _zoomOut),
+                  const SizedBox(height: 6),
+                  _MapBtn(
+                    icon: LucideIcons.navigation,
+                    onTap: _goToCurrentLocation,
+                    iconColor: AppColors.primary,
+                  ),
+                  if (_polylines.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    _MapBtn(
+                      icon: LucideIcons.x,
+                      onTap: _clearRoute,
+                      iconColor: AppColors.danger,
+                    ),
+                  ],
+                ],
+              ),
+            ),
 
-          // Route Information Display
-          if (_routeInfo != null || _isLoadingRoute)
-            Positioned(top: 80, left: 16, child: _buildRouteInfoCard()),
+            // ── Route info card ──────────────────────────────────────────
+            if (_routeInfo != null || _isLoadingRoute)
+              Positioned(
+                top: MediaQuery.of(context).padding.top + 68,
+                left: 12,
+                child: _buildRouteInfoCard(),
+              ),
+
+            // ── Evacuation panel ─────────────────────────────────────────
+            if (_isEvacuationListVisible)
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: _buildEvacuationCentersList(),
+              ),
+            if (!_isEvacuationListVisible)
+              Positioned(bottom: 24, right: 12, child: _buildShowListButton()),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMapPlaceholder() {
+    if (_isLoading) {
+      return Container(
+        color: AppColors.gray100,
+        child: const Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator.adaptive(),
+              SizedBox(height: 16),
+              Text(
+                'Getting your location…',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: AppColors.textSecondaryLight,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    return Container(
+      color: AppColors.gray100,
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(LucideIcons.mapPin, size: 40, color: AppColors.gray400),
+            const SizedBox(height: 12),
+            Text(
+              _errorMessage ?? 'Location unavailable',
+              style: const TextStyle(
+                fontSize: 14,
+                color: AppColors.textSecondaryLight,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: getCurrentLocation,
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _searchCard() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.12),
+            blurRadius: 12,
+            offset: const Offset(0, 3),
+          ),
         ],
+      ),
+      child: CustomGooglePlacesTextField(
+        controller: _searchController,
+        hintText: 'Search location…',
+        onPlaceDetailsWithCoordinatesReceived: _navigateToPlace,
+        onSuggestionClicked: (prediction) {
+          if (prediction.description != null) {
+            _searchController.text = prediction.description!;
+          }
+          _navigateToPlace(prediction);
+        },
       ),
     );
   }
@@ -1049,17 +924,26 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
           );
           setState(() {
             // Add accurate polyline based on roads
-            _polylines.add(
-              Polyline(
-                polylineId: const PolylineId('route_to_evacuation'),
-                points: routePoints,
-                color: Colors.blue,
-                width: 5,
-                startCap: Cap.roundCap,
-                endCap: Cap.roundCap,
-                jointType: JointType.round,
-              ),
-            );
+            // White border
+            _polylines.add(Polyline(
+              polylineId: const PolylineId('route_to_evacuation_border'),
+              points: routePoints,
+              color: Colors.white,
+              width: 10,
+              startCap: Cap.roundCap,
+              endCap: Cap.roundCap,
+              jointType: JointType.round,
+            ));
+            // Primary colored line
+            _polylines.add(Polyline(
+              polylineId: const PolylineId('route_to_evacuation'),
+              points: routePoints,
+              color: const Color(0xFF1D6BF3),
+              width: 6,
+              startCap: Cap.roundCap,
+              endCap: Cap.roundCap,
+              jointType: JointType.round,
+            ));
           });
 
           // Calculate bounds for the entire route
@@ -1069,17 +953,25 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
           // Fallback to straight line if directions fail
           debugPrint('❌ Map Screen: API failed, using straight line fallback');
           setState(() {
-            _polylines.add(
-              Polyline(
-                polylineId: const PolylineId('route_to_evacuation'),
-                points: [_latlng!, LatLng(center.latitude, center.longitude)],
-                color: Colors.red,
-                width: 4,
-                patterns: [PatternItem.dash(20), PatternItem.gap(10)],
-                startCap: Cap.roundCap,
-                endCap: Cap.roundCap,
-              ),
-            );
+            // White border for fallback dashed line
+            _polylines.add(Polyline(
+              polylineId: const PolylineId('route_to_evacuation_border'),
+              points: [_latlng!, LatLng(center.latitude, center.longitude)],
+              color: Colors.white,
+              width: 8,
+              startCap: Cap.roundCap,
+              endCap: Cap.roundCap,
+            ));
+            // Orange dashed fallback line
+            _polylines.add(Polyline(
+              polylineId: const PolylineId('route_to_evacuation'),
+              points: [_latlng!, LatLng(center.latitude, center.longitude)],
+              color: const Color(0xFFF59E0B),
+              width: 5,
+              patterns: [PatternItem.dot, PatternItem.gap(8)],
+              startCap: Cap.roundCap,
+              endCap: Cap.roundCap,
+            ));
           });
 
           final bounds = _calculateBounds([
@@ -1266,6 +1158,35 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
             color: _isLoadingRoute ? Colors.grey : Colors.black87,
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ── Map control button ─────────────────────────────────────────────────────────
+
+class _MapBtn extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+  final Color? iconColor;
+
+  const _MapBtn({required this.icon, required this.onTap, this.iconColor});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(10),
+      elevation: 3,
+      shadowColor: Colors.black.withValues(alpha: 0.15),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: SizedBox(
+          width: 40,
+          height: 40,
+          child: Icon(icon, size: 18, color: iconColor ?? AppColors.gray700),
+        ),
       ),
     );
   }

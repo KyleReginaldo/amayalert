@@ -25,29 +25,28 @@ class NotificationBadge extends StatelessWidget {
         child,
         if (count > 0)
           Positioned(
-            right: -6,
-            top: -6,
+            right: -5,
+            top: -5,
             child: Container(
-              padding: const EdgeInsets.all(4),
-              constraints: BoxConstraints(
-                minWidth: badgeSize ?? 16,
-                minHeight: badgeSize ?? 16,
-              ),
+              height: badgeSize ?? 16,
+              constraints: BoxConstraints(minWidth: badgeSize ?? 16),
+              padding: const EdgeInsets.symmetric(horizontal: 4),
               decoration: BoxDecoration(
                 color: badgeColor ?? Colors.red,
-                borderRadius: BorderRadius.circular((badgeSize ?? 16) / 2),
-                border: Border.all(color: Colors.white, width: 1),
+                borderRadius:
+                    BorderRadius.circular((badgeSize ?? 16) / 2),
+                border: Border.all(color: Colors.white, width: 1.5),
               ),
-              child: Center(
-                child: Text(
-                  count > 99 ? '99+' : count.toString(),
-                  style: TextStyle(
-                    color: textColor ?? Colors.white,
-                    fontSize: count > 99 ? 8 : 10,
-                    fontWeight: FontWeight.bold,
-                  ),
-                  textAlign: TextAlign.center,
+              alignment: Alignment.center,
+              child: Text(
+                count > 99 ? '99+' : count.toString(),
+                style: TextStyle(
+                  color: textColor ?? Colors.white,
+                  fontSize: count > 99 ? 7 : 9,
+                  fontWeight: FontWeight.w800,
+                  height: 1,
                 ),
+                textAlign: TextAlign.center,
               ),
             ),
           ),

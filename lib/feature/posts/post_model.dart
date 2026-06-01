@@ -11,6 +11,7 @@ class Post with PostMappable {
   final Profile user;
   final String content;
   final String? mediaUrl;
+  final List<String>? mediaUrls;
   final PostVisibility visibility;
   final DateTime createdAt;
   final DateTime? updatedAt;
@@ -22,6 +23,7 @@ class Post with PostMappable {
     required this.user,
     required this.content,
     this.mediaUrl,
+    this.mediaUrls,
     required this.visibility,
     required this.createdAt,
     this.updatedAt,
@@ -29,9 +31,30 @@ class Post with PostMappable {
     this.sharedPost,
   });
 
-  /// Check if post has media attachment
-  bool get hasMedia {
-    return mediaUrl != null && mediaUrl!.isNotEmpty;
+  /// All media URLs — prefers mediaUrls array, falls back to single mediaUrl
+  List<String> get allMediaUrls {
+    if (mediaUrls != null && mediaUrls!.isNotEmpty) return mediaUrls!;
+    if (mediaUrl != null && mediaUrl!.isNotEmpty) return [mediaUrl!];
+    return [];
+  }
+
+  /// Check if post has any media attachment
+  bool get hasMedia => allMediaUrls.isNotEmpty;
+
+  /// True when the content starts with a location tag (@place\ntext)
+  bool get hasLocationTag =>
+      content.startsWith('@') && content.contains('\n');
+
+  /// The location string (without '@'), e.g. "General Trias, Cavite"
+  String get locationTag {
+    if (!hasLocationTag) return '';
+    return content.substring(1, content.indexOf('\n'));
+  }
+
+  /// The actual post body (everything after the location line)
+  String get bodyContent {
+    if (!hasLocationTag) return content;
+    return content.substring(content.indexOf('\n') + 1);
   }
 }
 

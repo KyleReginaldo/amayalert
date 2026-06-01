@@ -67,20 +67,20 @@ class SearchRepository extends ChangeNotifier {
       // Search through alerts
       final alerts = alertRepository.alerts;
       for (final alert in alerts) {
-        if (_matchesQuery(alert.title, query) ||
-            _matchesQuery(alert.description, query) ||
+        if (_matchesQuery(alert.title ?? '', query) ||
+            _matchesQuery(alert.description ?? '', query) ||
             _matchesQuery(alert.location ?? '', query)) {
           results.add(
             SearchResult(
               id: alert.id.toString(),
               type: SearchResultType.alert,
-              title: alert.title,
-              description: alert.description,
+              title: alert.title ?? '',
+              description: alert.description ?? '',
               subtitle:
-                  'Alert • ${alert.level.name.toUpperCase()} • ${_formatDate(alert.createdAt)}',
+                  'Alert • ${(alert.level?.name ?? 'unknown').toUpperCase()} • ${_formatDate(alert.createdAt ?? DateTime.now())}',
               metadata: {
-                'level': alert.level.name,
-                'status': alert.status.name,
+                'level': alert.level?.name,
+                'status': alert.status?.name,
                 'location': alert.location,
                 'latitude': alert.latitude,
                 'longitude': alert.longitude,

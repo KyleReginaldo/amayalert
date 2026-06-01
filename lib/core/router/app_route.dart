@@ -23,10 +23,6 @@ class AppRouter extends RootStackRouter {
           transitionsBuilder: TransitionsBuilders.fadeIn,
         ),
         CustomRoute(
-          page: MapRoute.page,
-          transitionsBuilder: TransitionsBuilders.fadeIn,
-        ),
-        CustomRoute(
           page: ActivityRoute.page,
           transitionsBuilder: TransitionsBuilders.fadeIn,
         ),
@@ -122,6 +118,14 @@ class AppRouter extends RootStackRouter {
     ),
     CustomRoute(
       page: ReportPostRoute.page,
+      transitionsBuilder: TransitionsBuilders.slideLeft,
+    ),
+    CustomRoute(
+      page: PendingReviewRoute.page,
+      transitionsBuilder: TransitionsBuilders.fadeIn,
+    ),
+    CustomRoute(
+      page: MapRoute.page,
       transitionsBuilder: TransitionsBuilders.slideLeft,
     ),
   ];

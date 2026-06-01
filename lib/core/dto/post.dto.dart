@@ -5,7 +5,8 @@ class CreatePostDTO {
   final String? mediaUrl;
   final String visibility;
   final int? sharedPost;
-  final XFile? imageFile;
+  final XFile? imageFile;       // legacy single-image (shared posts etc.)
+  final List<XFile>? imageFiles; // multiple images
 
   CreatePostDTO({
     required this.content,
@@ -13,6 +14,7 @@ class CreatePostDTO {
     required this.visibility,
     this.sharedPost,
     this.imageFile,
+    this.imageFiles,
   });
 
   Map<String, dynamic> toJson() {

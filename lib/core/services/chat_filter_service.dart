@@ -23,23 +23,11 @@ class ChatFilterService {
     'pussy',
     'cock',
     'dick',
-    'penis',
-    'vagina',
     'tits',
     'boobs',
     'ass',
-    'stupid',
-    'idiot',
-    'moron',
-    'retard',
-    'dumb',
-    'loser',
-    'ugly',
     'kill yourself',
     'kys',
-    'suicide',
-    'die',
-    'death',
     'murder',
   ];
 
@@ -87,7 +75,6 @@ class ChatFilterService {
     'mukha mong',
     'mukha mo',
     'amputa',
-    'amp',
   ];
 
   // Bisaya/Cebuano profanity and inappropriate words
@@ -195,34 +182,29 @@ class ChatFilterService {
     ..._variations,
   ];
 
-  /// Check if the message contains inappropriate content
-  /// Returns true if message is clean, false if it contains profanity
+  /// Returns true if the text contains the blocked word/phrase as a whole word.
+  /// Phrases (with spaces) use substring match; single words use \b boundary.
+  static bool _containsWord(String text, String blocked) {
+    final w = blocked.toLowerCase();
+    if (w.contains(' ')) return text.contains(w);
+    try {
+      return RegExp(r'\b' + RegExp.escape(w) + r'\b', caseSensitive: false)
+          .hasMatch(text);
+    } catch (_) {
+      return text.contains(w);
+    }
+  }
+
+  /// Check if the message contains inappropriate content.
+  /// Returns true if message is clean, false if it contains profanity.
   static bool isMessageClean(String message) {
     if (message.trim().isEmpty) return true;
 
-    // Convert to lowercase for case-insensitive matching
-    final lowerMessage = message.toLowerCase();
+    final lower = message.toLowerCase();
 
-    // Remove common punctuation and spaces for better detection
-    final cleanMessage = lowerMessage
-        .replaceAll(RegExp(r'[^\w\s]'), ' ')
-        .replaceAll(RegExp(r'\s+'), ' ')
-        .trim();
-
-    // Check for exact matches
     for (final word in _allProfanity) {
-      if (cleanMessage.contains(word.toLowerCase())) {
+      if (_containsWord(lower, word)) {
         debugPrint('Chat Filter: Blocked word detected: $word');
-        return false;
-      }
-    }
-
-    // Check for variations with numbers/symbols
-    final noSpaceMessage = lowerMessage.replaceAll(RegExp(r'[\s\-_\.]'), '');
-    for (final word in _allProfanity) {
-      final noSpaceWord = word.replaceAll(RegExp(r'[\s\-_\.]'), '');
-      if (noSpaceMessage.contains(noSpaceWord)) {
-        debugPrint('Chat Filter: Blocked variation detected: $word');
         return false;
       }
     }
@@ -251,25 +233,16 @@ class ChatFilterService {
   static String getBlockReason(String message) {
     if (isMessageClean(message)) return '';
 
-    final lowerMessage = message.toLowerCase();
+    final lower = message.toLowerCase();
 
-    // Check what type of inappropriate content was detected
-    for (final word in _englishProfanity) {
-      if (lowerMessage.contains(word)) {
-        return 'Your message contains inappropriate language and cannot be sent.';
-      }
+    if (_englishProfanity.any((w) => _containsWord(lower, w))) {
+      return 'Your message contains inappropriate language and cannot be sent.';
     }
-
-    for (final word in _tagalogProfanity) {
-      if (lowerMessage.contains(word)) {
-        return 'Ang inyong mensahe ay naglalaman ng hindi angkop na wika at hindi maipadadala.';
-      }
+    if (_tagalogProfanity.any((w) => _containsWord(lower, w))) {
+      return 'Ang inyong mensahe ay naglalaman ng hindi angkop na wika at hindi maipadadala.';
     }
-
-    for (final word in _bisayaProfanity) {
-      if (lowerMessage.contains(word)) {
-        return 'Ang imong mensahe adunay dili angay nga pulong ug dili ma-send.';
-      }
+    if (_bisayaProfanity.any((w) => _containsWord(lower, w))) {
+      return 'Ang imong mensahe adunay dili angay nga pulong ug dili ma-send.';
     }
 
     return 'Your message contains inappropriate content and cannot be sent.';
@@ -294,8 +267,8 @@ class ChatFilterService {
       'sampalon tika',
     ];
 
-    final lowerMessage = message.toLowerCase();
-    return threats.any((threat) => lowerMessage.contains(threat));
+    final lower = message.toLowerCase();
+    return threats.any((t) => _containsWord(lower, t));
   }
 
   /// Check if message contains harassment or bullying language
@@ -318,8 +291,8 @@ class ChatFilterService {
       'way love nimo',
     ];
 
-    final lowerMessage = message.toLowerCase();
-    return harassment.any((word) => lowerMessage.contains(word));
+    final lower = message.toLowerCase();
+    return harassment.any((w) => _containsWord(lower, w));
   }
 
   /// Comprehensive check - combines all filters
@@ -337,8 +310,9 @@ class ChatFilterService {
     final List<String> customWords = data
         .map((e) => e['word'] as String)
         .toList();
+    final lower = message.toLowerCase();
     for (final word in customWords) {
-      if (message.toLowerCase().contains(word.toLowerCase())) {
+      if (_containsWord(lower, word.toLowerCase())) {
         debugPrint('Chat Filter: Custom blocked word detected: $word');
         return false;
       }

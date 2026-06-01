@@ -29,6 +29,33 @@ class ProfileMapper extends ClassMapperBase<Profile> {
     _$fullName,
     key: r'full_name',
   );
+  static String? _$firstName(Profile v) => v.firstName;
+  static const Field<Profile, String> _f$firstName = Field(
+    'firstName',
+    _$firstName,
+    key: r'first_name',
+    opt: true,
+  );
+  static String? _$middleName(Profile v) => v.middleName;
+  static const Field<Profile, String> _f$middleName = Field(
+    'middleName',
+    _$middleName,
+    key: r'middle_name',
+    opt: true,
+  );
+  static String? _$lastName(Profile v) => v.lastName;
+  static const Field<Profile, String> _f$lastName = Field(
+    'lastName',
+    _$lastName,
+    key: r'last_name',
+    opt: true,
+  );
+  static String? _$suffix(Profile v) => v.suffix;
+  static const Field<Profile, String> _f$suffix = Field(
+    'suffix',
+    _$suffix,
+    opt: true,
+  );
   static String _$email(Profile v) => v.email;
   static const Field<Profile, String> _f$email = Field('email', _$email);
   static DateTime? _$birthDate(Profile v) => v.birthDate;
@@ -85,11 +112,29 @@ class ProfileMapper extends ClassMapperBase<Profile> {
     _$address,
     opt: true,
   );
+  static String? _$userStatus(Profile v) => v.userStatus;
+  static const Field<Profile, String> _f$userStatus = Field(
+    'userStatus',
+    _$userStatus,
+    key: r'status',
+    opt: true,
+  );
+  static String _$displayName(Profile v) => v.displayName;
+  static const Field<Profile, String> _f$displayName = Field(
+    'displayName',
+    _$displayName,
+    key: r'display_name',
+    mode: FieldMode.member,
+  );
 
   @override
   final MappableFields<Profile> fields = const {
     #id: _f$id,
     #fullName: _f$fullName,
+    #firstName: _f$firstName,
+    #middleName: _f$middleName,
+    #lastName: _f$lastName,
+    #suffix: _f$suffix,
     #email: _f$email,
     #birthDate: _f$birthDate,
     #gender: _f$gender,
@@ -100,12 +145,18 @@ class ProfileMapper extends ClassMapperBase<Profile> {
     #deviceToken: _f$deviceToken,
     #suspended: _f$suspended,
     #address: _f$address,
+    #userStatus: _f$userStatus,
+    #displayName: _f$displayName,
   };
 
   static Profile _instantiate(DecodingData data) {
     return Profile(
       id: data.dec(_f$id),
       fullName: data.dec(_f$fullName),
+      firstName: data.dec(_f$firstName),
+      middleName: data.dec(_f$middleName),
+      lastName: data.dec(_f$lastName),
+      suffix: data.dec(_f$suffix),
       email: data.dec(_f$email),
       birthDate: data.dec(_f$birthDate),
       gender: data.dec(_f$gender),
@@ -116,6 +167,7 @@ class ProfileMapper extends ClassMapperBase<Profile> {
       deviceToken: data.dec(_f$deviceToken),
       suspended: data.dec(_f$suspended),
       address: data.dec(_f$address),
+      userStatus: data.dec(_f$userStatus),
     );
   }
 
@@ -179,6 +231,10 @@ abstract class ProfileCopyWith<$R, $In extends Profile, $Out>
   $R call({
     String? id,
     String? fullName,
+    String? firstName,
+    String? middleName,
+    String? lastName,
+    String? suffix,
     String? email,
     DateTime? birthDate,
     String? gender,
@@ -189,6 +245,7 @@ abstract class ProfileCopyWith<$R, $In extends Profile, $Out>
     String? deviceToken,
     bool? suspended,
     String? address,
+    String? userStatus,
   });
   ProfileCopyWith<$R2, $In, $Out2> $chain<$R2, $Out2>(Then<$Out2, $R2> t);
 }
@@ -205,6 +262,10 @@ class _ProfileCopyWithImpl<$R, $Out>
   $R call({
     String? id,
     String? fullName,
+    Object? firstName = $none,
+    Object? middleName = $none,
+    Object? lastName = $none,
+    Object? suffix = $none,
     String? email,
     Object? birthDate = $none,
     Object? gender = $none,
@@ -215,10 +276,15 @@ class _ProfileCopyWithImpl<$R, $Out>
     Object? deviceToken = $none,
     bool? suspended,
     Object? address = $none,
+    Object? userStatus = $none,
   }) => $apply(
     FieldCopyWithData({
       if (id != null) #id: id,
       if (fullName != null) #fullName: fullName,
+      if (firstName != $none) #firstName: firstName,
+      if (middleName != $none) #middleName: middleName,
+      if (lastName != $none) #lastName: lastName,
+      if (suffix != $none) #suffix: suffix,
       if (email != null) #email: email,
       if (birthDate != $none) #birthDate: birthDate,
       if (gender != $none) #gender: gender,
@@ -229,12 +295,17 @@ class _ProfileCopyWithImpl<$R, $Out>
       if (deviceToken != $none) #deviceToken: deviceToken,
       if (suspended != null) #suspended: suspended,
       if (address != $none) #address: address,
+      if (userStatus != $none) #userStatus: userStatus,
     }),
   );
   @override
   Profile $make(CopyWithData data) => Profile(
     id: data.get(#id, or: $value.id),
     fullName: data.get(#fullName, or: $value.fullName),
+    firstName: data.get(#firstName, or: $value.firstName),
+    middleName: data.get(#middleName, or: $value.middleName),
+    lastName: data.get(#lastName, or: $value.lastName),
+    suffix: data.get(#suffix, or: $value.suffix),
     email: data.get(#email, or: $value.email),
     birthDate: data.get(#birthDate, or: $value.birthDate),
     gender: data.get(#gender, or: $value.gender),
@@ -245,6 +316,7 @@ class _ProfileCopyWithImpl<$R, $Out>
     deviceToken: data.get(#deviceToken, or: $value.deviceToken),
     suspended: data.get(#suspended, or: $value.suspended),
     address: data.get(#address, or: $value.address),
+    userStatus: data.get(#userStatus, or: $value.userStatus),
   );
 
   @override

@@ -1,5 +1,6 @@
 // ignore_for_file: public_member_api_docs, sort_constructors_first
 import 'package:amayalert/core/constant/constant.dart';
+import 'package:amayalert/core/theme/theme.dart';
 import 'package:amayalert/core/widgets/text/custom_text.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -15,102 +16,147 @@ class HotlineContainer extends StatefulWidget {
 class _HotlineContainerState extends State<HotlineContainer> {
   String _selectedCategory = 'All';
   bool _showAll = false;
-  static const _categories = ['All', 'Hospital', 'Ambulance', 'Police', 'Fire'];
   static const _previewCount = 3;
 
-  List<Hotline> get _filteredHotlines {
+  late Future<List<Hotline>> _hotlinesFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _hotlinesFuture = _fetchHotlines();
+  }
+
+  Future<List<Hotline>> _fetchHotlines() async {
+    final rows = await supabase
+        .from('emergency_hotlines')
+        .select('category, name, phones, landlines')
+        .order('category')
+        .order('name');
+    return (rows as List).map((r) => Hotline.fromDb(r as Map<String, dynamic>)).toList();
+  }
+
+  List<Hotline> _filtered(List<Hotline> all) {
     final filtered = _selectedCategory == 'All'
-        ? hotlines
-        : hotlines.where((h) => h.category == _selectedCategory).toList();
+        ? all
+        : all.where((h) => h.category == _selectedCategory).toList();
     return _showAll ? filtered : filtered.take(_previewCount).toList();
   }
 
-  bool get _hasMore {
+  bool _hasMore(List<Hotline> all) {
     final totalFiltered = _selectedCategory == 'All'
-        ? hotlines.length
-        : hotlines.where((h) => h.category == _selectedCategory).length;
+        ? all.length
+        : all.where((h) => h.category == _selectedCategory).length;
     return totalFiltered > _previewCount;
+  }
+
+  List<String> _categories(List<Hotline> all) {
+    final cats = all.map((h) => h.category).toSet().toList()..sort();
+    return ['All', ...cats];
   }
 
   @override
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(top: 16, bottom: 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(left: 16.0, bottom: 12),
-            child: CustomText(
-              text: 'Emergency Hotline Services',
-              color: Colors.black87,
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          // Category selector chips
-          SizedBox(
-            height: 40,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              itemCount: _categories.length,
-              itemBuilder: (context, i) {
-                final cat = _categories[i];
-                final isSelected = cat == _selectedCategory;
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: ChoiceChip(
-                    label: Text(cat),
-                    selected: isSelected,
-                    onSelected: (selected) {
-                      if (selected) {
-                        setState(() {
-                          _selectedCategory = cat;
-                          _showAll = false;
-                        });
-                      }
-                    },
-                    labelStyle: TextStyle(
-                      fontSize: 13,
-                      fontWeight: isSelected
-                          ? FontWeight.w600
-                          : FontWeight.w500,
-                      color: isSelected ? Colors.white : Colors.black87,
-                    ),
-                    backgroundColor: Colors.grey.shade200,
-                    selectedColor: Colors.blue.shade600,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-          const SizedBox(height: 12),
-          // Hotline list
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 200),
-            child: _buildList(context),
-          ),
-        ],
+      child: FutureBuilder<List<Hotline>>(
+        future: _hotlinesFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Padding(
+              padding: EdgeInsets.symmetric(vertical: 32),
+              child: Center(child: CircularProgressIndicator()),
+            );
+          }
+          if (snapshot.hasError) {
+            return Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                'Failed to load hotlines',
+                style: TextStyle(color: Colors.grey.shade500),
+              ),
+            );
+          }
+
+          final hotlines = snapshot.data ?? [];
+          final categories = _categories(hotlines);
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(left: 16.0, bottom: 12),
+                child: CustomText(
+                  text: 'Emergency Hotline Services',
+                  color: Colors.black87,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              // Category selector chips
+              SizedBox(
+                height: 40,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  itemCount: categories.length,
+                  itemBuilder: (context, i) {
+                    final cat = categories[i];
+                    final isSelected = cat == _selectedCategory;
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: ChoiceChip(
+                        label: Text(cat),
+                        selected: isSelected,
+                        onSelected: (selected) {
+                          if (selected) {
+                            setState(() {
+                              _selectedCategory = cat;
+                              _showAll = false;
+                            });
+                          }
+                        },
+                        labelStyle: TextStyle(
+                          fontSize: 13,
+                          fontWeight:
+                              isSelected ? FontWeight.w600 : FontWeight.w500,
+                          color: isSelected ? Colors.white : Colors.black87,
+                        ),
+                        backgroundColor: Colors.grey.shade200,
+                        selectedColor: AppColors.primary,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 12),
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 200),
+                child: _buildList(context, hotlines),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
 
-  Widget _buildList(BuildContext context) {
+  Widget _buildList(BuildContext context, List<Hotline> hotlines) {
+    final visible = _filtered(hotlines);
+    final hasMore = _hasMore(hotlines);
     return Container(
       key: ValueKey('$_selectedCategory-$_showAll'),
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         children: [
-          ..._filteredHotlines.map((h) => _HotlineListItem(h)),
-          if (_hasMore)
+          ...visible.map((h) => _HotlineListItem(h)),
+          if (hasMore)
             Padding(
               padding: const EdgeInsets.only(top: 4, bottom: 8),
               child: TextButton(
@@ -126,7 +172,7 @@ class _HotlineContainerState extends State<HotlineContainer> {
                   children: [
                     Text(
                       _showAll ? 'See less' : 'See all',
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
                       ),
@@ -253,7 +299,7 @@ class HotlineSheet extends StatelessWidget {
                 Container(
                   width: 32,
                   height: 32,
-                  decoration: BoxDecoration(
+                  decoration: const BoxDecoration(
                     color: Colors.black12,
                     shape: BoxShape.circle,
                   ),

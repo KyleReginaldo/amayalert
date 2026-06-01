@@ -106,6 +106,7 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
                     'id': auth.user!.id,
                     'email':
                         'guest_${DateTime.now().millisecondsSinceEpoch}@gmail.com',
+                    'status': 'approved',
                   });
                   if (mounted) {
                     context.read<ProfileRepository>().clear();

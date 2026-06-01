@@ -173,18 +173,18 @@ class AlertItem extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (alert.title.isNotEmpty) ...[
+                if (alert.title?.isNotEmpty == true) ...[
                   CustomText(
-                    text: alert.title,
+                    text: alert.title ?? '',
                     fontWeight: FontWeight.w600,
                     fontSize: 14,
                     color: Colors.red.shade800,
                   ),
                   const SizedBox(height: 4),
                 ],
-                if (alert.description.isNotEmpty) ...[
+                if (alert.description?.isNotEmpty == true) ...[
                   CustomText(
-                    text: alert.description,
+                    text: alert.description ?? '',
                     fontSize: 13,
                     color: Colors.red.shade700,
                     maxLines: 2,
@@ -204,7 +204,7 @@ class AlertItem extends StatelessWidget {
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: CustomText(
-                        text: alert.level.displayName.toUpperCase(),
+                        text: (alert.level?.displayName ?? 'UNKNOWN').toUpperCase(),
                         fontSize: 10,
                         fontWeight: FontWeight.w600,
                         color: Colors.white,
@@ -212,7 +212,7 @@ class AlertItem extends StatelessWidget {
                     ),
                     const SizedBox(width: 8),
                     CustomText(
-                      text: timeago.format(alert.createdAt),
+                      text: timeago.format(alert.createdAt ?? DateTime.now()),
                       fontSize: 11,
                       color: Colors.red.shade600,
                     ),

@@ -3,13 +3,12 @@ import 'dart:io';
 
 import 'package:amayalert/core/constant/constant.dart';
 import 'package:amayalert/core/services/chat_filter_service.dart';
-import 'package:amayalert/core/widgets/text/custom_text.dart';
+import 'package:amayalert/core/theme/theme.dart';
 import 'package:amayalert/dependency.dart';
 import 'package:amayalert/feature/messages/enhanced_message_repository.dart';
 import 'package:amayalert/feature/messages/message_model.dart';
 import 'package:amayalert/feature/profile/profile_repository.dart';
 import 'package:auto_route/auto_route.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -333,24 +332,85 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
     }
   }
 
+  // Deterministic avatar color — same palette as message/new-conversation screens
+  Color _avatarColor() {
+    const palette = [
+      Color(0xFF1D6BF3), Color(0xFF2E7D32), Color(0xFFDC2626),
+      Color(0xFF7C3AED), Color(0xFFF59E0B), Color(0xFF0891B2),
+      Color(0xFFDB2777), Color(0xFF16A34A),
+    ];
+    final name = widget.otherUserName;
+    final idx = name.isEmpty ? 0 : name.codeUnitAt(0) % palette.length;
+    return palette[idx];
+  }
+
   @override
   Widget build(BuildContext context) {
+    final color = _avatarColor();
+    final initial = widget.otherUserName.isNotEmpty
+        ? widget.otherUserName.trim()[0].toUpperCase()
+        : '?';
+
     return ChangeNotifierProvider.value(
       value: sl<EnhancedMessageRepository>(),
       child: Scaffold(
+        backgroundColor: const Color(0xFFF0F4FF),
         appBar: AppBar(
-          title: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          backgroundColor: Colors.white,
+          elevation: 0,
+          scrolledUnderElevation: 1,
+          surfaceTintColor: Colors.white,
+          leading: IconButton(
+            onPressed: () => context.router.maybePop(),
+            icon: const Icon(LucideIcons.arrowLeft,
+                color: AppColors.textPrimaryLight, size: 20),
+          ),
+          titleSpacing: 0,
+          title: Row(
             children: [
-              CustomText(
-                text: widget.otherUserName,
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
+              // Avatar
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  initial,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ),
-              const CustomText(
-                text: 'Online',
-                fontSize: 12,
-                color: Colors.green,
+              const SizedBox(width: 10),
+              // Name
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.otherUserName,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimaryLight,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (widget.otherUserPhone != null &&
+                        widget.otherUserPhone!.isNotEmpty)
+                      Text(
+                        widget.otherUserPhone!,
+                        style: const TextStyle(
+                            fontSize: 11, color: AppColors.gray400),
+                      ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -359,141 +419,210 @@ class _ChatScreenState extends State<ChatScreen> with WidgetsBindingObserver {
                 widget.otherUserPhone!.isNotEmpty)
               IconButton(
                 onPressed: _makePhoneCall,
-                icon: const Icon(LucideIcons.phone),
+                icon: const Icon(LucideIcons.phone,
+                    color: AppColors.primary, size: 20),
                 tooltip: 'Call ${widget.otherUserName}',
               ),
-            // Debug button to show phone number (remove in production)
-            if (kDebugMode && widget.otherUserPhone != null)
-              IconButton(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Phone: ${widget.otherUserPhone}'),
-                      duration: const Duration(seconds: 2),
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.info_outline),
-                tooltip: 'Show phone number',
-              ),
+            const SizedBox(width: 4),
           ],
         ),
-        body: SizedBox(
-          height: MediaQuery.sizeOf(context).height,
-          width: MediaQuery.sizeOf(context).width,
-          child: Column(
-            children: [
-              Expanded(
-                child: Consumer<EnhancedMessageRepository>(
-                  builder: (context, messageRepository, child) {
-                    if (messageRepository.isLoading) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
+        body: Column(
+          children: [
+            Expanded(
+              child: Consumer<EnhancedMessageRepository>(
+                builder: (context, repo, _) {
+                  // Loading
+                  if (repo.isLoading) {
+                    return const Center(
+                      child: CircularProgressIndicator.adaptive(),
+                    );
+                  }
 
-                    if (messageRepository.errorMessage != null) {
-                      return Center(
+                  // Error
+                  if (repo.errorMessage != null) {
+                    return Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(32),
                         child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(
-                              Icons.error_outline,
-                              size: 48,
-                              color: Colors.red.shade400,
+                            Container(
+                              width: 64,
+                              height: 64,
+                              decoration: BoxDecoration(
+                                color: AppColors.danger.withValues(alpha: 0.08),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(LucideIcons.wifiOff,
+                                  size: 28, color: AppColors.danger),
                             ),
                             const SizedBox(height: 16),
-                            CustomText(
-                              text: 'Error loading messages',
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                            const SizedBox(height: 8),
-                            CustomText(
-                              text: messageRepository.errorMessage!,
-                              fontSize: 14,
-                              color: Colors.grey.shade600,
-                              textAlign: TextAlign.center,
-                            ),
-                            const SizedBox(height: 16),
+                            const Text('Failed to load messages',
+                                style: TextStyle(
+                                    fontSize: 16, fontWeight: FontWeight.w700)),
+                            const SizedBox(height: 6),
+                            Text(repo.errorMessage!,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                    fontSize: 13,
+                                    color: AppColors.textSecondaryLight)),
+                            const SizedBox(height: 20),
                             ElevatedButton(
                               onPressed: () {
-                                messageRepository.clearError();
+                                repo.clearError();
                                 _loadMessages();
                               },
-                              child: const CustomText(text: 'Retry'),
+                              child: const Text('Retry'),
                             ),
                           ],
                         ),
-                      );
-                    }
-
-                    final messages =
-                        messageRepository.currentConversationMessages;
-
-                    if (messages.isEmpty) {
-                      return Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              LucideIcons.messageSquare,
-                              size: 48,
-                              color: Colors.grey.shade400,
-                            ),
-                            const SizedBox(height: 16),
-                            CustomText(
-                              text: 'No messages yet',
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                            const SizedBox(height: 8),
-                            CustomText(
-                              text: 'Start the conversation!',
-                              fontSize: 14,
-                              color: Colors.grey.shade600,
-                            ),
-                          ],
-                        ),
-                      );
-                    }
-
-                    return ListView.builder(
-                      controller: _scrollController,
-                      reverse: true,
-                      padding: const EdgeInsets.all(16),
-                      itemCount: messages.length,
-                      itemBuilder: (context, index) {
-                        final reversedIndex = messages.length - 1 - index;
-                        final message = messages[reversedIndex];
-                        final currentUser =
-                            Supabase.instance.client.auth.currentUser;
-                        final isMe = message.sender == currentUser?.id;
-
-                        return MessageBubble(message: message, isMe: isMe);
-                      },
+                      ),
                     );
-                  },
-                ),
+                  }
+
+                  final messages = repo.currentConversationMessages;
+
+                  // Empty
+                  if (messages.isEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 72,
+                            height: 72,
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.08),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(LucideIcons.messageCircle,
+                                size: 32, color: AppColors.primary),
+                          ),
+                          const SizedBox(height: 16),
+                          const Text('No messages yet',
+                              style: TextStyle(
+                                  fontSize: 16, fontWeight: FontWeight.w700)),
+                          const SizedBox(height: 6),
+                          Text('Say hi to ${widget.otherUserName}!',
+                              style: const TextStyle(
+                                  fontSize: 13,
+                                  color: AppColors.textSecondaryLight)),
+                        ],
+                      ),
+                    );
+                  }
+
+                  final currentUid =
+                      Supabase.instance.client.auth.currentUser?.id;
+
+                  // Build list with date separators
+                  // messages are in ascending order (oldest first)
+                  // ListView is reversed so index 0 = newest
+                  return ListView.builder(
+                    controller: _scrollController,
+                    reverse: true,
+                    padding: const EdgeInsets.fromLTRB(12, 12, 12, 8),
+                    itemCount: messages.length,
+                    itemBuilder: (context, index) {
+                      // index 0 = newest message (reversed)
+                      final reversedIdx = messages.length - 1 - index;
+                      final msg = messages[reversedIdx];
+                      final isMe = msg.sender == currentUid;
+
+                      // Check if we need a date separator
+                      // In reversed list, separator goes AFTER current item
+                      final showSeparator = reversedIdx == 0 ||
+                          !_sameDay(
+                              messages[reversedIdx - 1].createdAt,
+                              msg.createdAt);
+
+                      return Column(
+                        children: [
+                          if (showSeparator)
+                            _DateSeparator(date: msg.createdAt),
+                          MessageBubble(message: msg, isMe: isMe),
+                        ],
+                      );
+                    },
+                  );
+                },
               ),
-              // Show upload progress if active
-              if (_isUploading) LinearProgressIndicator(value: _uploadProgress),
-              MessageInput(
-                controller: _messageController,
-                isComposing: _isComposing,
-                hasInappropriateContent: _hasInappropriateContent,
-                onSend: _sendMessage,
-                onTextChanged: _onTextChanged,
-                receiverId: widget.otherUserId,
-                onUploadStart: () => setState(() => _isUploading = true),
-                onUploadProgress: (p) => setState(() => _uploadProgress = p),
-                onUploadEnd: () => setState(() {
-                  _isUploading = false;
-                  _uploadProgress = 0.0;
-                }),
-                imagePicker: widget.imagePicker,
+            ),
+
+            // Upload progress
+            if (_isUploading)
+              LinearProgressIndicator(
+                value: _uploadProgress,
+                color: AppColors.primary,
+                backgroundColor: AppColors.gray200,
               ),
-            ],
-          ),
+
+            // Input
+            MessageInput(
+              controller: _messageController,
+              isComposing: _isComposing,
+              hasInappropriateContent: _hasInappropriateContent,
+              onSend: _sendMessage,
+              onTextChanged: _onTextChanged,
+              receiverId: widget.otherUserId,
+              onUploadStart: () => setState(() => _isUploading = true),
+              onUploadProgress: (p) =>
+                  setState(() => _uploadProgress = p),
+              onUploadEnd: () => setState(() {
+                _isUploading = false;
+                _uploadProgress = 0.0;
+              }),
+              imagePicker: widget.imagePicker,
+            ),
+          ],
         ),
+      ),
+    );
+  }
+
+  bool _sameDay(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
+}
+
+// ── Date separator ────────────────────────────────────────────────────────────
+
+class _DateSeparator extends StatelessWidget {
+  final DateTime date;
+  const _DateSeparator({required this.date});
+
+  String _label() {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final d = DateTime(date.year, date.month, date.day);
+    if (d == today) return 'Today';
+    if (d == today.subtract(const Duration(days: 1))) return 'Yesterday';
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    return '${months[date.month - 1]} ${date.day}, ${date.year}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16),
+      child: Row(
+        children: [
+          const Expanded(child: Divider(color: AppColors.gray300)),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Text(
+              _label(),
+              style: const TextStyle(
+                fontSize: 11,
+                color: AppColors.gray500,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          const Expanded(child: Divider(color: AppColors.gray300)),
+        ],
       ),
     );
   }
@@ -505,220 +634,211 @@ class MessageBubble extends StatelessWidget {
 
   const MessageBubble({super.key, required this.message, required this.isMe});
 
+  static const _sentColor = AppColors.primary;
+  static const _receivedColor = Color(0xFFEEF0F4);
+
   @override
   Widget build(BuildContext context) {
+    final maxW = MediaQuery.of(context).size.width * 0.72;
+
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
-        mainAxisAlignment: isMe
-            ? MainAxisAlignment.end
-            : MainAxisAlignment.start,
+        mainAxisAlignment:
+            isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          if (!isMe) ...[
-            CircleAvatar(
-              radius: 16,
-              backgroundColor: Colors.blue.withValues(alpha: 0.1),
-              child: const Icon(LucideIcons.user, size: 16, color: Colors.blue),
-            ),
-            const SizedBox(width: 8),
-          ],
-          Flexible(
-            child: Container(
-              constraints: BoxConstraints(
-                maxWidth: MediaQuery.of(context).size.width * 0.7,
+          Column(
+            crossAxisAlignment:
+                isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+            children: [
+          // ── Bubble ──────────────────────────────────────────────────
+          Container(
+            constraints: BoxConstraints(maxWidth: maxW),
+            decoration: BoxDecoration(
+              color: isMe ? _sentColor : _receivedColor,
+              borderRadius: BorderRadius.only(
+                topLeft: const Radius.circular(18),
+                topRight: const Radius.circular(18),
+                bottomLeft: Radius.circular(isMe ? 18 : 4),
+                bottomRight: Radius.circular(isMe ? 4 : 18),
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              decoration: BoxDecoration(
-                color: isMe ? Colors.blue : Colors.grey.shade200,
-                borderRadius: BorderRadius.only(
-                  topLeft: const Radius.circular(16),
-                  topRight: const Radius.circular(16),
-                  bottomLeft: Radius.circular(isMe ? 16 : 4),
-                  bottomRight: Radius.circular(isMe ? 4 : 16),
-                ),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.only(
+                topLeft: const Radius.circular(18),
+                topRight: const Radius.circular(18),
+                bottomLeft: Radius.circular(isMe ? 18 : 4),
+                bottomRight: Radius.circular(isMe ? 4 : 18),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (message.content.isNotEmpty) ...[
-                    CustomText(
-                      text: message.content,
-                      color: isMe ? Colors.white : Colors.black87,
-                      fontSize: 14,
-                    ),
-                    const SizedBox(height: 8),
-                  ],
-
+                  // Image attachment
                   if (message.hasAttachment &&
-                      message.attachmentType == AttachmentType.image) ...[
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: Builder(
-                        builder: (context) {
-                          final url = message.attachmentUrl ?? '';
-                          final isNetwork = url.startsWith('http');
-                          if (isNetwork) {
-                            return Image.network(
-                              url,
-                              fit: BoxFit.cover,
-                              width: MediaQuery.of(context).size.width * 0.6,
-                              height: 160,
-                              loadingBuilder: (context, child, loadingProgress) {
-                                if (loadingProgress == null) return child;
-                                return SizedBox(
-                                  width:
-                                      MediaQuery.of(context).size.width * 0.6,
-                                  height: 160,
-                                  child: Center(
-                                    child: CircularProgressIndicator(
-                                      value:
-                                          loadingProgress.expectedTotalBytes !=
-                                              null
-                                          ? loadingProgress
-                                                    .cumulativeBytesLoaded /
-                                                (loadingProgress
-                                                        .expectedTotalBytes ??
-                                                    1)
-                                          : null,
-                                    ),
-                                  ),
-                                );
-                              },
-                              errorBuilder: (context, error, stackTrace) =>
-                                  Container(
-                                    width:
-                                        MediaQuery.of(context).size.width * 0.6,
-                                    height: 160,
-                                    color: Colors.grey.shade300,
-                                    child: const Center(
-                                      child: Icon(LucideIcons.image),
-                                    ),
-                                  ),
-                            );
-                          }
+                      message.attachmentType == AttachmentType.image)
+                    _ImageAttachment(
+                        url: message.attachmentUrl ?? '', maxW: maxW),
 
-                          // Local file placeholder (optimistic). Use Image.file so tests/platforms handle it.
-                          return Image.file(
-                            File(url),
-                            fit: BoxFit.cover,
-                            width: MediaQuery.of(context).size.width * 0.6,
-                            height: 160,
-                          );
-                        },
+                  // Generic attachment
+                  if (message.hasAttachment &&
+                      message.attachmentType != AttachmentType.image)
+                    _GenericAttachment(message: message, isMe: isMe),
+
+                  // Text content
+                  if (message.content.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(14, 10, 14, 6),
+                      child: Text(
+                        message.content,
+                        style: TextStyle(
+                          color: isMe ? Colors.white : AppColors.textPrimaryLight,
+                          fontSize: 14.5,
+                          height: 1.4,
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 8),
-                  ] else if (message.hasAttachment) ...[
-                    // Generic attachment preview for non-image types
-                    Container(
-                      width: MediaQuery.of(context).size.width * 0.6,
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: isMe
-                            ? Colors.blue.shade700
-                            : Colors.grey.shade100,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        children: [
-                          Text(
-                            message.attachmentType?.icon ?? '📎',
-                            style: const TextStyle(fontSize: 24),
+
+                  // Timestamp + read receipt
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(14, 0, 12, 8),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          timeago.format(message.createdAt, locale: 'en_short'),
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: isMe
+                                ? Colors.white.withValues(alpha: 0.65)
+                                : AppColors.gray400,
                           ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: CustomText(
-                              text: message.attachmentUrl ?? 'Attachment',
-                              color: isMe ? Colors.white : Colors.black87,
-                              fontSize: 14,
-                            ),
+                        ),
+                        if (isMe) ...[
+                          const SizedBox(width: 4),
+                          Icon(
+                            message.isSeen
+                                ? LucideIcons.checkCheck
+                                : LucideIcons.check,
+                            size: 13,
+                            color: message.isSeen
+                                ? Colors.white
+                                : Colors.white.withValues(alpha: 0.55),
                           ),
                         ],
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                  ],
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      CustomText(
-                        text: timeago.format(message.createdAt),
-                        color: isMe ? Colors.white70 : Colors.grey.shade600,
-                        fontSize: 12,
-                      ),
-                      if (isMe) ...[
-                        const SizedBox(width: 4),
-                        Icon(
-                          message.isSeen
-                              ? LucideIcons.checkCheck
-                              : LucideIcons.check,
-                          size: 14,
-                          color: message.isSeen
-                              ? Colors.blue.shade200
-                              : Colors.white70,
-                        ),
                       ],
-                    ],
-                  ),
-                  // Show failed / retry for optimistic placeholders
-                  Builder(
-                    builder: (context) {
-                      final repo = Provider.of<EnhancedMessageRepository>(
-                        context,
-                        listen: false,
-                      );
-                      if (message.id < 0 &&
-                          repo.failedUploads.contains(message.id)) {
-                        return Row(
-                          children: [
-                            const SizedBox(width: 4),
-                            Icon(
-                              Icons.error_outline,
-                              color: Colors.red.shade400,
-                              size: 14,
-                            ),
-                            const SizedBox(width: 6),
-                            GestureDetector(
-                              onTap: () async {
-                                final localPath =
-                                    repo.uploadPlaceholders[message.id];
-                                if (localPath == null) return;
-                                final currentUser =
-                                    Supabase.instance.client.auth.currentUser;
-                                if (currentUser == null) return;
-                                final file = XFile(localPath);
-                                await repo.retryUpload(
-                                  tempId: message.id,
-                                  senderId: currentUser.id,
-                                  file: file,
-                                );
-                              },
-                              child: CustomText(
-                                text: 'Upload failed — tap to retry',
-                                color: isMe
-                                    ? Colors.white70
-                                    : Colors.red.shade400,
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
-                        );
-                      }
-                      return const SizedBox.shrink();
-                    },
+                    ),
                   ),
                 ],
               ),
             ),
           ),
-          if (isMe) ...[
-            const SizedBox(width: 8),
-            CircleAvatar(
-              radius: 16,
-              backgroundColor: Colors.blue.withValues(alpha: 0.1),
-              child: const Icon(LucideIcons.user, size: 16, color: Colors.blue),
+
+          // ── Failed upload retry ──────────────────────────────────────
+          Builder(builder: (context) {
+            final repo = Provider.of<EnhancedMessageRepository>(
+              context,
+              listen: false,
+            );
+            if (message.id < 0 && repo.failedUploads.contains(message.id)) {
+              return GestureDetector(
+                onTap: () async {
+                  final localPath = repo.uploadPlaceholders[message.id];
+                  if (localPath == null) return;
+                  final uid = Supabase.instance.client.auth.currentUser?.id;
+                  if (uid == null) return;
+                  await repo.retryUpload(
+                    tempId: message.id,
+                    senderId: uid,
+                    file: XFile(localPath),
+                  );
+                },
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(LucideIcons.triangle,
+                          size: 12, color: AppColors.danger),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Upload failed — tap to retry',
+                        style: const TextStyle(
+                            fontSize: 11, color: AppColors.danger),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
+            return const SizedBox.shrink();
+          }),
+            ],   // Column children
+          ),     // Column
+        ],       // Row children
+      ),         // Row
+    );           // Padding
+  }
+}
+
+class _ImageAttachment extends StatelessWidget {
+  final String url;
+  final double maxW;
+  const _ImageAttachment({required this.url, required this.maxW});
+
+  @override
+  Widget build(BuildContext context) {
+    if (url.startsWith('http')) {
+      return Image.network(
+        url,
+        width: maxW,
+        height: 200,
+        fit: BoxFit.cover,
+        loadingBuilder: (_, child, progress) {
+          if (progress == null) return child;
+          return Container(
+            width: maxW,
+            height: 200,
+            color: AppColors.gray200,
+            child: const Center(child: CircularProgressIndicator.adaptive()),
+          );
+        },
+        errorBuilder: (_, _, _) => Container(
+          width: maxW,
+          height: 200,
+          color: AppColors.gray200,
+          child: const Icon(LucideIcons.imageOff,
+              color: AppColors.gray400, size: 32),
+        ),
+      );
+    }
+    return Image.file(File(url),
+        width: maxW, height: 200, fit: BoxFit.cover);
+  }
+}
+
+class _GenericAttachment extends StatelessWidget {
+  final Message message;
+  final bool isMe;
+  const _GenericAttachment({required this.message, required this.isMe});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(message.attachmentType?.icon ?? '📎',
+              style: const TextStyle(fontSize: 22)),
+          const SizedBox(width: 8),
+          Text(
+            'Attachment',
+            style: TextStyle(
+              fontSize: 14,
+              color: isMe ? Colors.white : AppColors.textSecondaryLight,
             ),
-          ],
+          ),
         ],
       ),
     );
@@ -867,68 +987,112 @@ class _MessageInputState extends State<MessageInput> {
 
   @override
   Widget build(BuildContext context) {
+    final canSend =
+        widget.isComposing && !_sendingImage && !widget.hasInappropriateContent;
+
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: Colors.white,
-        border: Border(top: BorderSide(color: Colors.grey.shade300)),
+        border: Border(top: BorderSide(color: AppColors.border)),
       ),
       child: SafeArea(
-        child: Row(
-          children: [
-            IconButton(
-              onPressed: _sendingImage ? null : _onImageButtonPressed,
-              icon: Icon(LucideIcons.image, color: Colors.grey.shade700),
-            ),
-            Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(24),
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              // Attach image
+              GestureDetector(
+                onTap: _sendingImage ? null : _onImageButtonPressed,
+                child: Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: AppColors.gray100,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    LucideIcons.paperclip,
+                    size: 18,
+                    color: _sendingImage
+                        ? AppColors.gray300
+                        : AppColors.gray500,
+                  ),
                 ),
-                child: TextField(
-                  controller: widget.controller,
-                  onChanged: widget.onTextChanged,
-                  decoration: const InputDecoration(
-                    hintText: 'Type a message...',
-                    border: InputBorder.none,
-                    contentPadding: EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 10,
+              ),
+              const SizedBox(width: 8),
+
+              // Text field
+              Expanded(
+                child: Container(
+                  constraints: const BoxConstraints(maxHeight: 120),
+                  decoration: BoxDecoration(
+                    color: AppColors.gray100,
+                    borderRadius: BorderRadius.circular(22),
+                  ),
+                  child: TextField(
+                    controller: widget.controller,
+                    onChanged: widget.onTextChanged,
+                    textInputAction: TextInputAction.newline,
+                    onSubmitted: (_) {
+                      if (canSend) widget.onSend();
+                    },
+                    maxLines: null,
+                    style: const TextStyle(fontSize: 14.5),
+                    decoration: InputDecoration(
+                      hintText: widget.hasInappropriateContent
+                          ? 'Message blocked — edit before sending'
+                          : 'Message...',
+                      hintStyle: TextStyle(
+                        color: widget.hasInappropriateContent
+                            ? AppColors.danger
+                            : AppColors.gray400,
+                        fontSize: 14.5,
+                      ),
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 10),
+                      isDense: true,
+                      filled: true,
+                      fillColor: Colors.transparent,
                     ),
                   ),
-                  textInputAction: TextInputAction.send,
-                  onSubmitted: (_) => widget.onSend(),
-                  maxLines: null,
                 ),
               ),
-            ),
-            const SizedBox(width: 8),
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              child: IconButton(
-                onPressed:
-                    (widget.isComposing &&
-                        !_sendingImage &&
-                        !widget.hasInappropriateContent)
-                    ? widget.onSend
-                    : null,
-                icon: Icon(
-                  widget.hasInappropriateContent
-                      ? Icons.warning
-                      : LucideIcons.send,
-                  color: widget.hasInappropriateContent
-                      ? Colors.red
-                      : (widget.isComposing && !_sendingImage)
-                      ? Colors.blue
-                      : Colors.grey,
+              const SizedBox(width: 8),
+
+              // Send button
+              AnimatedScale(
+                scale: widget.isComposing ? 1.0 : 0.85,
+                duration: const Duration(milliseconds: 150),
+                child: GestureDetector(
+                  onTap: canSend ? widget.onSend : null,
+                  child: Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: widget.hasInappropriateContent
+                          ? AppColors.danger
+                          : canSend
+                              ? AppColors.primary
+                              : AppColors.gray300,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      widget.hasInappropriateContent
+                          ? LucideIcons.triangle
+                          : LucideIcons.send,
+                      size: 16,
+                      color: Colors.white,
+                    ),
+                  ),
                 ),
-                tooltip: widget.hasInappropriateContent
-                    ? 'Message contains inappropriate content'
-                    : null,
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

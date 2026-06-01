@@ -1,237 +1,153 @@
 import 'package:amayalert/core/theme/theme.dart';
-import 'package:amayalert/core/widgets/text/custom_text.dart';
 import 'package:amayalert/feature/rescue/rescue_model.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:timeago/timeago.dart' as timeago;
 
 class StatusHeaderWidget extends StatelessWidget {
   final Rescue rescue;
-
   const StatusHeaderWidget({super.key, required this.rescue});
 
   @override
   Widget build(BuildContext context) {
+    final statusColor = _statusColor(rescue.status);
+    final priorityColor = _priorityColor(rescue.priority);
+
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: _getStatusColor(rescue.status).withValues(alpha: 0.1),
-          width: 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        color: statusColor.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: statusColor.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Status + priority + type row
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: _getPriorityColor(rescue.priority),
-                  borderRadius: BorderRadius.circular(8),
-                  boxShadow: [
-                    BoxShadow(
-                      color: _getPriorityColor(
-                        rescue.priority,
-                      ).withValues(alpha: 0.3),
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(LucideIcons.zap, size: 14, color: Colors.white),
-                    const SizedBox(width: 4),
-                    CustomText(
-                      text: rescue.priorityLabel,
-                      color: Colors.white,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ],
-                ),
+              _badge(
+                icon: _statusIcon(rescue.status),
+                label: _statusLabel(rescue.status),
+                bgColor: statusColor,
+                textColor: Colors.white,
               ),
-              Icon(
-                _getStatusIcon(rescue.status),
-                size: 20,
-                color: _getStatusColor(rescue.status),
+              const SizedBox(width: 8),
+              _badge(
+                icon: LucideIcons.zap,
+                label: rescue.priorityLabel,
+                bgColor: priorityColor.withValues(alpha: 0.12),
+                textColor: priorityColor,
+                borderColor: priorityColor.withValues(alpha: 0.4),
               ),
+              const Spacer(),
+              if (rescue.emergencyType != null)
+                _badge(
+                  icon: _typeIcon(rescue.emergencyType!),
+                  label: rescue.emergencyTypeLabel,
+                  bgColor: AppColors.danger.withValues(alpha: 0.08),
+                  textColor: AppColors.danger,
+                  borderColor: AppColors.danger.withValues(alpha: 0.3),
+                ),
             ],
           ),
 
-          const SizedBox(height: 8),
-          if (rescue.emergencyType != null) ...[
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: AppColors.error.withValues(alpha: 0.05),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppColors.error, width: 1),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      _getEmergencyTypeIcon(rescue.emergencyType!),
-                      size: 14,
-                      color: AppColors.error,
-                    ),
-                    const SizedBox(width: 4),
-                    CustomText(
-                      text: rescue.emergencyTypeLabel,
-                      fontSize: 14,
-                      color: AppColors.error,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
+          const Divider(height: 1, color: AppColors.border),
+          const SizedBox(height: 10),
 
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.05),
-              border: Border.all(color: AppColors.primary),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _buildInfoColumn(
-                    'Reported',
-                    timeago.format(rescue.reportedAt),
-                    LucideIcons.clock,
-                    AppColors.gray600,
-                  ),
+          // Date + victims
+          Row(
+            children: [
+              const Icon(LucideIcons.clock, size: 13, color: AppColors.gray500),
+              const SizedBox(width: 6),
+              Text(
+                DateFormat('MMM d, y · h:mm a').format(rescue.createdAt),
+                style: const TextStyle(
+                    fontSize: 12, color: AppColors.textSecondaryLight),
+              ),
+              if (rescue.victimCount != null) ...[
+                const SizedBox(width: 14),
+                const Icon(LucideIcons.users,
+                    size: 13, color: AppColors.gray500),
+                const SizedBox(width: 6),
+                Text(
+                  '${rescue.victimCount} affected',
+                  style: const TextStyle(
+                      fontSize: 12, color: AppColors.textSecondaryLight),
                 ),
-                Container(width: 1, height: 30, color: AppColors.gray300),
-                Expanded(
-                  child: _buildInfoColumn(
-                    'ID',
-                    '#${rescue.id.substring(0, 8)}',
-                    LucideIcons.hash,
-                    AppColors.gray600,
-                  ),
-                ),
-                if (rescue.victimCount != null) ...[
-                  Container(width: 1, height: 30, color: AppColors.gray300),
-                  Expanded(
-                    child: _buildInfoColumn(
-                      'Affected',
-                      '${rescue.victimCount} people',
-                      LucideIcons.users,
-                      AppColors.gray600,
-                    ),
-                  ),
-                ],
               ],
-            ),
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _buildInfoColumn(
-    String label,
-    String value,
-    IconData icon,
-    Color color,
-  ) {
-    return Column(
-      children: [
-        Icon(icon, size: 16, color: color),
-        const SizedBox(height: 4),
-        CustomText(
-          text: label,
-          fontSize: 10,
-          color: color,
-          fontWeight: FontWeight.w500,
+  Widget _badge({
+    required IconData icon,
+    required String label,
+    required Color bgColor,
+    required Color textColor,
+    Color? borderColor,
+  }) =>
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(20),
+          border:
+              borderColor != null ? Border.all(color: borderColor) : null,
         ),
-        const SizedBox(height: 2),
-        CustomText(
-          text: value,
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-          color: AppColors.gray800,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 12, color: textColor),
+            const SizedBox(width: 4),
+            Text(label,
+                style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: textColor,
+                    letterSpacing: 0.3)),
+          ],
         ),
-      ],
-    );
+      );
+
+  String _statusLabel(RescueStatus s) => switch (s) {
+        RescueStatus.pending => 'PENDING',
+        RescueStatus.inProgress => 'IN PROGRESS',
+        RescueStatus.completed => 'COMPLETED',
+        RescueStatus.cancelled => 'CANCELLED',
+      };
+
+  Color _statusColor(RescueStatus s) => switch (s) {
+        RescueStatus.pending => const Color(0xFFF59E0B),
+        RescueStatus.inProgress => AppColors.primary,
+        RescueStatus.completed => AppColors.success,
+        RescueStatus.cancelled => AppColors.danger,
+      };
+
+  IconData _statusIcon(RescueStatus s) => switch (s) {
+        RescueStatus.pending => LucideIcons.clock,
+        RescueStatus.inProgress => LucideIcons.loader,
+        RescueStatus.completed => LucideIcons.checkCheck,
+        RescueStatus.cancelled => LucideIcons.x,
+      };
+
+  Color _priorityColor(int p) {
+    if (p <= 1) return AppColors.success;
+    if (p == 2) return const Color(0xFFF59E0B);
+    if (p == 3) return AppColors.danger;
+    return const Color(0xFF7F1D1D);
   }
 
-  IconData _getStatusIcon(RescueStatus status) {
-    switch (status) {
-      case RescueStatus.pending:
-        return LucideIcons.clock;
-      case RescueStatus.inProgress:
-        return LucideIcons.loader;
-      case RescueStatus.completed:
-        return LucideIcons.check;
-      case RescueStatus.cancelled:
-        return LucideIcons.x;
-    }
-  }
-
-  IconData _getEmergencyTypeIcon(String emergencyType) {
-    switch (emergencyType.toLowerCase()) {
-      case 'medical':
-        return LucideIcons.heart;
-      case 'fire':
-        return LucideIcons.flame;
-      case 'flood':
-        return LucideIcons.waves;
-      case 'accident':
-        return LucideIcons.car;
-      case 'violence':
-        return LucideIcons.shield;
-      case 'natural_disaster':
-        return LucideIcons.zap;
-      default:
-        return LucideIcons.info;
-    }
-  }
-
-  Color _getStatusColor(RescueStatus status) {
-    switch (status) {
-      case RescueStatus.pending:
-        return Colors.orange;
-      case RescueStatus.inProgress:
-        return Colors.blue;
-      case RescueStatus.completed:
-        return Colors.green;
-      case RescueStatus.cancelled:
-        return Colors.red;
-    }
-  }
-
-  Color _getPriorityColor(int priority) {
-    if (priority <= 1) return Colors.green;
-    if (priority == 2) return Colors.orange;
-    if (priority == 3) return Colors.red;
-    return const Color(0xFF8B0000);
-  }
+  IconData _typeIcon(String type) => switch (type.toLowerCase()) {
+        'medical' => LucideIcons.heartPulse,
+        'fire' => LucideIcons.flame,
+        'flood' => LucideIcons.waves,
+        'accident' => LucideIcons.car,
+        'violence' => LucideIcons.handFist,
+        _ => LucideIcons.siren,
+      };
 }

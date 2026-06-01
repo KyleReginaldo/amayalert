@@ -136,6 +136,7 @@ class ActivityRepository extends ChangeNotifier {
           metadata: {
             'post_id': post['id'],
             'media_url': post['media_url'],
+            'media_urls': post['media_urls'],
             'visibility': post['visibility'],
           },
         );
@@ -278,11 +279,16 @@ class ActivityRepository extends ChangeNotifier {
             'completed_at': rescue['completed_at'],
             'latitude': rescue['lat'],
             'longitude': rescue['lng'],
+            'media_urls': rescue['attachments'], // rescue images
           },
         );
       }).toList();
 
       _activities.addAll(rescueActivities);
+      // DEBUG — print attachments for each rescue
+      for (final rescue in (response as List)) {
+        debugPrint('[RESCUE] id=${rescue['id']} attachments(${rescue['attachments'].runtimeType})=${rescue['attachments']}');
+      }
       debugPrint('Added ${rescueActivities.length} rescue activities');
     } catch (e) {
       debugPrint('Error loading rescue activities: $e');

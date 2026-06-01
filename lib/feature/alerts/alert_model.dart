@@ -6,42 +6,36 @@ part 'alert_model.mapper.dart';
 @MappableClass(caseStyle: CaseStyle.snakeCase)
 class Alert with AlertMappable {
   final int id;
-  final String user;
-  final String title;
-  final String description;
-  final AlertLevel level;
-  final AlertStatus status;
+  final String? user;
+  final String? title;
+  final String? description;
+  final AlertLevel? level;
+  final AlertStatus? status;
   final String? location;
   final double? latitude;
   final double? longitude;
-  final DateTime createdAt;
+  final DateTime? createdAt;
   final DateTime? updatedAt;
   final DateTime? resolvedAt;
 
   const Alert({
     required this.id,
-    required this.user,
-    required this.title,
-    required this.description,
-    required this.level,
-    required this.status,
+    this.user,
+    this.title,
+    this.description,
+    this.level,
+    this.status,
     this.location,
     this.latitude,
     this.longitude,
-    required this.createdAt,
+    this.createdAt,
     this.updatedAt,
     this.resolvedAt,
   });
 
   /// Check if alert is active
-  bool get isActive {
-    return status == AlertStatus.active;
-  }
-
-  /// Check if alert is resolved
-  bool get isResolved {
-    return status == AlertStatus.resolved;
-  }
+  bool get isActive => status == AlertStatus.active;
+  bool get isResolved => status == AlertStatus.resolved;
 
   /// Check if alert has location data
   bool get hasLocation {

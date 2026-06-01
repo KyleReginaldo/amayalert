@@ -21,19 +21,25 @@ class PostProvider {
     required CreatePostDTO dto,
   }) async {
     try {
-      String? imageUrl;
-      if (dto.imageFile != null) {
+      // Upload multiple images → media_urls array
+      List<String> uploadedUrls = [];
+      final filesToUpload = dto.imageFiles ?? (dto.imageFile != null ? [dto.imageFile!] : []);
+      for (final file in filesToUpload) {
         final fileName =
-            'posts/${DateTime.now().microsecondsSinceEpoch.toString()}_${dto.imageFile!.name}';
+            'posts/${DateTime.now().microsecondsSinceEpoch}_${file.name}';
         await supabase.storage
             .from('files')
-            .upload(fileName, File(dto.imageFile!.path));
-        imageUrl = supabase.storage.from('files').getPublicUrl(fileName);
+            .upload(fileName, File(file.path));
+        uploadedUrls.add(supabase.storage.from('files').getPublicUrl(fileName));
       }
+
       final postData = {
         'user': userId,
         'content': dto.content,
-        if (imageUrl != null) 'media_url': imageUrl,
+        // Keep single media_url for backward compat (first image)
+        if (uploadedUrls.isNotEmpty) 'media_url': uploadedUrls.first,
+        // Store all URLs in media_urls array
+        if (uploadedUrls.isNotEmpty) 'media_urls': uploadedUrls,
         if (dto.sharedPost != null) 'shared_post': dto.sharedPost,
         'visibility': dto.visibility,
       };

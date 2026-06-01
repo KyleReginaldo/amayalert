@@ -111,30 +111,34 @@ class _RescueDetailScreenState extends State<RescueDetailScreen> {
       child: Scaffold(
         backgroundColor: AppColors.scaffoldLight,
         appBar: AppBar(
-          backgroundColor: AppColors.scaffoldLight,
+          backgroundColor: Colors.white,
           elevation: 0,
+          scrolledUnderElevation: 1,
+          surfaceTintColor: Colors.white,
           leading: IconButton(
             onPressed: () => context.router.pop(),
-            icon: const Icon(LucideIcons.arrowLeft),
+            icon: const Icon(LucideIcons.arrowLeft,
+                color: AppColors.textPrimaryLight, size: 20),
           ),
-          title: const CustomText(
-            text: 'Emergency Details',
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
+          title: const Text(
+            'Emergency Details',
+            style: TextStyle(
+                fontSize: 17,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimaryLight),
           ),
           actions: [
-            (_rescue != null &&
-                    _rescue!.user?.id == userID &&
-                    _rescue!.status != RescueStatus.cancelled &&
-                    _rescue!.status != RescueStatus.completed)
-                ? CustomTextButton(
-                    label: 'Cancel',
-                    foregroundColor: Colors.red,
-                    onPressed: () {
-                      _cancelRescue();
-                    },
-                  )
-                : SizedBox.shrink(),
+            if (_rescue != null &&
+                _rescue!.user?.id == userID &&
+                _rescue!.status != RescueStatus.cancelled &&
+                _rescue!.status != RescueStatus.completed)
+              TextButton(
+                onPressed: _cancelRescue,
+                child: const Text('Cancel Request',
+                    style: TextStyle(
+                        color: AppColors.danger, fontWeight: FontWeight.w600)),
+              ),
+            const SizedBox(width: 4),
           ],
         ),
         body: _buildBody(),

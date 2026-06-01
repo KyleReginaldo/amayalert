@@ -78,19 +78,32 @@ class AlertMapper extends ClassMapperBase<Alert> {
 
   static int _$id(Alert v) => v.id;
   static const Field<Alert, int> _f$id = Field('id', _$id);
-  static String _$user(Alert v) => v.user;
-  static const Field<Alert, String> _f$user = Field('user', _$user);
-  static String _$title(Alert v) => v.title;
-  static const Field<Alert, String> _f$title = Field('title', _$title);
-  static String _$description(Alert v) => v.description;
+  static String? _$user(Alert v) => v.user;
+  static const Field<Alert, String> _f$user = Field('user', _$user, opt: true);
+  static String? _$title(Alert v) => v.title;
+  static const Field<Alert, String> _f$title = Field(
+    'title',
+    _$title,
+    opt: true,
+  );
+  static String? _$description(Alert v) => v.description;
   static const Field<Alert, String> _f$description = Field(
     'description',
     _$description,
+    opt: true,
   );
-  static AlertLevel _$level(Alert v) => v.level;
-  static const Field<Alert, AlertLevel> _f$level = Field('level', _$level);
-  static AlertStatus _$status(Alert v) => v.status;
-  static const Field<Alert, AlertStatus> _f$status = Field('status', _$status);
+  static AlertLevel? _$level(Alert v) => v.level;
+  static const Field<Alert, AlertLevel> _f$level = Field(
+    'level',
+    _$level,
+    opt: true,
+  );
+  static AlertStatus? _$status(Alert v) => v.status;
+  static const Field<Alert, AlertStatus> _f$status = Field(
+    'status',
+    _$status,
+    opt: true,
+  );
   static String? _$location(Alert v) => v.location;
   static const Field<Alert, String> _f$location = Field(
     'location',
@@ -109,11 +122,12 @@ class AlertMapper extends ClassMapperBase<Alert> {
     _$longitude,
     opt: true,
   );
-  static DateTime _$createdAt(Alert v) => v.createdAt;
+  static DateTime? _$createdAt(Alert v) => v.createdAt;
   static const Field<Alert, DateTime> _f$createdAt = Field(
     'createdAt',
     _$createdAt,
     key: r'created_at',
+    opt: true,
   );
   static DateTime? _$updatedAt(Alert v) => v.updatedAt;
   static const Field<Alert, DateTime> _f$updatedAt = Field(
@@ -267,29 +281,29 @@ class _AlertCopyWithImpl<$R, $Out> extends ClassCopyWithBase<$R, Alert, $Out>
   @override
   $R call({
     int? id,
-    String? user,
-    String? title,
-    String? description,
-    AlertLevel? level,
-    AlertStatus? status,
+    Object? user = $none,
+    Object? title = $none,
+    Object? description = $none,
+    Object? level = $none,
+    Object? status = $none,
     Object? location = $none,
     Object? latitude = $none,
     Object? longitude = $none,
-    DateTime? createdAt,
+    Object? createdAt = $none,
     Object? updatedAt = $none,
     Object? resolvedAt = $none,
   }) => $apply(
     FieldCopyWithData({
       if (id != null) #id: id,
-      if (user != null) #user: user,
-      if (title != null) #title: title,
-      if (description != null) #description: description,
-      if (level != null) #level: level,
-      if (status != null) #status: status,
+      if (user != $none) #user: user,
+      if (title != $none) #title: title,
+      if (description != $none) #description: description,
+      if (level != $none) #level: level,
+      if (status != $none) #status: status,
       if (location != $none) #location: location,
       if (latitude != $none) #latitude: latitude,
       if (longitude != $none) #longitude: longitude,
-      if (createdAt != null) #createdAt: createdAt,
+      if (createdAt != $none) #createdAt: createdAt,
       if (updatedAt != $none) #updatedAt: updatedAt,
       if (resolvedAt != $none) #resolvedAt: resolvedAt,
     }),

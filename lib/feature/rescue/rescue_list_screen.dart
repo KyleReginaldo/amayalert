@@ -8,6 +8,7 @@ import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:amayalert/core/widgets/view_map_button.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
 @RoutePage()
@@ -317,25 +318,12 @@ class _RescueListScreenState extends State<RescueListScreen> {
 
                     // Location
                     if (rescue.lat != null && rescue.lng != null) ...[
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Icon(
-                            LucideIcons.mapPin,
-                            size: 16,
-                            color: AppColors.gray500,
-                          ),
-                          const SizedBox(width: 6),
-                          Expanded(
-                            child: CustomText(
-                              text:
-                                  'Lat: ${rescue.lat!.toStringAsFixed(4)}, '
-                                  'Lng: ${rescue.lng!.toStringAsFixed(4)}',
-                              fontSize: 12,
-                              color: AppColors.gray600,
-                            ),
-                          ),
-                        ],
+                      const SizedBox(height: 10),
+                      MapPreview(
+                        lat: rescue.lat!,
+                        lng: rescue.lng!,
+                        height: 130,
+                        borderRadius: BorderRadius.circular(8),
                       ),
                     ],
 

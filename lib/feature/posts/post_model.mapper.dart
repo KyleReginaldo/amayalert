@@ -88,6 +88,13 @@ class PostMapper extends ClassMapperBase<Post> {
     key: r'media_url',
     opt: true,
   );
+  static List<String>? _$mediaUrls(Post v) => v.mediaUrls;
+  static const Field<Post, List<String>> _f$mediaUrls = Field(
+    'mediaUrls',
+    _$mediaUrls,
+    key: r'media_urls',
+    opt: true,
+  );
   static PostVisibility _$visibility(Post v) => v.visibility;
   static const Field<Post, PostVisibility> _f$visibility = Field(
     'visibility',
@@ -119,11 +126,39 @@ class PostMapper extends ClassMapperBase<Post> {
     key: r'shared_post',
     opt: true,
   );
+  static List<String> _$allMediaUrls(Post v) => v.allMediaUrls;
+  static const Field<Post, List<String>> _f$allMediaUrls = Field(
+    'allMediaUrls',
+    _$allMediaUrls,
+    key: r'all_media_urls',
+    mode: FieldMode.member,
+  );
   static bool _$hasMedia(Post v) => v.hasMedia;
   static const Field<Post, bool> _f$hasMedia = Field(
     'hasMedia',
     _$hasMedia,
     key: r'has_media',
+    mode: FieldMode.member,
+  );
+  static bool _$hasLocationTag(Post v) => v.hasLocationTag;
+  static const Field<Post, bool> _f$hasLocationTag = Field(
+    'hasLocationTag',
+    _$hasLocationTag,
+    key: r'has_location_tag',
+    mode: FieldMode.member,
+  );
+  static String _$locationTag(Post v) => v.locationTag;
+  static const Field<Post, String> _f$locationTag = Field(
+    'locationTag',
+    _$locationTag,
+    key: r'location_tag',
+    mode: FieldMode.member,
+  );
+  static String _$bodyContent(Post v) => v.bodyContent;
+  static const Field<Post, String> _f$bodyContent = Field(
+    'bodyContent',
+    _$bodyContent,
+    key: r'body_content',
     mode: FieldMode.member,
   );
 
@@ -133,12 +168,17 @@ class PostMapper extends ClassMapperBase<Post> {
     #user: _f$user,
     #content: _f$content,
     #mediaUrl: _f$mediaUrl,
+    #mediaUrls: _f$mediaUrls,
     #visibility: _f$visibility,
     #createdAt: _f$createdAt,
     #updatedAt: _f$updatedAt,
     #comments: _f$comments,
     #sharedPost: _f$sharedPost,
+    #allMediaUrls: _f$allMediaUrls,
     #hasMedia: _f$hasMedia,
+    #hasLocationTag: _f$hasLocationTag,
+    #locationTag: _f$locationTag,
+    #bodyContent: _f$bodyContent,
   };
 
   static Post _instantiate(DecodingData data) {
@@ -147,6 +187,7 @@ class PostMapper extends ClassMapperBase<Post> {
       user: data.dec(_f$user),
       content: data.dec(_f$content),
       mediaUrl: data.dec(_f$mediaUrl),
+      mediaUrls: data.dec(_f$mediaUrls),
       visibility: data.dec(_f$visibility),
       createdAt: data.dec(_f$createdAt),
       updatedAt: data.dec(_f$updatedAt),
@@ -202,6 +243,7 @@ extension PostValueCopy<$R, $Out> on ObjectCopyWith<$R, Post, $Out> {
 abstract class PostCopyWith<$R, $In extends Post, $Out>
     implements ClassCopyWith<$R, $In, $Out> {
   ProfileCopyWith<$R, Profile, Profile> get user;
+  ListCopyWith<$R, String, ObjectCopyWith<$R, String, String>>? get mediaUrls;
   ListCopyWith<
     $R,
     PostComment,
@@ -214,6 +256,7 @@ abstract class PostCopyWith<$R, $In extends Post, $Out>
     Profile? user,
     String? content,
     String? mediaUrl,
+    List<String>? mediaUrls,
     PostVisibility? visibility,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -232,6 +275,15 @@ class _PostCopyWithImpl<$R, $Out> extends ClassCopyWithBase<$R, Post, $Out>
   @override
   ProfileCopyWith<$R, Profile, Profile> get user =>
       $value.user.copyWith.$chain((v) => call(user: v));
+  @override
+  ListCopyWith<$R, String, ObjectCopyWith<$R, String, String>>? get mediaUrls =>
+      $value.mediaUrls != null
+      ? ListCopyWith(
+          $value.mediaUrls!,
+          (v, t) => ObjectCopyWith(v, $identity, t),
+          (v) => call(mediaUrls: v),
+        )
+      : null;
   @override
   ListCopyWith<
     $R,
@@ -254,6 +306,7 @@ class _PostCopyWithImpl<$R, $Out> extends ClassCopyWithBase<$R, Post, $Out>
     Profile? user,
     String? content,
     Object? mediaUrl = $none,
+    Object? mediaUrls = $none,
     PostVisibility? visibility,
     DateTime? createdAt,
     Object? updatedAt = $none,
@@ -265,6 +318,7 @@ class _PostCopyWithImpl<$R, $Out> extends ClassCopyWithBase<$R, Post, $Out>
       if (user != null) #user: user,
       if (content != null) #content: content,
       if (mediaUrl != $none) #mediaUrl: mediaUrl,
+      if (mediaUrls != $none) #mediaUrls: mediaUrls,
       if (visibility != null) #visibility: visibility,
       if (createdAt != null) #createdAt: createdAt,
       if (updatedAt != $none) #updatedAt: updatedAt,
@@ -278,6 +332,7 @@ class _PostCopyWithImpl<$R, $Out> extends ClassCopyWithBase<$R, Post, $Out>
     user: data.get(#user, or: $value.user),
     content: data.get(#content, or: $value.content),
     mediaUrl: data.get(#mediaUrl, or: $value.mediaUrl),
+    mediaUrls: data.get(#mediaUrls, or: $value.mediaUrls),
     visibility: data.get(#visibility, or: $value.visibility),
     createdAt: data.get(#createdAt, or: $value.createdAt),
     updatedAt: data.get(#updatedAt, or: $value.updatedAt),

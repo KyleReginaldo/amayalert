@@ -79,9 +79,30 @@ class _SignInScreenState extends State<SignInScreen> {
       );
 
       EasyLoading.dismiss();
+
+      final userId = supabase.auth.currentUser?.id;
+
+      // Check user_status — pending users go to the review screen
+      if (userId != null) {
+        try {
+          final data = await supabase
+              .from('users')
+              .select('status')
+              .eq('id', userId)
+              .single();
+          final status = data['status'] as String?;
+          if (status == 'pending' && mounted) {
+            context.read<ProfileRepository>().clear();
+            userID = userId;
+            context.router.replaceAll([const PendingReviewRoute()]);
+            return;
+          }
+        } catch (_) {}
+      }
+
       if (mounted) {
         context.read<ProfileRepository>().clear();
-        userID = supabase.auth.currentUser?.id;
+        userID = userId;
         context.read<ProfileRepository>().getUserProfile(userID ?? "");
       }
       EasyLoading.showSuccess(result.value);
