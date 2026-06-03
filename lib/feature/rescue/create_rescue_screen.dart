@@ -9,11 +9,12 @@ import 'package:amayalert/feature/rescue/rescue_provider.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -47,7 +48,8 @@ class _CreateRescueScreenState extends State<CreateRescueScreen> {
   bool _isLoadingLocation = false;
 
   // Interactive map
-  final _mapCompleter = Completer<GoogleMapController>();
+  final MapController _mapController = MapController();
+  Timer? _cameraIdleTimer;
   LatLng? _mapCenter;
   bool _isReverseGeocoding = false;
   bool _isMapInteracting = false;
@@ -67,6 +69,8 @@ class _CreateRescueScreenState extends State<CreateRescueScreen> {
     _maleCountController.dispose();
     _addressController.dispose();
     _otherTypeController.dispose();
+    _cameraIdleTimer?.cancel();
+    _mapController.dispose();
     super.dispose();
   }
 
@@ -295,16 +299,14 @@ class _CreateRescueScreenState extends State<CreateRescueScreen> {
 
   // ── Interactive map callbacks ─────────────────────────────────────────────
 
-  void _onMapCreated(GoogleMapController controller) {
-    if (!_mapCompleter.isCompleted) _mapCompleter.complete(controller);
-  }
-
-  void _onCameraMove(CameraPosition position) {
-    _mapCenter = position.target;
+  void _onPositionChanged(MapCamera camera, bool hasGesture) {
+    _mapCenter = camera.center;
     if (!_isReverseGeocoding && mounted) {
       setState(() => _isReverseGeocoding = true);
       _addressController.text = 'Finding address…';
     }
+    _cameraIdleTimer?.cancel();
+    _cameraIdleTimer = Timer(const Duration(milliseconds: 600), _onCameraIdle);
   }
 
   void _onCameraIdle() async {
@@ -863,22 +865,28 @@ class _CreateRescueScreenState extends State<CreateRescueScreen> {
                           setState(() => _isMapInteracting = false),
                       onPointerCancel: (_) =>
                           setState(() => _isMapInteracting = false),
-                      child: GoogleMap(
-                        onMapCreated: _onMapCreated,
-                        initialCameraPosition: CameraPosition(
-                          target: LatLng(
+                      child: FlutterMap(
+                        mapController: _mapController,
+                        options: MapOptions(
+                          initialCenter: LatLng(
                             _currentLocation!.latitude,
                             _currentLocation!.longitude,
                           ),
-                          zoom: 17,
+                          initialZoom: 17,
+                          onPositionChanged: _onPositionChanged,
+                          interactionOptions: const InteractionOptions(
+                            flags: InteractiveFlag.all &
+                                ~InteractiveFlag.rotate,
+                          ),
                         ),
-                        onCameraMove: _onCameraMove,
-                        onCameraIdle: _onCameraIdle,
-                        myLocationEnabled: false,
-                        zoomControlsEnabled: false,
-                        mapToolbarEnabled: false,
-                        compassEnabled: false,
-                        myLocationButtonEnabled: false,
+                        children: [
+                          TileLayer(
+                            urlTemplate:
+                                'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png',
+                            subdomains: const ['a', 'b', 'c', 'd'],
+                            userAgentPackageName: 'com.amayalert.app',
+                          ),
+                        ],
                       ),
                     ),
 

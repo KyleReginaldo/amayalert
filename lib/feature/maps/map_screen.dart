@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:amayalert/core/theme/theme.dart';
 import 'package:amayalert/core/widgets/text/custom_text.dart';
@@ -9,9 +10,10 @@ import 'package:amayalert/feature/maps/custom_google_places_field.dart';
 import 'package:amayalert/feature/maps/directions_service.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_compass/flutter_compass.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:google_places_autocomplete_text_field/model/prediction.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:provider/provider.dart';
 
@@ -36,9 +38,13 @@ class MapScreen extends StatefulWidget implements AutoRouteWrapper {
 class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
   LatLng? _latlng;
   double _currentZoom = 17.0;
-  MapType _currentMapType = MapType.normal;
-  final Set<Marker> _markers = {};
-  final Set<Polyline> _polylines = {};
+  bool _isSatellite = false;
+
+  LatLng? _searchMarkerPos;
+  bool _showAllEvacMarkers = true;
+  int? _focusedEvacId;
+  final List<Polyline> _polylines = [];
+
   bool _isLoading = true;
   String? _errorMessage;
   bool _isEvacuationListExpanded = false;
@@ -51,12 +57,24 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
   late Animation<double> _listSlideAnimation;
   late Animation<double> _expandAnimation;
 
-  final Completer<GoogleMapController> _controllerCompleter = Completer();
+  final MapController _mapController = MapController();
   final TextEditingController _searchController = TextEditingController();
 
-  void _onMapCreated(GoogleMapController controller) {
-    _controllerCompleter.complete(controller);
-  }
+  double? _heading;
+  StreamSubscription<CompassEvent>? _compassSub;
+
+  bool _isNavigating = false;
+  StreamSubscription<Position>? _locationSub;
+
+  // CartoDB Positron (light_all) — clean, light gray, closest to Grab Maps style
+  String get _tileUrl => _isSatellite
+      ? 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'
+      : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png';
+
+  List<String> get _tileSubdomains =>
+      _isSatellite ? const [] : const ['a', 'b', 'c', 'd'];
+
+  // ── Location ───────────────────────────────────────────────────────────────
 
   void getCurrentLocation() async {
     try {
@@ -81,13 +99,6 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
         final position = await Geolocator.getCurrentPosition();
         setState(() {
           _latlng = LatLng(position.latitude, position.longitude);
-          _markers.add(
-            Marker(
-              markerId: const MarkerId('current_location'),
-              position: _latlng!,
-              infoWindow: const InfoWindow(title: 'Your Location'),
-            ),
-          );
           _isLoading = false;
         });
       } else {
@@ -104,169 +115,100 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
     }
   }
 
-  void _onCameraMove(CameraPosition position) {
-    _currentZoom = position.zoom;
+  // ── Map controls ───────────────────────────────────────────────────────────
+
+  void _toggleMapType() => setState(() => _isSatellite = !_isSatellite);
+
+  void _zoomIn() {
+    _mapController.move(_mapController.camera.center, _currentZoom + 1);
   }
 
-  void _toggleMapType() {
-    setState(() {
-      _currentMapType = _currentMapType == MapType.normal
-          ? MapType.satellite
-          : MapType.normal;
-    });
+  void _zoomOut() {
+    _mapController.move(_mapController.camera.center, _currentZoom - 1);
   }
 
-  void _zoomIn() async {
-    final GoogleMapController controller = await _controllerCompleter.future;
-    controller.animateCamera(CameraUpdate.zoomIn());
-  }
-
-  void _zoomOut() async {
-    final GoogleMapController controller = await _controllerCompleter.future;
-    controller.animateCamera(CameraUpdate.zoomOut());
-  }
-
-  void _goToCurrentLocation() async {
+  void _goToCurrentLocation() {
     if (_latlng != null) {
-      final GoogleMapController controller = await _controllerCompleter.future;
-      controller.animateCamera(
-        CameraUpdate.newCameraPosition(
-          CameraPosition(target: _latlng!, zoom: 17.0),
-        ),
-      );
+      _mapController.move(_latlng!, 17.0);
+      setState(() => _currentZoom = 17.0);
     }
   }
 
-  void _navigateToPlace(Prediction prediction) async {
-    debugPrint('Navigating to place: ${prediction.description}');
+  // ── Search ─────────────────────────────────────────────────────────────────
 
-    if (prediction.lat != null && prediction.lng != null) {
-      final GoogleMapController controller = await _controllerCompleter.future;
-      final searchLocation = LatLng(
-        double.parse(prediction.lat!),
-        double.parse(prediction.lng!),
-      );
+  void _navigateToPlace(LocationPrediction result) async {
+    final searchLocation = LatLng(result.lat, result.lng);
 
-      // Clear existing search markers
-      setState(() {
-        _markers.removeWhere(
-          (marker) => marker.markerId.value.startsWith('search_'),
-        );
-        _polylines.clear();
-        _routeInfo = null;
+    setState(() {
+      _searchMarkerPos = searchLocation;
+      _polylines.clear();
+      _routeInfo = null;
+    });
 
-        // Add marker for the searched location
-        _markers.add(
-          Marker(
-            markerId: const MarkerId('search_location'),
-            position: searchLocation,
-            infoWindow: InfoWindow(
-              title:
-                  prediction.structuredFormatting?.mainText ?? 'Search Result',
-              snippet:
-                  prediction.structuredFormatting?.secondaryText ??
-                  prediction.description,
-            ),
-            icon: BitmapDescriptor.defaultMarkerWithHue(
-              BitmapDescriptor.hueRed,
-            ),
-          ),
-        );
-      });
+    _mapController.move(searchLocation, 16.0);
+    setState(() => _currentZoom = 16.0);
 
-      // Animate camera to the searched location
-      controller.animateCamera(
-        CameraUpdate.newCameraPosition(
-          CameraPosition(target: searchLocation, zoom: 16.0),
-        ),
-      );
+    if (_latlng != null) {
+      setState(() => _isLoadingRoute = true);
 
-      // Get directions from current location to searched location if available
-      if (_latlng != null) {
+      try {
+        final results = await Future.wait([
+          DirectionsService.getDirections(_latlng!, searchLocation),
+          DirectionsService.getRouteInfo(_latlng!, searchLocation),
+        ]);
+        final routePoints = results[0] as List<LatLng>?;
+        final routeInfo = results[1] as String?;
+
         setState(() {
-          _isLoadingRoute = true;
+          _isLoadingRoute = false;
+          _routeInfo = routeInfo;
         });
 
-        try {
-          final routePointsFuture = DirectionsService.getDirections(
-            _latlng!,
-            searchLocation,
-          );
-          final routeInfoFuture = DirectionsService.getRouteInfo(
-            _latlng!,
-            searchLocation,
-          );
-
-          final results = await Future.wait([
-            routePointsFuture,
-            routeInfoFuture,
-          ]);
-          final List<LatLng>? routePoints = results[0] as List<LatLng>?;
-          final String? routeInfo = results[1] as String?;
-
+        if (routePoints != null && routePoints.isNotEmpty) {
           setState(() {
-            _isLoadingRoute = false;
-            _routeInfo = routeInfo;
+            _polylines
+              ..add(
+                Polyline(
+                  points: routePoints,
+                  color: Colors.white,
+                  strokeWidth: 10,
+                  strokeCap: StrokeCap.round,
+                  strokeJoin: StrokeJoin.round,
+                ),
+              )
+              ..add(
+                Polyline(
+                  points: routePoints,
+                  color: const Color(0xFF1D6BF3),
+                  strokeWidth: 6,
+                  strokeCap: StrokeCap.round,
+                  strokeJoin: StrokeJoin.round,
+                ),
+              );
           });
-
-          if (routePoints != null && routePoints.isNotEmpty) {
-            setState(() {
-              // White border (drawn first so it appears underneath)
-              _polylines.add(Polyline(
-                polylineId: const PolylineId('route_to_search_border'),
-                points: routePoints,
-                color: Colors.white,
-                width: 10,
-                startCap: Cap.roundCap,
-                endCap: Cap.roundCap,
-                jointType: JointType.round,
-              ));
-              // Primary colored line on top
-              _polylines.add(Polyline(
-                polylineId: const PolylineId('route_to_search'),
-                points: routePoints,
-                color: const Color(0xFF1D6BF3),
-                width: 6,
-                startCap: Cap.roundCap,
-                endCap: Cap.roundCap,
-                jointType: JointType.round,
-              ));
-            });
-
-            // Adjust camera to show the entire route
-            final bounds = _calculateBounds(routePoints);
-            controller.animateCamera(
-              CameraUpdate.newLatLngBounds(bounds, 100.0),
-            );
-          }
-        } catch (e) {
-          debugPrint('Error getting directions to search location: $e');
-          setState(() {
-            _isLoadingRoute = false;
-            _routeInfo = null;
-          });
+          _mapController.fitCamera(
+            CameraFit.bounds(
+              bounds: LatLngBounds.fromPoints(routePoints),
+              padding: const EdgeInsets.all(100),
+            ),
+          );
         }
+      } catch (e) {
+        debugPrint('Error getting directions to search: $e');
+        setState(() {
+          _isLoadingRoute = false;
+          _routeInfo = null;
+        });
       }
-    } else {
-      debugPrint('No coordinates available for this place');
-      // Show a message to user that location coordinates are not available
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: CustomText(
-            text: 'Unable to get coordinates for this location',
-            color: Colors.white,
-          ),
-          backgroundColor: Colors.orange,
-        ),
-      );
     }
   }
+
+  // ── Lifecycle ──────────────────────────────────────────────────────────────
 
   @override
   void initState() {
     super.initState();
 
-    // Initialize animation controllers
     _listAnimationController = AnimationController(
       duration: const Duration(milliseconds: 300),
       vsync: this,
@@ -276,14 +218,12 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
       vsync: this,
     );
 
-    // Initialize animations
     _listSlideAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _listAnimationController,
         curve: Curves.easeInOut,
       ),
     );
-
     _expandAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _expandAnimationController,
@@ -291,59 +231,174 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
       ),
     );
 
-    // Start with list visible
-    _listAnimationController.value = 0.0;
-
     getCurrentLocation();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<EvacuationRepository>().getEvacuationCenters();
-      // Add listener to update markers when centers are loaded
-      context.read<EvacuationRepository>().addListener(
-        _updateEvacuationCenterMarkers,
-      );
     });
-  }
 
-  void _updateEvacuationCenterMarkers() {
-    final evacuationCenters = context.read<EvacuationRepository>().centers;
-    setState(() {
-      // Remove existing evacuation center markers
-      _markers.removeWhere(
-        (marker) => marker.markerId.value.startsWith('evacuation_'),
-      );
-
-      // Add markers for all evacuation centers
-      for (final center in evacuationCenters) {
-        _markers.add(
-          Marker(
-            markerId: MarkerId('evacuation_${center.id}'),
-            position: LatLng(center.latitude, center.longitude),
-            infoWindow: InfoWindow(title: center.name, snippet: center.address),
-            icon: BitmapDescriptor.defaultMarkerWithHue(
-              BitmapDescriptor.hueBlue,
-            ),
-          ),
-        );
-      }
+    _compassSub = FlutterCompass.events?.listen((event) {
+      final h = event.heading;
+      // Guard: flutter_compass can fire NaN on some devices
+      if (!mounted || h == null || !h.isFinite) return;
+      setState(() => _heading = h);
     });
   }
 
   @override
   void dispose() {
+    _locationSub?.cancel();
+    _compassSub?.cancel();
     _searchController.dispose();
     _listAnimationController.dispose();
     _expandAnimationController.dispose();
-    // Remove listener to prevent memory leaks
-    if (mounted) {
-      context.read<EvacuationRepository>().removeListener(
-        _updateEvacuationCenterMarkers,
-      );
-    }
+    _mapController.dispose();
     super.dispose();
   }
 
+  // ── Navigation mode ────────────────────────────────────────────────────────
+
+  void _startNavigation() {
+    setState(() {
+      _isNavigating = true;
+      _currentZoom = 18.0;
+    });
+    if (_latlng != null) {
+      _mapController.move(_latlng!, 18.0);
+    }
+
+    _locationSub = Geolocator.getPositionStream(
+      locationSettings: const LocationSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 5,
+      ),
+    ).listen((pos) {
+      if (!mounted) return;
+      // Guard against NaN GPS values (can happen briefly on some devices)
+      if (!pos.latitude.isFinite || !pos.longitude.isFinite) return;
+      final newPos = LatLng(pos.latitude, pos.longitude);
+      setState(() => _latlng = newPos);
+      _mapController.move(newPos, _currentZoom);
+    });
+  }
+
+  void _stopNavigation() {
+    _locationSub?.cancel();
+    _locationSub = null;
+    setState(() => _isNavigating = false);
+  }
+
+  // ── Markers ────────────────────────────────────────────────────────────────
+
+  List<Marker> _buildMarkers(List<EvacuationCenter> centers) {
+    final markers = <Marker>[];
+
+    // Current location — nav arrow (navigation mode) OR blue dot + cone
+    if (_latlng != null) {
+      if (_isNavigating) {
+        // Waze / Google Maps-style directional arrow
+        markers.add(Marker(
+          point: _latlng!,
+          width: 60,
+          height: 60,
+          child: Transform.rotate(
+            angle: (_heading ?? 0) * math.pi / 180,
+            child: CustomPaint(
+              size: const Size(60, 60),
+              painter: const _NavArrow(),
+            ),
+          ),
+        ));
+      } else {
+        // Default: accuracy ring + heading cone + blue dot
+        markers.add(Marker(
+          point: _latlng!,
+          width: 72,
+          height: 72,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Container(
+                width: 72,
+                height: 72,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1D6BF3).withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: const Color(0xFF1D6BF3).withValues(alpha: 0.25),
+                    width: 1,
+                  ),
+                ),
+              ),
+              if (_heading != null)
+                Transform.rotate(
+                  angle: _heading! * math.pi / 180,
+                  child: CustomPaint(
+                    size: const Size(72, 72),
+                    painter: const _HeadingCone(),
+                  ),
+                ),
+              Container(
+                width: 20,
+                height: 20,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1D6BF3),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 3),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF1D6BF3).withValues(alpha: 0.5),
+                      blurRadius: 8,
+                      spreadRadius: 1,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ));
+      }
+    }
+
+    // Search result pin (red)
+    if (_searchMarkerPos != null) {
+      markers.add(Marker(
+        point: _searchMarkerPos!,
+        width: 44,
+        height: 54,
+        alignment: Alignment.bottomCenter,
+        child: _MapPin(color: Colors.red, icon: LucideIcons.search),
+      ));
+    }
+
+    // Evacuation center pins (brand blue)
+    const evac = Color(0xFF1D6BF3);
+    void addEvacMarker(EvacuationCenter c) {
+      markers.add(Marker(
+        point: LatLng(c.latitude, c.longitude),
+        width: 44,
+        height: 54,
+        alignment: Alignment.bottomCenter,
+        child: const _MapPin(color: evac, icon: LucideIcons.building),
+      ));
+    }
+
+    if (_showAllEvacMarkers) {
+      for (final c in centers) addEvacMarker(c);
+    } else if (_focusedEvacId != null) {
+      for (final c in centers.where((c) => c.id == _focusedEvacId)) {
+        addEvacMarker(c);
+      }
+    }
+
+    return markers;
+  }
+
+  // ── Build ──────────────────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
+    final evacuationCenters = context.watch<EvacuationRepository>().centers;
+
     return SafeArea(
       top: false,
       child: Scaffold(
@@ -352,21 +407,31 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
             // ── Full-screen map ──────────────────────────────────────────
             if (_latlng != null)
               Positioned.fill(
-                child: GoogleMap(
-                  onMapCreated: _onMapCreated,
-                  onCameraMove: _onCameraMove,
-                  initialCameraPosition: CameraPosition(
-                    target: _latlng!,
-                    zoom: _currentZoom,
+                child: FlutterMap(
+                  mapController: _mapController,
+                  options: MapOptions(
+                    initialCenter: _latlng!,
+                    initialZoom: _currentZoom,
+                    onPositionChanged: (camera, _) {
+                      _currentZoom = camera.zoom;
+                    },
                   ),
-                  mapType: _currentMapType,
-                  markers: _markers,
-                  polylines: _polylines,
-                  myLocationEnabled: true,
-                  myLocationButtonEnabled: false,
-                  zoomControlsEnabled: false,
-                  compassEnabled: false,
-                  mapToolbarEnabled: false,
+                  children: [
+                    TileLayer(
+                      urlTemplate: _tileUrl,
+                      subdomains: _tileSubdomains,
+                      userAgentPackageName: 'com.amayalert.app',
+                      maxNativeZoom: 19,
+                    ),
+                    PolylineLayer(polylines: _polylines),
+                    MarkerLayer(markers: _buildMarkers(evacuationCenters)),
+                    const SimpleAttributionWidget(
+                      source: Text(
+                        '© CARTO  ©  OpenStreetMap',
+                        style: TextStyle(fontSize: 9),
+                      ),
+                    ),
+                  ],
                 ),
               )
             else
@@ -397,9 +462,9 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   _MapBtn(
-                    icon: _currentMapType == MapType.normal
-                        ? LucideIcons.satellite
-                        : LucideIcons.map,
+                    icon: _isSatellite
+                        ? LucideIcons.map
+                        : LucideIcons.satellite,
                     onTap: _toggleMapType,
                   ),
                   const SizedBox(height: 6),
@@ -412,7 +477,13 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                     onTap: _goToCurrentLocation,
                     iconColor: AppColors.primary,
                   ),
-                  if (_polylines.isNotEmpty) ...[
+                  if (_polylines.isNotEmpty && !_isNavigating) ...[
+                    const SizedBox(height: 6),
+                    _MapBtn(
+                      icon: LucideIcons.play,
+                      onTap: _startNavigation,
+                      iconColor: Colors.green,
+                    ),
                     const SizedBox(height: 6),
                     _MapBtn(
                       icon: LucideIcons.x,
@@ -420,28 +491,57 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                       iconColor: AppColors.danger,
                     ),
                   ],
+                  if (_isNavigating) ...[
+                    const SizedBox(height: 6),
+                    _MapBtn(
+                      icon: LucideIcons.x,
+                      onTap: _stopNavigation,
+                      iconColor: AppColors.danger,
+                    ),
+                  ],
+                  // ── Always-on compass ──────────────────────
+                  if (_heading != null) ...[
+                    const SizedBox(height: 6),
+                    _CompassBtn(heading: _heading!),
+                  ],
                 ],
               ),
             ),
 
-            // ── Route info card ──────────────────────────────────────────
-            if (_routeInfo != null || _isLoadingRoute)
-              Positioned(
-                top: MediaQuery.of(context).padding.top + 68,
-                left: 12,
-                child: _buildRouteInfoCard(),
-              ),
+            // ── Compass rose (navigation mode) / Route info ──────────────
+            Positioned(
+              top: MediaQuery.of(context).padding.top + 68,
+              left: 12,
+              child: _isNavigating
+                  ? _buildCompassRose()
+                  : (_routeInfo != null || _isLoadingRoute)
+                      ? _buildRouteInfoCard()
+                      : const SizedBox.shrink(),
+            ),
 
-            // ── Evacuation panel ─────────────────────────────────────────
-            if (_isEvacuationListVisible)
+            // ── Evacuation panel / Navigation bar ────────────────────────
+            if (_isNavigating)
               Positioned(
                 bottom: 0,
                 left: 0,
                 right: 0,
-                child: _buildEvacuationCentersList(),
-              ),
-            if (!_isEvacuationListVisible)
-              Positioned(bottom: 24, right: 12, child: _buildShowListButton()),
+                child: _buildNavigationBar(),
+              )
+            else ...[
+              if (_isEvacuationListVisible)
+                Positioned(
+                  bottom: 0,
+                  left: 0,
+                  right: 0,
+                  child: _buildEvacuationCentersList(evacuationCenters),
+                ),
+              if (!_isEvacuationListVisible)
+                Positioned(
+                  bottom: 24,
+                  right: 12,
+                  child: _buildShowListButton(evacuationCenters),
+                ),
+            ],
           ],
         ),
       ),
@@ -514,52 +614,36 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
         controller: _searchController,
         hintText: 'Search location…',
         onPlaceDetailsWithCoordinatesReceived: _navigateToPlace,
-        onSuggestionClicked: (prediction) {
-          if (prediction.description != null) {
-            _searchController.text = prediction.description!;
-          }
-          _navigateToPlace(prediction);
+        onSuggestionClicked: (result) {
+          _searchController.text = result.description;
+          _navigateToPlace(result);
         },
       ),
     );
   }
 
-  Widget _buildEvacuationCentersList() {
+  Widget _buildEvacuationCentersList(List<EvacuationCenter> evacuationCenters) {
     return AnimatedBuilder(
       animation: _listAnimationController,
-      builder: (context, child) {
-        return Transform.translate(
-          offset: Offset(0, _listSlideAnimation.value * 300),
-          child: Opacity(
-            opacity: 1.0 - _listAnimationController.value,
-            child: child,
-          ),
-        );
-      },
-      child: _buildEvacuationCentersContent(),
+      builder: (context, child) => Transform.translate(
+        offset: Offset(0, _listSlideAnimation.value * 300),
+        child: Opacity(
+          opacity: 1.0 - _listAnimationController.value,
+          child: child,
+        ),
+      ),
+      child: _buildEvacuationCentersContent(evacuationCenters),
     );
   }
 
-  Widget _buildEvacuationCentersContent() {
-    final evacuationCenters = context.watch<EvacuationRepository>().centers;
+  Widget _buildEvacuationCentersContent(
+    List<EvacuationCenter> evacuationCenters,
+  ) {
     final isLoadingCenters = context.watch<EvacuationRepository>().isLoading;
 
     if (isLoadingCenters && evacuationCenters.isEmpty) {
-      return Container(
-        margin: const EdgeInsets.all(16),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
-              blurRadius: 8,
-              offset: const Offset(0, -2),
-            ),
-          ],
-        ),
-        child: const Row(
+      return _panelWrap(
+        const Row(
           children: [
             SizedBox(
               width: 16,
@@ -578,21 +662,8 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
     }
 
     if (evacuationCenters.isEmpty) {
-      return Container(
-        margin: const EdgeInsets.all(16),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
-              blurRadius: 8,
-              offset: const Offset(0, -2),
-            ),
-          ],
-        ),
-        child: const Row(
+      return _panelWrap(
+        const Row(
           children: [
             Icon(LucideIcons.mapPin, color: Colors.grey, size: 16),
             SizedBox(width: 12),
@@ -624,7 +695,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Header
-          Container(
+          Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
@@ -664,31 +735,30 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
 
           const Divider(height: 1),
 
-          // Centers List with Animation
+          // Centers list with animation
           AnimatedBuilder(
             animation: _expandAnimation,
             builder: (context, child) {
               final itemsToShow = _isEvacuationListExpanded
                   ? evacuationCenters.length
                   : math.min(2, evacuationCenters.length);
-
               final visibleItems = (itemsToShow * _expandAnimation.value)
                   .ceil();
-              final actualItemsToShow = _isEvacuationListExpanded
+              final actualItems = _isEvacuationListExpanded
                   ? math.max(visibleItems, 2)
                   : math.min(visibleItems + 2, evacuationCenters.length);
 
               return Column(
                 children: evacuationCenters
-                    .take(actualItemsToShow)
+                    .take(actualItems)
                     .map(
-                      (center) => AnimatedContainer(
+                      (c) => AnimatedContainer(
                         duration: Duration(
                           milliseconds:
-                              150 + (evacuationCenters.indexOf(center) * 50),
+                              150 + (evacuationCenters.indexOf(c) * 50),
                         ),
                         curve: Curves.easeOutCubic,
-                        child: _buildCenterTile(center),
+                        child: _buildCenterTile(c),
                       ),
                     )
                     .toList(),
@@ -696,7 +766,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
             },
           ),
 
-          // Expand/Collapse Button with Animation
+          // Expand / collapse
           if (evacuationCenters.length > 2)
             Material(
               color: Colors.transparent,
@@ -706,8 +776,7 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                   bottomLeft: Radius.circular(12),
                   bottomRight: Radius.circular(12),
                 ),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
+                child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.all(12),
                   decoration: const BoxDecoration(
@@ -750,6 +819,25 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
     );
   }
 
+  Widget _panelWrap(Widget child) {
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 8,
+            offset: const Offset(0, -2),
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+
   Widget _buildCenterTile(EvacuationCenter center) {
     return Material(
       color: Colors.transparent,
@@ -760,7 +848,6 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Status Indicator
               Container(
                 width: 8,
                 height: 8,
@@ -771,8 +858,6 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                 ),
               ),
               const SizedBox(width: 12),
-
-              // Center Details
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -831,8 +916,6 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
                   ],
                 ),
               ),
-
-              // Distance/Direction Icon
               Icon(
                 LucideIcons.navigation,
                 color: Colors.grey.shade400,
@@ -861,178 +944,112 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
   }
 
   void _focusOnCenter(EvacuationCenter center) async {
-    final GoogleMapController controller = await _controllerCompleter.future;
-
-    // Hide the evacuation list with animation
     _hideEvacuationList();
 
-    setState(() {
-      // Clear previous evacuation center markers and polylines
-      _markers.removeWhere(
-        (marker) => marker.markerId.value.startsWith('evacuation_'),
-      );
-      _polylines.clear();
+    final destination = LatLng(center.latitude, center.longitude);
 
-      // Add marker for the selected evacuation center
-      _markers.add(
-        Marker(
-          markerId: MarkerId('evacuation_${center.id}'),
-          position: LatLng(center.latitude, center.longitude),
-          infoWindow: InfoWindow(title: center.name, snippet: center.address),
-          icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueBlue),
-        ),
-      );
+    setState(() {
+      _polylines.clear();
+      _showAllEvacMarkers = false;
+      _focusedEvacId = center.id;
     });
 
-    // Get directions from current location to evacuation center
-    if (_latlng != null) {
+    if (_latlng == null) {
+      _mapController.move(destination, 16.0);
+      setState(() => _currentZoom = 16.0);
+      return;
+    }
+
+    setState(() {
+      _isLoadingRoute = true;
+      _routeInfo = null;
+    });
+
+    try {
+      final results = await Future.wait([
+        DirectionsService.getDirections(_latlng!, destination),
+        DirectionsService.getRouteInfo(_latlng!, destination),
+      ]);
+      final routePoints = results[0] as List<LatLng>?;
+      final routeInfo = results[1] as String?;
+
       setState(() {
-        _isLoadingRoute = true;
-        _routeInfo = null;
+        _isLoadingRoute = false;
+        _routeInfo = routeInfo;
       });
 
-      try {
-        final destination = LatLng(center.latitude, center.longitude);
-
-        // Get both route points and route info
-        final routePointsFuture = DirectionsService.getDirections(
-          _latlng!,
-          destination,
-        );
-        final routeInfoFuture = DirectionsService.getRouteInfo(
-          _latlng!,
-          destination,
-        );
-
-        final results = await Future.wait([routePointsFuture, routeInfoFuture]);
-        final List<LatLng>? routePoints = results[0] as List<LatLng>?;
-        final String? routeInfo = results[1] as String?;
-
-        debugPrint(
-          '🗺️ Map Screen: Received ${routePoints?.length ?? 0} route points',
-        );
-        debugPrint('🗺️ Map Screen: Route info: $routeInfo');
-
+      if (routePoints != null && routePoints.isNotEmpty) {
         setState(() {
-          _isLoadingRoute = false;
-          _routeInfo = routeInfo;
+          _polylines
+            ..add(
+              Polyline(
+                points: routePoints,
+                color: Colors.white,
+                strokeWidth: 10,
+                strokeCap: StrokeCap.round,
+                strokeJoin: StrokeJoin.round,
+              ),
+            )
+            ..add(
+              Polyline(
+                points: routePoints,
+                color: const Color(0xFF1D6BF3),
+                strokeWidth: 6,
+                strokeCap: StrokeCap.round,
+                strokeJoin: StrokeJoin.round,
+              ),
+            );
         });
-
-        if (routePoints != null && routePoints.isNotEmpty) {
-          debugPrint(
-            '✅ Map Screen: Using API route with ${routePoints.length} points',
-          );
-          setState(() {
-            // Add accurate polyline based on roads
-            // White border
-            _polylines.add(Polyline(
-              polylineId: const PolylineId('route_to_evacuation_border'),
-              points: routePoints,
-              color: Colors.white,
-              width: 10,
-              startCap: Cap.roundCap,
-              endCap: Cap.roundCap,
-              jointType: JointType.round,
-            ));
-            // Primary colored line
-            _polylines.add(Polyline(
-              polylineId: const PolylineId('route_to_evacuation'),
-              points: routePoints,
-              color: const Color(0xFF1D6BF3),
-              width: 6,
-              startCap: Cap.roundCap,
-              endCap: Cap.roundCap,
-              jointType: JointType.round,
-            ));
-          });
-
-          // Calculate bounds for the entire route
-          final bounds = _calculateBounds(routePoints);
-          controller.animateCamera(CameraUpdate.newLatLngBounds(bounds, 100.0));
-        } else {
-          // Fallback to straight line if directions fail
-          debugPrint('❌ Map Screen: API failed, using straight line fallback');
-          setState(() {
-            // White border for fallback dashed line
-            _polylines.add(Polyline(
-              polylineId: const PolylineId('route_to_evacuation_border'),
-              points: [_latlng!, LatLng(center.latitude, center.longitude)],
-              color: Colors.white,
-              width: 8,
-              startCap: Cap.roundCap,
-              endCap: Cap.roundCap,
-            ));
-            // Orange dashed fallback line
-            _polylines.add(Polyline(
-              polylineId: const PolylineId('route_to_evacuation'),
-              points: [_latlng!, LatLng(center.latitude, center.longitude)],
-              color: const Color(0xFFF59E0B),
-              width: 5,
-              patterns: [PatternItem.dot, PatternItem.gap(8)],
-              startCap: Cap.roundCap,
-              endCap: Cap.roundCap,
-            ));
-          });
-
-          final bounds = _calculateBounds([
-            _latlng!,
-            LatLng(center.latitude, center.longitude),
-          ]);
-
-          controller.animateCamera(CameraUpdate.newLatLngBounds(bounds, 100.0));
-        }
-      } catch (e) {
-        debugPrint('Error getting directions: $e');
-        setState(() {
-          _isLoadingRoute = false;
-          _routeInfo = null;
-        });
-
-        // Fallback to straight line
-        setState(() {
-          _polylines.add(
-            Polyline(
-              polylineId: const PolylineId('route_to_evacuation'),
-              points: [_latlng!, LatLng(center.latitude, center.longitude)],
-              color: Colors.red,
-              width: 4,
-              patterns: [PatternItem.dash(20), PatternItem.gap(10)],
-              startCap: Cap.roundCap,
-              endCap: Cap.roundCap,
-            ),
-          );
-        });
-      }
-    } else {
-      // If no current location, just focus on the center
-      controller.animateCamera(
-        CameraUpdate.newCameraPosition(
-          CameraPosition(
-            target: LatLng(center.latitude, center.longitude),
-            zoom: 16.0,
+        _mapController.fitCamera(
+          CameraFit.bounds(
+            bounds: LatLngBounds.fromPoints(routePoints),
+            padding: const EdgeInsets.all(100),
           ),
-        ),
-      );
+        );
+      } else {
+        // Straight-line fallback
+        setState(() {
+          _polylines
+            ..add(
+              Polyline(
+                points: [_latlng!, destination],
+                color: Colors.white,
+                strokeWidth: 8,
+                strokeCap: StrokeCap.round,
+              ),
+            )
+            ..add(
+              Polyline(
+                points: [_latlng!, destination],
+                color: const Color(0xFFF59E0B),
+                strokeWidth: 5,
+                pattern: StrokePattern.dashed(segments: [10, 8]),
+                strokeCap: StrokeCap.round,
+              ),
+            );
+        });
+        _mapController.fitCamera(
+          CameraFit.bounds(
+            bounds: LatLngBounds.fromPoints([_latlng!, destination]),
+            padding: const EdgeInsets.all(100),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error getting directions: $e');
+      setState(() {
+        _isLoadingRoute = false;
+        _routeInfo = null;
+        _polylines.add(
+          Polyline(
+            points: [_latlng!, destination],
+            color: Colors.red,
+            strokeWidth: 4,
+            pattern: StrokePattern.dashed(segments: [20, 10]),
+          ),
+        );
+      });
     }
-  }
-
-  LatLngBounds _calculateBounds(List<LatLng> points) {
-    double minLat = points.first.latitude;
-    double maxLat = points.first.latitude;
-    double minLng = points.first.longitude;
-    double maxLng = points.first.longitude;
-
-    for (LatLng point in points) {
-      minLat = math.min(minLat, point.latitude);
-      maxLat = math.max(maxLat, point.latitude);
-      minLng = math.min(minLng, point.longitude);
-      maxLng = math.max(maxLng, point.longitude);
-    }
-
-    return LatLngBounds(
-      southwest: LatLng(minLat, minLng),
-      northeast: LatLng(maxLat, maxLng),
-    );
   }
 
   void _clearRoute() {
@@ -1040,49 +1057,37 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
       _polylines.clear();
       _routeInfo = null;
       _isLoadingRoute = false;
-      // Remove evacuation center markers but keep current location marker
-      _markers.removeWhere(
-        (marker) => marker.markerId.value.startsWith('evacuation_'),
-      );
+      _showAllEvacMarkers = false;
+      _focusedEvacId = null;
     });
   }
 
   void _hideEvacuationList() {
     _listAnimationController.forward().then((_) {
-      setState(() {
-        _isEvacuationListVisible = false;
-      });
+      setState(() => _isEvacuationListVisible = false);
       _listAnimationController.reset();
     });
   }
 
   void _showEvacuationList() {
-    setState(() {
-      _isEvacuationListVisible = true;
-    });
-    _listAnimationController.forward().then((_) {
-      _listAnimationController.reset();
-    });
+    setState(() => _isEvacuationListVisible = true);
+    _listAnimationController.forward().then(
+      (_) => _listAnimationController.reset(),
+    );
   }
 
   void _toggleExpandList() {
     if (_isEvacuationListExpanded) {
       _expandAnimationController.reverse().then((_) {
-        setState(() {
-          _isEvacuationListExpanded = false;
-        });
+        setState(() => _isEvacuationListExpanded = false);
       });
     } else {
-      setState(() {
-        _isEvacuationListExpanded = true;
-      });
+      setState(() => _isEvacuationListExpanded = true);
       _expandAnimationController.forward();
     }
   }
 
-  Widget _buildShowListButton() {
-    final evacuationCenters = context.watch<EvacuationRepository>().centers;
-
+  Widget _buildShowListButton(List<EvacuationCenter> evacuationCenters) {
     if (evacuationCenters.isEmpty) return const SizedBox.shrink();
 
     return Container(
@@ -1123,6 +1128,118 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
     );
   }
 
+  Widget _buildCompassRose() {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(10),
+      elevation: 3,
+      shadowColor: Colors.black.withValues(alpha: 0.15),
+      child: SizedBox(
+        width: 44,
+        height: 44,
+        child: Center(
+          child: Transform.rotate(
+            // Counter-rotate so the needle always points to geographic north
+            // even as the map rotates to heading-up.
+            angle: (_heading ?? 0) * math.pi / 180,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 3,
+                  height: 11,
+                  decoration: BoxDecoration(
+                    color: AppColors.danger,
+                    borderRadius: BorderRadius.circular(1.5),
+                  ),
+                ),
+                Container(
+                  width: 3,
+                  height: 11,
+                  decoration: BoxDecoration(
+                    color: AppColors.gray400,
+                    borderRadius: BorderRadius.circular(1.5),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNavigationBar() {
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.12),
+            blurRadius: 16,
+            offset: const Offset(0, -4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              LucideIcons.navigation,
+              color: AppColors.primary,
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CustomText(
+                  text: 'Navigation Mode',
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
+                CustomText(
+                  text: 'Map is following your location',
+                  fontSize: 12,
+                  color: Colors.grey,
+                ),
+              ],
+            ),
+          ),
+          ElevatedButton.icon(
+            onPressed: _stopNavigation,
+            icon: const Icon(LucideIcons.x, size: 15),
+            label: const Text(
+              'Stop',
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.danger,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildRouteInfoCard() {
     return Container(
       padding: const EdgeInsets.all(12),
@@ -1158,6 +1275,237 @@ class _MapScreenState extends State<MapScreen> with TickerProviderStateMixin {
             color: _isLoadingRoute ? Colors.grey : Colors.black87,
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ── Styled map pin (circle + triangle tail) ───────────────────────────────────
+
+class _MapPin extends StatelessWidget {
+  final Color color;
+  final IconData icon;
+
+  const _MapPin({required this.color, required this.icon});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white, width: 2.5),
+            boxShadow: [
+              BoxShadow(
+                color: color.withValues(alpha: 0.45),
+                blurRadius: 8,
+                spreadRadius: 1,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Icon(icon, color: Colors.white, size: 17),
+        ),
+        CustomPaint(
+          size: const Size(14, 9),
+          painter: _PinTail(color),
+        ),
+      ],
+    );
+  }
+}
+
+class _PinTail extends CustomPainter {
+  final Color color;
+  const _PinTail(this.color);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    canvas.drawPath(
+      ui.Path()
+        ..moveTo(size.width / 2, size.height)
+        ..lineTo(0, 0)
+        ..lineTo(size.width, 0)
+        ..close(),
+      Paint()..color = color,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter _) => false;
+}
+
+/// Paints a gradient cone pointing "up" (north). Rotate the widget to the
+/// compass heading so the cone points in the direction the user is facing.
+class _HeadingCone extends CustomPainter {
+  const _HeadingCone();
+
+  static const _blue = Color(0xFF1D6BF3);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cx = size.width / 2;
+    final cy = size.height / 2;
+
+    final paint = Paint()
+      ..shader = ui.Gradient.linear(
+        Offset(cx, cy),
+        Offset(cx, 0),
+        [
+          _blue.withValues(alpha: 0.0),
+          _blue.withValues(alpha: 0.55),
+        ],
+      );
+
+    canvas.drawPath(
+      ui.Path()
+        ..moveTo(cx, cy)
+        ..lineTo(cx - 15, 2)
+        ..lineTo(cx + 15, 2)
+        ..close(),
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter _) => false;
+}
+
+// ── Waze / Google Maps navigation arrow ───────────────────────────────────────
+/// Paints a teardrop navigation arrow pointing "up" (north at 0°).
+/// Wrap with Transform.rotate(angle: heading * pi / 180) to orient it.
+
+class _NavArrow extends CustomPainter {
+  const _NavArrow();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final cx = size.width / 2;
+    final cy = size.height / 2;
+
+    // Arrow shape: pointed tip at top, curved/concave base at bottom
+    final path = ui.Path()
+      ..moveTo(cx, 4)
+      ..lineTo(cx - 18, cy + 20)
+      ..quadraticBezierTo(cx, cy + 6, cx + 18, cy + 20)
+      ..close();
+
+    // Drop shadow
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = Colors.black.withValues(alpha: 0.25)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5),
+    );
+
+    // Body fill
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = AppColors.primary
+        ..style = PaintingStyle.fill,
+    );
+
+    // White outline
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = Colors.white
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.5
+        ..strokeJoin = StrokeJoin.round,
+    );
+
+    // Subtle highlight wedge at the leading tip
+    canvas.drawPath(
+      ui.Path()
+        ..moveTo(cx, 7)
+        ..lineTo(cx - 7, cy - 2)
+        ..lineTo(cx, cy - 8)
+        ..close(),
+      Paint()
+        ..color = Colors.white.withValues(alpha: 0.35)
+        ..style = PaintingStyle.fill,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter _) => false;
+}
+
+// ── Always-on compass button ───────────────────────────────────────────────────
+
+class _CompassBtn extends StatelessWidget {
+  final double heading;
+  const _CompassBtn({required this.heading});
+
+  static String _cardinal(double h) {
+    const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+    return dirs[((h + 22.5) / 45).floor() % 8];
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(10),
+      elevation: 3,
+      shadowColor: Colors.black.withValues(alpha: 0.15),
+      child: SizedBox(
+        width: 40,
+        height: 44,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Needle — red end = direction you're facing, rotates with heading
+            Transform.rotate(
+              angle: heading * math.pi / 180,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 3,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      color: Colors.red[600],
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(2),
+                        topRight: Radius.circular(2),
+                      ),
+                    ),
+                  ),
+                  Container(
+                    width: 3,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[400],
+                      borderRadius: const BorderRadius.only(
+                        bottomLeft: Radius.circular(2),
+                        bottomRight: Radius.circular(2),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 3),
+            // Cardinal direction label
+            Text(
+              _cardinal(heading),
+              style: const TextStyle(
+                fontSize: 8,
+                fontWeight: FontWeight.w900,
+                color: Colors.black87,
+                height: 1,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

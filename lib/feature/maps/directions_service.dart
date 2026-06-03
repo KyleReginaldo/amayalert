@@ -1,79 +1,68 @@
+import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter_polyline_points/flutter_polyline_points.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:http/http.dart' as http;
+import 'package:latlong2/latlong.dart';
 
 class DirectionsService {
   static Future<List<LatLng>?> getDirections(
     LatLng origin,
     LatLng destination,
   ) async {
-    // Use the API key from your sample code that works for directions
-    final String apiKey = 'AIzaSyDmgygVeipMUsrtGeZPZ9UzXRmcVdheIqw';
-    // Fallback to env if needed: dotenv.get('GOOGLE_MAP', fallback: '');
-
-    if (apiKey.isEmpty) {
-      debugPrint('Google Maps API key not found');
-      return null;
-    }
+    // OSRM public demo — free, no API key needed
+    // For production traffic, self-host: https://project-osrm.org
+    final url = Uri.parse(
+      'https://router.project-osrm.org/route/v1/driving/'
+      '${origin.longitude},${origin.latitude};'
+      '${destination.longitude},${destination.latitude}'
+      '?overview=full&geometries=geojson',
+    );
 
     try {
       debugPrint(
-        '🗺️ Getting directions from ${origin.latitude},${origin.longitude} to ${destination.latitude},${destination.longitude}',
-      );
-      debugPrint('🔑 Using API key: ${apiKey.substring(0, 10)}...');
-
-      final polylinePoints = PolylinePoints(apiKey: apiKey);
-
-      // TODO: Migrate to RoutesApiRequest when the API is stable
-      // Currently using deprecated PolylineRequest as RoutesApiRequest migration is not complete
-      final result = await polylinePoints.getRouteBetweenCoordinates(
-        request: PolylineRequest(
-          origin: PointLatLng(origin.latitude, origin.longitude),
-          destination: PointLatLng(destination.latitude, destination.longitude),
-          mode: TravelMode.driving,
-        ),
+        '🗺️ Getting directions from ${origin.latitude},${origin.longitude} '
+        'to ${destination.latitude},${destination.longitude}',
       );
 
-      debugPrint('📍 Polyline result: ${result.points.length} points');
-      debugPrint('📍 Status: ${result.status}');
-      debugPrint('📍 Error message: ${result.errorMessage}');
+      final response = await http
+          .get(url, headers: {'User-Agent': 'AmayAlert/1.0'})
+          .timeout(const Duration(seconds: 15));
 
-      if (result.points.length > 2) {
-        debugPrint(
-          '📍 First point: ${result.points.first.latitude}, ${result.points.first.longitude}',
-        );
-        debugPrint(
-          '📍 Middle point: ${result.points[result.points.length ~/ 2].latitude}, ${result.points[result.points.length ~/ 2].longitude}',
-        );
-        debugPrint(
-          '📍 Last point: ${result.points.last.latitude}, ${result.points.last.longitude}',
-        );
-      }
-
-      if (result.points.isNotEmpty) {
-        final latLngPoints = result.points
-            .map((point) => LatLng(point.latitude, point.longitude))
-            .toList();
-        debugPrint('✅ Successfully got ${latLngPoints.length} route points');
-        return latLngPoints;
-      } else {
-        debugPrint('❌ No route points found. Status: ${result.status}');
-        debugPrint('❌ Error: ${result.errorMessage}');
+      if (response.statusCode != 200) {
+        debugPrint('❌ OSRM HTTP ${response.statusCode}');
         return null;
       }
+
+      final data = json.decode(response.body) as Map<String, dynamic>;
+      if (data['code'] != 'Ok') {
+        debugPrint('❌ OSRM code: ${data['code']}');
+        return null;
+      }
+
+      final routes = data['routes'] as List;
+      if (routes.isEmpty) return null;
+
+      // GeoJSON coordinates are [longitude, latitude]
+      final coords = routes.first['geometry']['coordinates'] as List;
+      final points = coords
+          .map((c) => LatLng(c[1] as double, c[0] as double))
+          .toList();
+
+      debugPrint('✅ OSRM returned ${points.length} route points');
+      return points;
     } catch (e) {
-      debugPrint('💥 Exception while fetching directions: $e');
+      debugPrint('💥 OSRM error: $e');
       return null;
     }
   }
 
-  static Future<String?> getRouteInfo(LatLng origin, LatLng destination) async {
+  static Future<String?> getRouteInfo(
+    LatLng origin,
+    LatLng destination,
+  ) async {
     try {
-      // Calculate approximate distance using Haversine formula
       final distanceInMeters = _calculateDistance(origin, destination);
-
       if (distanceInMeters < 1000) {
         return '${distanceInMeters.round()} m • Walking route';
       } else {
@@ -87,7 +76,7 @@ class DirectionsService {
   }
 
   static double _calculateDistance(LatLng origin, LatLng destination) {
-    const double earthRadius = 6371000; // meters
+    const double earthRadius = 6371000;
     final double dLat = _toRadians(destination.latitude - origin.latitude);
     final double dLon = _toRadians(destination.longitude - origin.longitude);
 
@@ -102,7 +91,5 @@ class DirectionsService {
     return earthRadius * c;
   }
 
-  static double _toRadians(double degrees) {
-    return degrees * (math.pi / 180);
-  }
+  static double _toRadians(double degrees) => degrees * (math.pi / 180);
 }

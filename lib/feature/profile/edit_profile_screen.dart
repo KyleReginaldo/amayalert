@@ -6,15 +6,13 @@ import 'package:amayalert/core/theme/theme.dart';
 import 'package:amayalert/core/widgets/buttons/custom_buttons.dart';
 import 'package:amayalert/core/widgets/input/custom_text_field.dart';
 import 'package:amayalert/core/widgets/text/custom_text.dart';
+import 'package:amayalert/feature/maps/custom_google_places_field.dart';
 import 'package:amayalert/feature/profile/profile_model.dart';
 import 'package:amayalert/feature/profile/profile_repository.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:get_it/get_it.dart';
-import 'package:google_places_autocomplete_text_field/google_places_autocomplete_text_field.dart';
-import 'package:google_places_autocomplete_text_field/model/prediction.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -72,8 +70,9 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       } else {
         firstNameController.text = parts.first;
         lastNameController.text = parts.last;
-        middleNameController.text =
-            parts.sublist(1, parts.length - 1).join(' ');
+        middleNameController.text = parts
+            .sublist(1, parts.length - 1)
+            .join(' ');
       }
     }
     _selectedSuffix = widget.profile.suffix;
@@ -148,20 +147,26 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: _selectedSuffix,
-          hint: const Text('None',
-              style: TextStyle(color: AppColors.textSecondaryLight, fontSize: 14)),
+          hint: const Text(
+            'None',
+            style: TextStyle(color: AppColors.textSecondaryLight, fontSize: 14),
+          ),
           isExpanded: true,
-          icon: const Icon(Icons.arrow_drop_down,
-              color: AppColors.textSecondaryLight),
+          icon: const Icon(
+            Icons.arrow_drop_down,
+            color: AppColors.textSecondaryLight,
+          ),
           items: [
             const DropdownMenuItem(
               value: null,
               child: Text('None', style: TextStyle(fontSize: 14)),
             ),
-            ..._suffixes.map((s) => DropdownMenuItem(
-                  value: s,
-                  child: Text(s, style: const TextStyle(fontSize: 14)),
-                )),
+            ..._suffixes.map(
+              (s) => DropdownMenuItem(
+                value: s,
+                child: Text(s, style: const TextStyle(fontSize: 14)),
+              ),
+            ),
           ],
           onChanged: (v) {
             setState(() => _selectedSuffix = v);
@@ -291,13 +296,22 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
       // Create UpdateUserDTO with the form data
       final updateDto = UpdateUserDTO(
-        firstName: firstNameController.text.trim() != (widget.profile.firstName ?? '')
-            ? firstNameController.text.trim() : null,
-        middleName: middleNameController.text.trim() != (widget.profile.middleName ?? '')
-            ? middleNameController.text.trim() : null,
-        lastName: lastNameController.text.trim() != (widget.profile.lastName ?? '')
-            ? lastNameController.text.trim() : null,
-        suffix: _selectedSuffix != widget.profile.suffix ? _selectedSuffix : null,
+        firstName:
+            firstNameController.text.trim() != (widget.profile.firstName ?? '')
+            ? firstNameController.text.trim()
+            : null,
+        middleName:
+            middleNameController.text.trim() !=
+                (widget.profile.middleName ?? '')
+            ? middleNameController.text.trim()
+            : null,
+        lastName:
+            lastNameController.text.trim() != (widget.profile.lastName ?? '')
+            ? lastNameController.text.trim()
+            : null,
+        suffix: _selectedSuffix != widget.profile.suffix
+            ? _selectedSuffix
+            : null,
         gender: selectedGender != widget.profile.gender ? selectedGender : null,
         birthDate: selectedBirthDate != widget.profile.birthDate
             ? selectedBirthDate
@@ -526,8 +540,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final initial = widget.profile.firstName?.isNotEmpty == true
         ? widget.profile.firstName![0].toUpperCase()
         : widget.profile.fullName.isNotEmpty
-            ? widget.profile.fullName[0].toUpperCase()
-            : '?';
+        ? widget.profile.fullName[0].toUpperCase()
+        : '?';
 
     return Scaffold(
       backgroundColor: AppColors.scaffoldLight,
@@ -537,15 +551,21 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         scrolledUnderElevation: 1,
         surfaceTintColor: Colors.white,
         leading: IconButton(
-          icon: const Icon(LucideIcons.arrowLeft,
-              color: AppColors.textPrimaryLight, size: 20),
+          icon: const Icon(
+            LucideIcons.arrowLeft,
+            color: AppColors.textPrimaryLight,
+            size: 20,
+          ),
           onPressed: () => context.router.pop(),
         ),
-        title: const Text('Edit Profile',
-            style: TextStyle(
-                fontSize: 17,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimaryLight)),
+        title: const Text(
+          'Edit Profile',
+          style: TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textPrimaryLight,
+          ),
+        ),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(16, 20, 16, 16),
@@ -566,31 +586,35 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           border: Border.all(
-                              color: AppColors.primary.withValues(alpha: 0.25),
-                              width: 3),
+                            color: AppColors.primary.withValues(alpha: 0.25),
+                            width: 3,
+                          ),
                         ),
                         child: ClipOval(
                           child: selectedProfileImage != null
-                              ? Image.file(selectedProfileImage!,
-                                  fit: BoxFit.cover)
+                              ? Image.file(
+                                  selectedProfileImage!,
+                                  fit: BoxFit.cover,
+                                )
                               : widget.profile.profilePicture != null
-                                  ? CachedNetworkImage(
-                                      imageUrl: widget.profile.profilePicture!,
-                                      fit: BoxFit.cover,
-                                    )
-                                  : Container(
-                                      color: AppColors.primary
-                                          .withValues(alpha: 0.1),
-                                      alignment: Alignment.center,
-                                      child: Text(
-                                        initial,
-                                        style: const TextStyle(
-                                          color: AppColors.primary,
-                                          fontSize: 32,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
+                              ? CachedNetworkImage(
+                                  imageUrl: widget.profile.profilePicture!,
+                                  fit: BoxFit.cover,
+                                )
+                              : Container(
+                                  color: AppColors.primary.withValues(
+                                    alpha: 0.1,
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: Text(
+                                    initial,
+                                    style: const TextStyle(
+                                      color: AppColors.primary,
+                                      fontSize: 32,
+                                      fontWeight: FontWeight.w700,
                                     ),
+                                  ),
+                                ),
                         ),
                       ),
                       Positioned(
@@ -604,8 +628,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             shape: BoxShape.circle,
                             border: Border.all(color: Colors.white, width: 2),
                           ),
-                          child: const Icon(LucideIcons.camera,
-                              color: Colors.white, size: 14),
+                          child: const Icon(
+                            LucideIcons.camera,
+                            color: Colors.white,
+                            size: 14,
+                          ),
                         ),
                       ),
                     ],
@@ -617,16 +644,21 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 child: Text(
                   widget.profile.displayName,
                   style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimaryLight),
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimaryLight,
+                  ),
                 ),
               ),
               const SizedBox(height: 2),
               Center(
-                child: Text(widget.profile.email,
-                    style: const TextStyle(
-                        fontSize: 12, color: AppColors.gray400)),
+                child: Text(
+                  widget.profile.email,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.gray400,
+                  ),
+                ),
               ),
 
               const SizedBox(height: 24),
@@ -634,244 +666,254 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               // ── Name ────────────────────────────────────────────────
               _sectionLabel('Name'),
               const SizedBox(height: 8),
-              _card(Column(
-                children: [
-                  Row(
-                    children: [
-                      Expanded(child: _field('First Name *',
-                          firstNameController, hint: 'Juan',
-                          validator: (v) => v!.trim().isEmpty ? 'Required' : null)),
-                      const SizedBox(width: 10),
-                      Expanded(child: _field('Last Name *',
-                          lastNameController, hint: 'Dela Cruz',
-                          validator: (v) => v!.trim().isEmpty ? 'Required' : null)),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        flex: 3,
-                        child: _field('Middle Name', middleNameController,
-                            hint: 'Santos'),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        flex: 2,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _label('Suffix'),
-                            const SizedBox(height: 6),
-                            _buildSuffixDropdown(),
-                          ],
+              _card(
+                Column(
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _field(
+                            'First Name *',
+                            firstNameController,
+                            hint: 'Juan',
+                            validator: (v) =>
+                                v!.trim().isEmpty ? 'Required' : null,
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
-              )),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _field(
+                            'Last Name *',
+                            lastNameController,
+                            hint: 'Dela Cruz',
+                            validator: (v) =>
+                                v!.trim().isEmpty ? 'Required' : null,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(
+                          flex: 3,
+                          child: _field(
+                            'Middle Name',
+                            middleNameController,
+                            hint: 'Santos',
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          flex: 2,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _label('Suffix'),
+                              const SizedBox(height: 6),
+                              _buildSuffixDropdown(),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
 
               const SizedBox(height: 16),
 
               // ── Contact ─────────────────────────────────────────────
               _sectionLabel('Contact'),
               const SizedBox(height: 8),
-              _card(Column(
-                children: [
-                  _label('Email'),
-                  const SizedBox(height: 6),
-                  CustomTextField(
-                    controller: emailController,
-                    hint: 'your@email.com',
-                    keyboardType: TextInputType.emailAddress,
-                    readOnly: true,
-                    suffixIcon: IconButton(
-                      color: AppColors.primary,
-                      onPressed: _startEmailChangeFlow,
-                      icon: const Icon(LucideIcons.pencil, size: 16),
+              _card(
+                Column(
+                  children: [
+                    _label('Email'),
+                    const SizedBox(height: 6),
+                    CustomTextField(
+                      controller: emailController,
+                      hint: 'your@email.com',
+                      keyboardType: TextInputType.emailAddress,
+                      readOnly: true,
+                      suffixIcon: IconButton(
+                        color: AppColors.primary,
+                        onPressed: _startEmailChangeFlow,
+                        icon: const Icon(LucideIcons.pencil, size: 16),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  _label('Phone'),
-                  const SizedBox(height: 6),
-                  CustomTextField(
-                    controller: phoneNumberController,
-                    hint: '+63XXXXXXXXXX',
-                    readOnly: true,
-                    keyboardType: TextInputType.phone,
-                    suffixIcon: IconButton(
-                      color: AppColors.primary,
-                      onPressed: _startPhoneChangeFlow,
-                      icon: const Icon(LucideIcons.pencil, size: 16),
+                    const SizedBox(height: 12),
+                    _label('Phone'),
+                    const SizedBox(height: 6),
+                    CustomTextField(
+                      controller: phoneNumberController,
+                      hint: '+63XXXXXXXXXX',
+                      readOnly: true,
+                      keyboardType: TextInputType.phone,
+                      suffixIcon: IconButton(
+                        color: AppColors.primary,
+                        onPressed: _startPhoneChangeFlow,
+                        icon: const Icon(LucideIcons.pencil, size: 16),
+                      ),
                     ),
-                  ),
-                ],
-              )),
+                  ],
+                ),
+              ),
 
               const SizedBox(height: 16),
 
               // ── Personal ─────────────────────────────────────────────
               _sectionLabel('Personal'),
               const SizedBox(height: 8),
-              _card(Column(
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _label('Sex'),
-                            const SizedBox(height: 6),
-                            Container(
-                              height: 48,
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 12),
-                              decoration: BoxDecoration(
-                                border: Border.all(color: AppColors.border),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: DropdownButtonHideUnderline(
-                                child: DropdownButton<String>(
-                                  value: selectedGender,
-                                  hint: const Text('Select',
-                                      style: TextStyle(
-                                          color: AppColors.gray400,
-                                          fontSize: 14)),
-                                  isExpanded: true,
-                                  icon: const Icon(LucideIcons.chevronDown,
-                                      size: 16,
-                                      color: AppColors.gray500),
-                                  items: const [
-                                    DropdownMenuItem(
-                                        value: 'Male',
-                                        child: Text('Male',
-                                            style:
-                                                TextStyle(fontSize: 14))),
-                                    DropdownMenuItem(
-                                        value: 'Female',
-                                        child: Text('Female',
-                                            style:
-                                                TextStyle(fontSize: 14))),
-                                  ],
-                                  onChanged: (v) {
-                                    setState(() => selectedGender = v);
-                                    _onFieldChanged();
-                                  },
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _label('Birth Date'),
-                            const SizedBox(height: 6),
-                            GestureDetector(
-                              onTap: () async {
-                                final picked = await showDatePicker(
-                                  context: context,
-                                  initialDate:
-                                      selectedBirthDate ?? DateTime(2000),
-                                  firstDate: DateTime(1950),
-                                  lastDate: DateTime.now(),
-                                );
-                                if (picked != null) {
-                                  setState(
-                                      () => selectedBirthDate = picked);
-                                  _onFieldChanged();
-                                }
-                              },
-                              child: Container(
+              _card(
+                Column(
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _label('Sex'),
+                              const SizedBox(height: 6),
+                              Container(
                                 height: 48,
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 12),
+                                  horizontal: 12,
+                                ),
                                 decoration: BoxDecoration(
-                                  border:
-                                      Border.all(color: AppColors.border),
+                                  border: Border.all(color: AppColors.border),
                                   borderRadius: BorderRadius.circular(8),
                                 ),
-                                child: Row(
-                                  children: [
-                                    const Icon(LucideIcons.calendar,
-                                        size: 16,
-                                        color: AppColors.gray500),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      selectedBirthDate != null
-                                          ? '${selectedBirthDate!.day}/${selectedBirthDate!.month}/${selectedBirthDate!.year}'
-                                          : 'Select',
+                                child: DropdownButtonHideUnderline(
+                                  child: DropdownButton<String>(
+                                    value: selectedGender,
+                                    hint: const Text(
+                                      'Select',
                                       style: TextStyle(
+                                        color: AppColors.gray400,
                                         fontSize: 14,
-                                        color: selectedBirthDate != null
-                                            ? AppColors.textPrimaryLight
-                                            : AppColors.gray400,
                                       ),
                                     ),
-                                  ],
+                                    isExpanded: true,
+                                    icon: const Icon(
+                                      LucideIcons.chevronDown,
+                                      size: 16,
+                                      color: AppColors.gray500,
+                                    ),
+                                    items: const [
+                                      DropdownMenuItem(
+                                        value: 'Male',
+                                        child: Text(
+                                          'Male',
+                                          style: TextStyle(fontSize: 14),
+                                        ),
+                                      ),
+                                      DropdownMenuItem(
+                                        value: 'Female',
+                                        child: Text(
+                                          'Female',
+                                          style: TextStyle(fontSize: 14),
+                                        ),
+                                      ),
+                                    ],
+                                    onChanged: (v) {
+                                      setState(() => selectedGender = v);
+                                      _onFieldChanged();
+                                    },
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                ],
-              )),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _label('Birth Date'),
+                              const SizedBox(height: 6),
+                              GestureDetector(
+                                onTap: () async {
+                                  final picked = await showDatePicker(
+                                    context: context,
+                                    initialDate:
+                                        selectedBirthDate ?? DateTime(2000),
+                                    firstDate: DateTime(1950),
+                                    lastDate: DateTime.now(),
+                                  );
+                                  if (picked != null) {
+                                    setState(() => selectedBirthDate = picked);
+                                    _onFieldChanged();
+                                  }
+                                },
+                                child: Container(
+                                  height: 48,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    border: Border.all(color: AppColors.border),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      const Icon(
+                                        LucideIcons.calendar,
+                                        size: 16,
+                                        color: AppColors.gray500,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        selectedBirthDate != null
+                                            ? '${selectedBirthDate!.day}/${selectedBirthDate!.month}/${selectedBirthDate!.year}'
+                                            : 'Select',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: selectedBirthDate != null
+                                              ? AppColors.textPrimaryLight
+                                              : AppColors.gray400,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
 
               const SizedBox(height: 16),
 
               // ── Address ─────────────────────────────────────────────
               _sectionLabel('Address'),
               const SizedBox(height: 8),
-              _card(Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _label('Home Address'),
-                  const SizedBox(height: 6),
-                  GooglePlacesAutoCompleteTextFormField(
-                    textEditingController: addressController,
-                    googleAPIKey: dotenv.get('GOOGLE_MAP'),
-                    debounceTime: 400,
-                    countries: const ['ph'],
-                    inputDecoration: InputDecoration(
+              _card(
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _label('Home Address'),
+                    const SizedBox(height: 6),
+                    CustomGooglePlacesTextField(
+                      controller: addressController,
                       hintText: 'Enter your address',
-                      hintStyle:
-                          const TextStyle(color: AppColors.gray400),
-                      prefixIcon: const Icon(LucideIcons.mapPin,
-                          size: 18, color: AppColors.gray500),
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 14),
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide:
-                              const BorderSide(color: AppColors.border)),
-                      enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide:
-                              const BorderSide(color: AppColors.border)),
-                      focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: const BorderSide(
-                              color: AppColors.primary, width: 1.5)),
+                      onSuggestionClicked: (result) {
+                        addressController
+                            .selection = TextSelection.fromPosition(
+                          TextPosition(offset: addressController.text.length),
+                        );
+                        _onFieldChanged();
+                      },
                     ),
-                    itmClick: (Prediction prediction) {
-                      addressController.text =
-                          prediction.description ?? '';
-                      addressController.selection =
-                          TextSelection.fromPosition(TextPosition(
-                              offset: addressController.text.length));
-                      _onFieldChanged();
-                    },
-                  ),
-                ],
-              )),
+                  ],
+                ),
+              ),
 
               const SizedBox(height: 20),
             ],
@@ -893,7 +935,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               disabledBackgroundColor: AppColors.gray200,
               foregroundColor: Colors.white,
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
+                borderRadius: BorderRadius.circular(10),
+              ),
               elevation: 0,
             ),
             child: _isLoading
@@ -901,11 +944,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     width: 20,
                     height: 20,
                     child: CircularProgressIndicator(
-                        color: Colors.white, strokeWidth: 2))
+                      color: Colors.white,
+                      strokeWidth: 2,
+                    ),
+                  )
                 : Text(
                     _hasChanges ? 'Save Changes' : 'No Changes',
                     style: const TextStyle(
-                        fontSize: 15, fontWeight: FontWeight.w600),
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
           ),
         ),
@@ -916,51 +964,48 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   // ── UI helpers ─────────────────────────────────────────────────────────────
 
   Widget _card(Widget child) => Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: AppColors.border),
-        ),
-        child: child,
-      );
+    width: double.infinity,
+    padding: const EdgeInsets.all(14),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(10),
+      border: Border.all(color: AppColors.border),
+    ),
+    child: child,
+  );
 
   Widget _sectionLabel(String text) => Text(
-        text.toUpperCase(),
-        style: const TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-            color: AppColors.gray400,
-            letterSpacing: 0.7),
-      );
+    text.toUpperCase(),
+    style: const TextStyle(
+      fontSize: 11,
+      fontWeight: FontWeight.w700,
+      color: AppColors.gray400,
+      letterSpacing: 0.7,
+    ),
+  );
 
   Widget _label(String text) => Text(
-        text,
-        style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-            color: AppColors.textSecondaryLight),
-      );
+    text,
+    style: const TextStyle(
+      fontSize: 12,
+      fontWeight: FontWeight.w600,
+      color: AppColors.textSecondaryLight,
+    ),
+  );
 
   Widget _field(
     String label,
     TextEditingController controller, {
     String? hint,
     String? Function(String?)? validator,
-  }) =>
-      Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _label(label),
-          const SizedBox(height: 6),
-          CustomTextField(
-              controller: controller,
-              hint: hint,
-              validator: validator),
-        ],
-      );
-
+  }) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      _label(label),
+      const SizedBox(height: 6),
+      CustomTextField(controller: controller, hint: hint, validator: validator),
+    ],
+  );
 }
 
 class _ImagePickerOption extends StatelessWidget {

@@ -7,6 +7,7 @@ import 'package:amayalert/dependency.dart';
 import 'package:amayalert/feature/profile/profile_repository.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
+import 'package:internet_connection_checker_plus/internet_connection_checker_plus.dart';
 import 'package:lucide_flutter/lucide_flutter.dart';
 import 'package:provider/provider.dart';
 
@@ -31,9 +32,52 @@ class OnBoardingScreen extends StatefulWidget implements AutoRouteWrapper {
 }
 
 class _OnBoardingScreenState extends State<OnBoardingScreen> {
+  bool _guestLoading = false;
+
   void completeOnboarding() {
     // sl<SharedPreferences>().setBool('onboarding_done', true);
     widget.onResult?.call(true);
+  }
+
+  void _showSnack(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+  }
+
+  Future<void> _continueAsGuest() async {
+    final hasInternet = await InternetConnection().hasInternetAccess;
+    if (!hasInternet) {
+      _showSnack('No internet connection. Please check your signal and try again.');
+      return;
+    }
+
+    setState(() => _guestLoading = true);
+    try {
+      final auth = await supabase.auth.signInAnonymously().timeout(
+        const Duration(seconds: 15),
+        onTimeout: () => throw Exception('Connection timed out. Signal may be too weak.'),
+      );
+      debugPrint('anon user: ${auth.user}');
+      if (auth.user != null) {
+        await supabase.from('users').insert({
+          'full_name': 'Guest User',
+          'id': auth.user!.id,
+          'email': 'guest_${DateTime.now().millisecondsSinceEpoch}@gmail.com',
+          'status': 'approved',
+        });
+        if (mounted) {
+          context.read<ProfileRepository>().clear();
+          userID = supabase.auth.currentUser?.id;
+        }
+        completeOnboarding();
+      }
+    } catch (e) {
+      _showSnack(e.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _guestLoading = false);
+    }
   }
 
   @override
@@ -95,28 +139,10 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
             ),
             SizedBox(height: 10),
             CustomOutlinedButton(
-              label: 'Continue as Guest',
-
-              onPressed: () async {
-                final auth = await supabase.auth.signInAnonymously();
-                debugPrint('anon user: ${auth.user}');
-                if (auth.user != null) {
-                  await supabase.from('users').insert({
-                    'full_name': 'Guest User',
-                    'id': auth.user!.id,
-                    'email':
-                        'guest_${DateTime.now().millisecondsSinceEpoch}@gmail.com',
-                    'status': 'approved',
-                  });
-                  if (mounted) {
-                    context.read<ProfileRepository>().clear();
-                    userID = supabase.auth.currentUser?.id;
-                  }
-                  completeOnboarding();
-                }
-              },
+              label: _guestLoading ? 'Please wait…' : 'Continue as Guest',
+              onPressed: _guestLoading ? null : _continueAsGuest,
               borderRadius: 50,
-              icon: LucideIcons.hatGlasses,
+              icon: _guestLoading ? null : LucideIcons.hatGlasses,
               foregroundColor: Color.fromARGB(255, 255, 255, 255),
               borderColor: Color.fromARGB(255, 255, 255, 255),
             ),

@@ -1,3 +1,4 @@
+import 'package:amayalert/feature/activity/activity_model.dart';
 import 'package:amayalert/feature/activity/activity_repository.dart';
 import 'package:amayalert/feature/alerts/alert_repository.dart';
 import 'package:amayalert/feature/evacuation/evacuation_repository.dart';
@@ -118,9 +119,10 @@ class SearchRepository extends ChangeNotifier {
         }
       }
 
-      // Search through activities
+      // Search through activities — skip post-type since posts are already included above
       final activities = activityRepository.activities;
       for (final activity in activities) {
+        if (activity.type == ActivityType.post) continue;
         if (_matchesQuery(activity.title, query) ||
             _matchesQuery(activity.description, query) ||
             _matchesQuery(activity.location ?? '', query) ||

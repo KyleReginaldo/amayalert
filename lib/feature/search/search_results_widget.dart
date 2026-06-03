@@ -176,7 +176,10 @@ class SearchResultsWidget extends StatelessWidget {
       if (postId != null) {
         final post = postRepo.posts.where((p) => p.id == postId).firstOrNull;
         if (post != null) {
-          return PostCard(post: post);
+          return GestureDetector(
+            onTap: () => _handleResultTap(context, result),
+            child: PostCard(post: post),
+          );
         }
       }
     }

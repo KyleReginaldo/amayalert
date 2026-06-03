@@ -3,13 +3,11 @@ import 'dart:io';
 
 import 'package:amayalert/core/theme/theme.dart';
 import 'package:amayalert/core/widgets/input/custom_text_field.dart';
+import 'package:amayalert/feature/maps/custom_google_places_field.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
-import 'package:google_places_autocomplete_text_field/google_places_autocomplete_text_field.dart';
-import 'package:google_places_autocomplete_text_field/model/prediction.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -447,13 +445,16 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   TextSpan(
                     text: title.substring(0, title.length - 2),
                     style: const TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.w600),
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
                     children: const [
                       TextSpan(
                         text: ' *',
                         style: TextStyle(
-                            color: AppColors.danger,
-                            fontWeight: FontWeight.w700),
+                          color: AppColors.danger,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ],
                   ),
@@ -462,7 +463,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 Text(
                   title,
                   style: const TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.w600),
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
             ],
           ),
@@ -1007,41 +1010,10 @@ class _SignUpScreenState extends State<SignUpScreen> {
             ),
             const SizedBox(height: 14),
             _fieldLabel('Home Address'),
-            GooglePlacesAutoCompleteTextFormField(
-              textEditingController: addressController,
-              googleAPIKey: dotenv.get('GOOGLE_MAP'),
-              debounceTime: 400,
-              countries: const ['ph'],
-              inputDecoration: InputDecoration(
-                hintText: 'Enter your address',
-                hintStyle: const TextStyle(color: AppColors.gray500),
-                prefixIcon: const Icon(
-                  LucideIcons.mapPin,
-                  color: AppColors.gray500,
-                  size: 20,
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 14,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: AppColors.gray300),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: AppColors.gray300),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(
-                    color: AppColors.primary,
-                    width: 2,
-                  ),
-                ),
-              ),
-              itmClick: (Prediction prediction) {
-                addressController.text = prediction.description ?? '';
+            CustomGooglePlacesTextField(
+              controller: addressController,
+              hintText: 'Enter your address',
+              onSuggestionClicked: (result) {
                 addressController.selection = TextSelection.fromPosition(
                   TextPosition(offset: addressController.text.length),
                 );

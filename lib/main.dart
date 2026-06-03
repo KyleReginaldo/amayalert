@@ -54,7 +54,7 @@ class _MyAppState extends State<MyApp> {
 
   @override
   void dispose() {
-    DeepLinkHandler.dispose();
+    DeepLinkHandler.dispose();  
     super.dispose();
   }
 
