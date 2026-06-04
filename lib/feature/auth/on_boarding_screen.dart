@@ -41,15 +41,17 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
 
   void _showSnack(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   Future<void> _continueAsGuest() async {
     final hasInternet = await InternetConnection().hasInternetAccess;
     if (!hasInternet) {
-      _showSnack('No internet connection. Please check your signal and try again.');
+      _showSnack(
+        'No internet connection. Please check your signal and try again.',
+      );
       return;
     }
 
@@ -57,7 +59,8 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
     try {
       final auth = await supabase.auth.signInAnonymously().timeout(
         const Duration(seconds: 15),
-        onTimeout: () => throw Exception('Connection timed out. Signal may be too weak.'),
+        onTimeout: () =>
+            throw Exception('Connection timed out. Signal may be too weak.'),
       );
       debugPrint('anon user: ${auth.user}');
       if (auth.user != null) {
@@ -66,6 +69,7 @@ class _OnBoardingScreenState extends State<OnBoardingScreen> {
           'id': auth.user!.id,
           'email': 'guest_${DateTime.now().millisecondsSinceEpoch}@gmail.com',
           'status': 'approved',
+          'verification_status': 'verified',
         });
         if (mounted) {
           context.read<ProfileRepository>().clear();
